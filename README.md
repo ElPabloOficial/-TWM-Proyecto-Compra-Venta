@@ -16,3 +16,16 @@ The React Compiler is not enabled on this template because of its impact on dev 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 # -TWM-Proyecto-Compra-Venta
 
+## Requisitos
+
+- Node.js 20.19 o superior (recomendado: Node 22)
+- npm
+
+## Instalación y ejecución
+
+```bash
+git clone https://github.com/ElPabloOficial/-TWM-Proyecto-Compra-Venta.git
+cd -- -TWM-Proyecto-Compra-Venta
+npm install
+npm run dev
+```
