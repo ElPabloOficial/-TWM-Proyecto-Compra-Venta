@@ -71,8 +71,16 @@
   cursor: pointer;
   color: #000;
   display: flex;
+  padding: 0;
 }
 
+.login-eye svg {
+  font-size: 24px;
+}
+
+.login-input-wrap .login-input {
+  padding-right: 48px;
+}
 .login-remember {
   display: flex;
   align-items: center;
