@@ -1,0 +1,101 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f4f4;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 330px;
+  padding: 24px 32px 32px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-logo { width: 90px; }
+
+.login-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 12px 0 24px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-field { margin-bottom: 16px; }
+
+.login-label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+
+.login-input-wrap { position: relative; }
+
+.login-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  border: 1px solid #333;
+  border-radius: 999px;
+  background: #fffafa;
+  font-size: 0.8rem;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: #ee3333;
+  box-shadow: 0 0 0 1px #ee3333;
+}
+
+.login-eye {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #000;
+  display: flex;
+}
+
+.login-remember {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  margin-bottom: 16px;
+}
+
+.login-remember input[type="checkbox"] {
+  accent-color: #ee3333;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.login-register {
+  text-align: center;
+  font-size: 0.7rem;
+  margin-top: 10px;
+}
+
+.login-register a {
+  color: #ee3333;
+  text-decoration: none;
+  margin-left: 6px;
+}

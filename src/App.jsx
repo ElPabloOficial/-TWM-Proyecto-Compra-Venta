@@ -1,11 +1,7 @@
-import React from 'react';
+import LoginScreen from "./pages/Login/LoginScreen";
 
-import CustomButton from "./components/atoms/Button/CustomButton";
-
-function App() {
-  return (
-    <CustomButton />
-  );
-}
+const App = () => {
+  return <LoginScreen />;
+};
 
 export default App;
