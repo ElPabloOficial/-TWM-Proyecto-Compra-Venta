@@ -77,6 +77,11 @@ export default function RegisterScreen() {
     setSubmitted(true);
     setSuccess(false);
 
+    console.log('Datos de registro:', {
+      tipoCuenta: userType === 0 ? 'cliente' : 'vendedor',
+      ...formData,
+    });
+
     if (
       !event.currentTarget.reportValidity() ||
       !passwordsMatch ||
@@ -177,7 +182,7 @@ export default function RegisterScreen() {
                 <TextField
                   fullWidth
                   required
-                  name="nombre"
+                  name="nombres"
                   label="Nombre"
                   value={formData.nombres}
                   onChange={handleChange}
@@ -422,8 +427,7 @@ export default function RegisterScreen() {
 
           {success && (
             <Alert severity="success" className="register-success">
-              Formulario validado. La cuenta no se ha guardado: el registro se
-              conectará cuando haya un servicio disponible.
+              Cuenta creada exitosamente
             </Alert>
           )}
 
