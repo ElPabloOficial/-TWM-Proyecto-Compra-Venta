@@ -1,44 +1,47 @@
-import { useState } from "react";
-import Box from "@mui/material/Box";
-import Drawer from "@mui/material/Drawer";
-import IconButton from "@mui/material/IconButton";
+import { useState, useEffect } from "react";
 import MenuIcon from "@mui/icons-material/Menu";
 import Header from "../../organisms/Header/Header";
 import Sidebar from "../../organisms/Sidebar/Sidebar";
 
-const AdminTemplate = ({ children }) => {
+const SellerTemplate = ({ children }) => {
   const [menuAbierto, setMenuAbierto] = useState(false);
 
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const cerrarConEsc = (e) => {
+      if (e.key === "Escape") setMenuAbierto(false);
+    };
+    window.addEventListener("keydown", cerrarConEsc);
+    return () => window.removeEventListener("keydown", cerrarConEsc);
+  }, [menuAbierto]);
+
   return (
-    <Box sx={{ minHeight: "100vh", backgroundColor: "#f4f4f4" }}>
+    <div className="inv-layout">
       <Header />
 
-      {/* Barra lateral: aparece al presionar el botón ☰ */}
-      <Drawer
-        anchor="left"
-        open={menuAbierto}
-        onClose={() => setMenuAbierto(false)}
-        sx={{ "& .MuiDrawer-paper": { backgroundColor: "#2b2b2b" } }}
-      >
-        <Sidebar onSelect={() => setMenuAbierto(false)} />
-      </Drawer>
+      {menuAbierto && (
+        <div className="inv-overlay" onClick={() => setMenuAbierto(false)} />
+      )}
 
-      <Box
-        component="main"
-        sx={{ display: "flex", alignItems: "flex-start", gap: 1, padding: 4 }}
-      >
-        <IconButton
+      {/* Barra lateral: aparece al presionar el botón ☰ */}
+      <aside className={`inv-drawer ${menuAbierto ? "abierto" : ""}`}>
+        <Sidebar onSelect={() => setMenuAbierto(false)} />
+      </aside>
+
+      <main className="inv-main">
+        <button
+          type="button"
+          className="inv-menu-btn"
           onClick={() => setMenuAbierto(true)}
           aria-label="Abrir menú"
-          sx={{ marginTop: "-4px" }}
         >
           <MenuIcon />
-        </IconButton>
+        </button>
 
-        <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
-      </Box>
-    </Box>
+        <div className="inv-main-content">{children}</div>
+      </main>
+    </div>
   );
 };
 
-export default AdminTemplate;
+export default SellerTemplate;
