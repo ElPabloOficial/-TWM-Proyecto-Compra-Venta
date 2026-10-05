@@ -9,6 +9,9 @@ const AddProductScreen = () => {
   const { categorias, agregarProducto } = useProductos();
 
   const guardar = (datos) => {
+    // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados al crear.
+    // Con el backend esto se reemplaza por la llamada a la API (POST).
+    console.log("[Productos] Crear producto:", datos);
     agregarProducto(datos);
     navigate("/inventario");
   };

@@ -61,7 +61,7 @@ const ProductFormDialog = ({ open, producto, categorias = [], onClose, onGuardar
       }
     }
 
-    onGuardar({
+    const datos = {
       ...form,
       sku: form.sku.trim(),
       nombre: form.nombre.trim(),
@@ -70,7 +70,16 @@ const ProductFormDialog = ({ open, producto, categorias = [], onClose, onGuardar
       oferta,
       ofertaInicio: oferta > 0 ? form.ofertaInicio : "",
       ofertaFin: oferta > 0 ? form.ofertaFin : "",
-    });
+    };
+
+    // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados.
+    // Con el backend esto se reemplaza por la llamada a la API (PUT al editar, POST al crear).
+    console.log(
+      producto ? "[Productos] Actualizar producto:" : "[Productos] Crear producto:",
+      datos
+    );
+
+    onGuardar(datos);
   };
 
   return (

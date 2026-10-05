@@ -42,6 +42,8 @@ const InventoryScreen = () => {
 
   const confirmarEliminar = (producto) => {
     if (window.confirm(`¿Eliminar "${producto.nombre}"?`)) {
+      // SIMULACIÓN (solo frontend): con el backend pasa a ser una llamada DELETE
+      console.log("[Productos] Eliminar producto:", producto);
       eliminarProducto(producto.id);
     }
   };
