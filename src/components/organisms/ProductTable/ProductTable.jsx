@@ -11,6 +11,12 @@ const textosOferta = {
 
 const formatoPrecio = (n) => `$${Number(n).toLocaleString("es-CL")}`;
 
+// Precio con el descuento aplicado, redondeado a peso entero
+// TEMPORAL: se calcula en el frontend. Con la base de datos puede venir como
+// campo precio_final desde la API (columna generada o calculado en la consulta).
+const precioConDescuento = (precio, oferta) =>
+  Math.round(Number(precio) * (1 - Number(oferta) / 100));
+
 // 2026-10-31  -> 31/10/2026
 const formatoFecha = (iso) => {
   if (!iso) return "";
@@ -43,6 +49,7 @@ const ProductTable = ({ productos, categorias = [], onEditar, onEliminar }) => {
 
           {productos.map((p) => {
             const tieneOferta = p.oferta > 0;
+            const ofertaVigente = tieneOferta && p.estadoOferta === "vigente";
             const claseEstado = p.estadoOferta ? `inv-oferta-${p.estadoOferta}` : "";
 
             return (
@@ -51,7 +58,18 @@ const ProductTable = ({ productos, categorias = [], onEditar, onEliminar }) => {
                 <td>{p.nombre}</td>
                 <td>{nombreCategoria(p.categoriaId)}</td>
                 <td>{p.stock}</td>
-                <td>{formatoPrecio(p.precio)}</td>
+                <td>
+                  {ofertaVigente ? (
+                    <>
+                      <div className="inv-precio-original">{formatoPrecio(p.precio)}</div>
+                      <div className="inv-precio-final">
+                        {formatoPrecio(precioConDescuento(p.precio, p.oferta))}
+                      </div>
+                    </>
+                  ) : (
+                    formatoPrecio(p.precio)
+                  )}
+                </td>
                 <td>
                   {!tieneOferta ? (
                     "-"

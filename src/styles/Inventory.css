@@ -299,3 +299,15 @@
   opacity: 0.4;
   cursor: default;
 }
+
+/* Precio con oferta vigente */
+.inv-precio-original {
+  font-size: 12px;
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.inv-precio-final {
+  font-weight: 700;
+  color: #ec3333;
+}
