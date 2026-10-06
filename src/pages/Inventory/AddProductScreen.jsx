@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/organisms/Header/Header";
 import ProductForm from "../../components/organisms/ProductForm/ProductForm";
 import { useProductos } from "../../context/ProductContext";
@@ -6,15 +6,27 @@ import "../../styles/AddProduct.css";
 
 const AddProductScreen = () => {
   const navigate = useNavigate();
-  const { categorias, agregarProducto } = useProductos();
+  const { id } = useParams();
+  const { productos, categorias, agregarProducto, actualizarProducto } = useProductos();
+
+  // Si la ruta trae un id (/inventario/editar/:id) la pantalla funciona en modo edición
+  const producto = id ? productos.find((p) => p.id === Number(id)) : null;
+  const editando = Boolean(id);
+
+  if (editando && !producto) {
+    return <Navigate to="/inventario" replace />;
+  }
 
   const guardar = (datos) => {
-    // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados al crear.
-    // Con el backend esto se reemplaza por la llamada a la API (POST).
-    console.log("[Productos] Crear producto:", datos);
-    agregarProducto(datos);
+    if (editando) {
+      actualizarProducto({ ...datos, id: producto.id });
+    } else {
+      agregarProducto(datos);
+    }
     navigate("/inventario");
   };
+
+  const titulo = editando ? "Editar Producto" : "Agregar Producto";
 
   return (
     <div className="addp-page">
@@ -25,13 +37,14 @@ const AddProductScreen = () => {
           <nav className="addp-breadcrumb">
             <Link to="/inventario">Inventario</Link>
             <span className="sep">›</span>
-            <span className="actual">Agregar Producto</span>
+            <span className="actual">{titulo}</span>
           </nav>
 
-          <h1 className="addp-title">Agregar Producto</h1>
+          <h1 className="addp-title">{titulo}</h1>
         </div>
 
         <ProductForm
+          producto={producto}
           categorias={categorias}
           onGuardar={guardar}
           onCancelar={() => navigate("/inventario")}

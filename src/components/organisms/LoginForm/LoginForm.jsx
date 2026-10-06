@@ -3,6 +3,9 @@ import LoginField from "../../molecules/LoginField/LoginField";
 import RememberUser from "../../molecules/RememberUser/RememberUser";
 import CustomButton from "../../atoms/Button/CustomButton";
 
+import formatRut from "../../../services/format";
+
+
 const LoginForm = ({ onSubmit }) => {
   const [rut, setRut] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +23,7 @@ const LoginForm = ({ onSubmit }) => {
         label="RUT"
         placeholder="Ingresa tu rut"
         value={rut}
-        onChange={(e) => setRut(e.target.value)}
+        onChange={(e) => setRut(formatRut(e.target.value))}
       />
       <LoginField
         id="password"
