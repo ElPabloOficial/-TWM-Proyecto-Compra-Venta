@@ -1,27 +1,34 @@
-import CustomAvatar from "../../components/atoms/Avatar/CustomAvatar";
-import ProfileSection from "../../components/molecules/ProfileSection/ProfileSection";
-import ProfileField from "../../components/molecules/ProfileField/ProfileField";
+import ProfileConfigCard from "../../components/organisms/ProfileConfigCard/ProfileConfigCard";
+import { authService } from "../../services/authService";
 
 const ProfileScreen = () => {
+  const user = authService.getCurrentUser() || {
+    name: "Marcelo",
+    rut: "12345678-9",
+    role: "vendedor",
+  };
+
+  const handleGuardar = (datos) => {
+    console.log("[Profile] Guardar cambios:", datos);
+  };
+
+  const handleCancelar = () => {
+    console.log("[Profile] Cancelar");
+  };
+
   return (
     <div style={{ padding: 40, background: "#f4f4f4", minHeight: "100vh" }}>
-      <h1 style={{ color: "#000", marginBottom: 4 }}>Configuración de Perfil</h1>
-      <p style={{ color: "#555", fontSize: 14, marginTop: 0, marginBottom: 24 }}>
-        Mantén tus datos personales y comerciales actualizados para operar con seguridad en Ahorraton.
-      </p>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <h1 style={{ color: "#000", marginBottom: 4 }}>Configuración de Perfil</h1>
+        <p style={{ color: "#555", fontSize: 14, marginTop: 0, marginBottom: 24 }}>
+          Mantén tus datos personales y comerciales actualizados para operar con seguridad en Ahorraton.
+        </p>
 
-      <div style={{ background: "#fff", padding: 24, borderRadius: 8, maxWidth: 1100 }}>
-        <ProfileSection title="Datos Personales">
-          <CustomAvatar alt="Marcelo" size={90} />
-
-          <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <ProfileField label="Nombre Completo" placeholder="Ingresa tu nombre" />
-            <ProfileField label="RUT" placeholder="12345678-9" />
-            <ProfileField label="Teléfono de Contacto" placeholder="+56 9 1234 5678" />
-            <ProfileField label="Fecha de Nacimiento" type="date" />
-            <ProfileField label="Correo Electrónico" placeholder="correo@ejemplo.com" />
-          </div>
-        </ProfileSection>
+        <ProfileConfigCard
+          user={user}
+          onGuardar={handleGuardar}
+          onCancelar={handleCancelar}
+        />
       </div>
     </div>
   );
