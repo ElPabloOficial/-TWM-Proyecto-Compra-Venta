@@ -9,18 +9,7 @@ import ProfileAccountType from '../../molecules/ProfileAccountType/ProfileAccoun
 import ProfilePassword from '../../molecules/ProfilePassword/ProfilePassword';
 import ProfileSwitch from '../../molecules/ProfileSwitch/ProfileSwitch';
 
-/*
- * ProfileConfigCard
- *
- * Organismo que contiene toda la tarjeta de configuración
- * del perfil. Agrupa todas las secciones (Datos Personales,
- * Empresa, Dirección, Acceso) y los botones finales.
- */
-export default function ProfileConfigCard({
-  user = {},
-  onGuardar,
-  onCancelar,
-}) {
+export default function ProfileConfigCard({ user = {}, onGuardar, onCancelar }) {
   const [restriccionEdad, setRestriccionEdad] = useState(false);
 
   const [form, setForm] = useState({
@@ -58,13 +47,7 @@ export default function ProfileConfigCard({
   };
 
   return (
-    <Box
-      sx={{
-        backgroundColor: '#fff',
-        padding: 3,
-        borderRadius: 2,
-      }}
-    >
+    <Box sx={{ backgroundColor: '#fff', padding: 3, borderRadius: 2 }}>
       {/* DATOS PERSONALES */}
       <ProfileSection title="Datos Personales">
         <Box
@@ -75,15 +58,7 @@ export default function ProfileConfigCard({
             alignItems: 'start',
           }}
         >
-          {/* Columna izquierda: Avatar + "Cambiar foto" */}
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 1,
-            }}
-          >
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <CustomAvatar alt={form.nombre || 'Usuario'} size={90} />
             <Typography
               sx={{
@@ -99,126 +74,66 @@ export default function ProfileConfigCard({
             </Typography>
           </Box>
 
-          {/* Columna derecha: los campos */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-              gap: 2,
-            }}
-          >
-            <ProfileField
-              label="Nombre Completo"
-              value={form.nombre}
-              onChange={cambiar('nombre')}
-              placeholder="Ingresa tu nombre"
-            />
-            <ProfileField
-              label="RUT"
-              value={form.rut}
-              onChange={cambiar('rut')}
-              placeholder="12345678-9"
-            />
-            <ProfileField
-              label="Teléfono de Contacto"
-              value={form.telefono}
-              onChange={cambiar('telefono')}
-              placeholder="+56 9 1234 5678"
-            />
-            <ProfileField
-              label="Fecha de Nacimiento"
-              type="date"
-              value={form.fechaNacimiento}
-              onChange={cambiar('fechaNacimiento')}
-            />
-            <ProfileField
-              label="Correo Electrónico"
-              value={form.correo}
-              onChange={cambiar('correo')}
-              placeholder="correo@ejemplo.com"
-            />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+            <ProfileField label="Nombre Completo" value={form.nombre} onChange={cambiar('nombre')} placeholder="Ingresa tu nombre" />
+            <ProfileField label="RUT" value={form.rut} onChange={cambiar('rut')} placeholder="12345678-9" />
+            <ProfileField label="Teléfono de Contacto" value={form.telefono} onChange={cambiar('telefono')} placeholder="+56 9 1234 5678" />
+            <ProfileField label="Fecha de Nacimiento" type="date" value={form.fechaNacimiento} onChange={cambiar('fechaNacimiento')} />
+            <ProfileField label="Correo Electrónico" value={form.correo} onChange={cambiar('correo')} placeholder="correo@ejemplo.com" />
           </Box>
         </Box>
       </ProfileSection>
 
       {/* TIPO DE CUENTA */}
       <ProfileAccountType
-        tipoActivo={esVendedor ? 'vendedor' : 'cliente'}
-        onChange={(nuevoRol) => {
-        console.log('[Profile] Cambiar rol a:', nuevoRol);
-        }}
-      />  
-
-      {/* SWITCH */}
-      <ProfileSwitch
-        checked={restriccionEdad}
-        onChange={(e) => setRestriccionEdad(e.target.checked)}
-        label="Sí"
-        description="Requiere restricción de edad"
+        tipo={esVendedor ? 'Vendedor Comercial' : 'Cliente Comprador'}
+        rolActivo="Vendedor Comercial (Activo)"
+        esVendedor={esVendedor}
       />
+
+      {/* SWITCH + TÍTULO EN LA MISMA LÍNEA (solo vendedor) */}
+      {esVendedor && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
+          <ProfileSwitch
+            checked={restriccionEdad}
+            onChange={(e) => setRestriccionEdad(e.target.checked)}
+            label="Sí"
+          />
+          <Typography
+            sx={{
+              color: '#EC3333',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+            }}
+          >
+            Datos de Empresa (Modo Vendedor)
+          </Typography>
+        </Box>
+      )}
 
       {/* DATOS DE EMPRESA (solo vendedor) */}
       {esVendedor && (
-        <ProfileSection title="Datos de Empresa (Modo Vendedor)">
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-              gap: 2,
-            }}
-          >
-            <ProfileField
-              label="RUT de Empresa"
-              value={form.rutEmpresa}
-              onChange={cambiar('rutEmpresa')}
-              placeholder="76.123.456-7"
-            />
-            <ProfileField
-              label="Nombre"
-              value={form.nombreEmpresa}
-              onChange={cambiar('nombreEmpresa')}
-              placeholder="Nombre de la empresa"
-            />
-            <ProfileField
-              label="Giro Comercial"
-              value={form.giroComercial}
-              onChange={cambiar('giroComercial')}
-              placeholder="Giro de la empresa"
-            />
-            <ProfileField
-              label="Página Web"
-              value={form.paginaWeb}
-              onChange={cambiar('paginaWeb')}
-              placeholder="https://..."
-            />
-            <ProfileField
-              label="Dirección Local"
-              value={form.direccionLocal}
-              onChange={cambiar('direccionLocal')}
-              placeholder="Dirección"
-            />
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+            <ProfileField label="RUT de Empresa" value={form.rutEmpresa} onChange={cambiar('rutEmpresa')} placeholder="76.123.456-7" />
+            <ProfileField label="Nombre" value={form.nombreEmpresa} onChange={cambiar('nombreEmpresa')} placeholder="Nombre de la empresa" />
+            <ProfileField label="Giro Comercial" value={form.giroComercial} onChange={cambiar('giroComercial')} placeholder="Giro de la empresa" />
+            <ProfileField label="Página Web" value={form.paginaWeb} onChange={cambiar('paginaWeb')} placeholder="https://..." />
+            <ProfileField label="Dirección Local" value={form.direccionLocal} onChange={cambiar('direccionLocal')} placeholder="Dirección" />
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <CustomButton
-              variant="primary"
-              size="small"
-              onClick={() => console.log('Próximamente: agregar otra empresa')}
-            >
+            <CustomButton variant="primary" size="small" onClick={() => console.log('Próximamente: agregar otra empresa')}>
               + Agregar otra empresa
             </CustomButton>
           </Box>
-        </ProfileSection>
+        </Box>
       )}
 
       {/* DIRECCIÓN Y NÚMERO */}
       <ProfileSection title="Dirección y Número">
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(6, 1fr)' },
-            gap: 2,
-          }}
-        >
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(6, 1fr)' }, gap: 2 }}>
           <Box sx={{ gridColumn: { md: 'span 2' } }}>
             <ProfileField label="Calle" value={form.calle} onChange={cambiar('calle')} placeholder="Calle" />
           </Box>
@@ -228,14 +143,12 @@ export default function ProfileConfigCard({
           <Box sx={{ gridColumn: { md: 'span 2' } }}>
             <ProfileField label="Pasaje" value={form.pasaje} onChange={cambiar('pasaje')} placeholder="Pasaje" />
           </Box>
-
           <Box sx={{ gridColumn: { md: 'span 3' } }}>
             <ProfileField label="Descripción" value={form.descripcion} onChange={cambiar('descripcion')} placeholder="Descripción" />
           </Box>
           <Box sx={{ gridColumn: { md: 'span 3' } }}>
             <ProfileField label="Sector" value={form.sector} onChange={cambiar('sector')} placeholder="Sector" />
           </Box>
-
           <Box sx={{ gridColumn: { md: 'span 2' } }}>
             <ProfileField label="Comuna" value={form.comuna} onChange={cambiar('comuna')} placeholder="Comuna" />
           </Box>
@@ -250,27 +163,15 @@ export default function ProfileConfigCard({
 
       {/* ACCESO */}
       <ProfileSection title="Acceso">
-        <ProfilePassword
-          onChange={(campo, valor) => setForm({ ...form, [campo]: valor })}
-        />
+        <ProfilePassword onChange={(campo, valor) => setForm({ ...form, [campo]: valor })} />
       </ProfileSection>
 
       {/* BOTONES FINALES */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          mt: 3,
-        }}
-      >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
         <CustomButton variant="secondary" onClick={onCancelar}>
           Cancelar
         </CustomButton>
-        <CustomButton
-          variant="primary"
-          onClick={handleGuardar}
-          sx={{ border: '2px solid #EC3333' }}
-        >
+        <CustomButton variant="primary" onClick={handleGuardar} sx={{ border: '2px solid #EC3333' }}>
           Guardar Cambios de Perfil
         </CustomButton>
       </Box>
