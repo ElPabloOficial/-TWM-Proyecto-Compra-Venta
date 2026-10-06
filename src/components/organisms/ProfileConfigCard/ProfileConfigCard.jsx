@@ -143,10 +143,11 @@ export default function ProfileConfigCard({
 
       {/* TIPO DE CUENTA */}
       <ProfileAccountType
-        tipo={esVendedor ? 'Vendedor Comercial' : 'Cliente Comprador'}
-        rolActivo="Vendedor Comercial (Activo)"
-        esVendedor={esVendedor}
-      />
+        tipoActivo={esVendedor ? 'vendedor' : 'cliente'}
+        onChange={(nuevoRol) => {
+        console.log('[Profile] Cambiar rol a:', nuevoRol);
+        }}
+      />  
 
       {/* SWITCH */}
       <ProfileSwitch
