@@ -11,10 +11,15 @@ const inicial = {
   stock: "",
   imagen: null,
   restriccionEdad: false,
+  oferta: 0,
+  ofertaInicio: "",
+  ofertaFin: "",
 };
 
-const ProductForm = ({ categorias = [], onGuardar, onCancelar }) => {
-  const [form, setForm] = useState(inicial);
+// Si recibe "producto", el formulario se abre con sus datos (modo edición).
+const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }) => {
+  const editando = Boolean(producto);
+  const [form, setForm] = useState(producto ? { ...inicial, ...producto } : inicial);
   const [error, setError] = useState("");
 
   const cambiar = (campo) => (e) => {
@@ -43,18 +48,39 @@ const ProductForm = ({ categorias = [], onGuardar, onCancelar }) => {
       return;
     }
 
+    const oferta = editando ? Number(form.oferta || 0) : 0;
+    if (oferta < 0 || oferta > 100) {
+      setError("La oferta debe estar entre 0 y 100.");
+      return;
+    }
+    if (oferta > 0) {
+      if (!form.ofertaInicio || !form.ofertaFin) {
+        setError("Si hay oferta, indica la fecha de inicio y la de término.");
+        return;
+      }
+      if (form.ofertaFin < form.ofertaInicio) {
+        setError("La fecha de término no puede ser anterior a la de inicio.");
+        return;
+      }
+    }
+
     setError("");
-    onGuardar({
+    const datos = {
       ...form,
       nombre: form.nombre.trim(),
       sku: form.sku.trim(),
-      descripcion: form.descripcion.trim(),
+      descripcion: (form.descripcion || "").trim(),
       precio,
       stock,
-      oferta: 0,
-      ofertaInicio: "",
-      ofertaFin: "",
-    });
+      oferta,
+      ofertaInicio: oferta > 0 ? form.ofertaInicio : "",
+      ofertaFin: oferta > 0 ? form.ofertaFin : "",
+    };
+    console.log(
+      `[ProductForm] handleGuardar() - ${editando ? "ACTUALIZAR" : "CREAR"} producto:`,
+      datos
+    );
+    onGuardar(datos);
   };
 
   return (
@@ -182,6 +208,52 @@ const ProductForm = ({ categorias = [], onGuardar, onCancelar }) => {
         </div>
       </div>
 
+      {editando && (
+        <>
+          <div className="addp-section-title">Oferta</div>
+          <div className="addp-section-desc">
+            Porcentaje de descuento y fechas en que estará vigente (0 = sin oferta).
+          </div>
+          <div className="addp-row">
+            <div className="addp-field">
+              <label className="addp-label" htmlFor="oferta">Oferta (%)</label>
+              <input
+                id="oferta"
+                className="addp-input"
+                type="number"
+                placeholder="0"
+                value={form.oferta}
+                onChange={cambiar("oferta")}
+              />
+            </div>
+          </div>
+          {Number(form.oferta) > 0 && (
+            <div className="addp-row">
+              <div className="addp-field">
+                <label className="addp-label" htmlFor="ofertaInicio">Inicio de la oferta</label>
+                <input
+                  id="ofertaInicio"
+                  className="addp-input"
+                  type="date"
+                  value={form.ofertaInicio}
+                  onChange={cambiar("ofertaInicio")}
+                />
+              </div>
+              <div className="addp-field">
+                <label className="addp-label" htmlFor="ofertaFin">Término de la oferta</label>
+                <input
+                  id="ofertaFin"
+                  className="addp-input"
+                  type="date"
+                  value={form.ofertaFin}
+                  onChange={cambiar("ofertaFin")}
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       {error && <div className="addp-error">{error}</div>}
 
       <div className="addp-actions">
@@ -204,7 +276,7 @@ const ProductForm = ({ categorias = [], onGuardar, onCancelar }) => {
             fontWeight: 700,
           }}
         >
-          Guardar Producto
+          {editando ? "Guardar Cambios" : "Guardar Producto"}
         </CustomButton>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import LoginTemplate from "../../components/templates/LoginTemplate/LoginTemplate";
 import LoginBrand from "../../components/organisms/LoginBrand/LoginBrand";
 import LoginForm from "../../components/organisms/LoginForm/LoginForm";
@@ -6,6 +7,8 @@ import { authService } from "../../services/authService";
 import "../../styles/Login.css";
 
 const LoginScreen = () => {
+  const navigate = useNavigate();
+
   const handleLogin = async (data) => {
     try {
       console.log("[LoginScreen] handleLogin():", data);
@@ -18,6 +21,7 @@ const LoginScreen = () => {
         console.log("[LoginScreen] 'Recuérdame' fue marcado.");
       }
 
+      navigate("/inicio");
 
     } catch (error) {
       console.error("[LoginScreen] Inicio fallido:", error.message);

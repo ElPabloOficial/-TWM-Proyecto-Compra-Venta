@@ -1,3 +1,4 @@
+import { useLocation, useNavigate } from "react-router-dom";
 import logo from "../../../assets/logo.png";
 import InventoryIcon from "@mui/icons-material/Inventory2";
 import BuildIcon from "@mui/icons-material/Build";
@@ -19,7 +20,23 @@ const items = [
   { id: "devoluciones", label: "Devoluciones", icon: <UndoIcon fontSize="small" /> },
 ];
 
-const Sidebar = ({ activo = "productos", onSelect }) => {
+// Opciones del menú que ya tienen pantalla
+const rutas = {
+  productos: "/inventario",
+  servicios: "/servicios",
+};
+
+const Sidebar = ({ onSelect }) => {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const activo =
+    Object.keys(rutas).find((id) => pathname.startsWith(rutas[id])) ?? "productos";
+
+  const handleSelect = (id) => {
+    if (rutas[id]) navigate(rutas[id]);
+    onSelect?.(id);
+  };
+
   return (
     <nav className="inv-sidebar">
       <div className="inv-sidebar-brand">
@@ -32,7 +49,7 @@ const Sidebar = ({ activo = "productos", onSelect }) => {
           key={item.id}
           type="button"
           className={`inv-sidebar-item ${item.id === activo ? "activo" : ""}`}
-          onClick={() => onSelect?.(item.id)}
+          onClick={() => handleSelect(item.id)}
         >
           {item.icon}
           {item.label}
