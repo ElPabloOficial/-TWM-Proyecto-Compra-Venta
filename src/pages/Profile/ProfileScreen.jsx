@@ -1,3 +1,4 @@
+import ProfileTemplate from "../../components/templates/ProfileTemplate/ProfileTemplate";
 import ProfileConfigCard from "../../components/organisms/ProfileConfigCard/ProfileConfigCard";
 import { authService } from "../../services/authService";
 
@@ -17,20 +18,13 @@ const ProfileScreen = () => {
   };
 
   return (
-    <div style={{ padding: 40, background: "#f4f4f4", minHeight: "100vh" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <h1 style={{ color: "#000", marginBottom: 4 }}>Configuración de Perfil</h1>
-        <p style={{ color: "#555", fontSize: 14, marginTop: 0, marginBottom: 24 }}>
-          Mantén tus datos personales y comerciales actualizados para operar con seguridad en Ahorraton.
-        </p>
-
-        <ProfileConfigCard
-          user={user}
-          onGuardar={handleGuardar}
-          onCancelar={handleCancelar}
-        />
-      </div>
-    </div>
+    <ProfileTemplate>
+      <ProfileConfigCard
+        user={user}
+        onGuardar={handleGuardar}
+        onCancelar={handleCancelar}
+      />
+    </ProfileTemplate>
   );
 };
 
