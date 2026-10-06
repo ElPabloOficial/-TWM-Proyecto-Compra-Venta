@@ -1,0 +1,232 @@
+/* Página  */
+.addp-page {
+  min-height: 100vh;
+  background: #fff;
+}
+
+.addp-content {
+  padding: 16px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.addp-top {
+  width: 100%;
+  max-width: 680px;
+}
+
+.addp-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.addp-breadcrumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.addp-breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.addp-breadcrumb .sep {
+  color: #777;
+}
+
+.addp-breadcrumb .actual {
+  font-weight: 700;
+}
+
+.addp-title {
+  font-size: 28px;
+  margin: 8px 0 16px;
+}
+
+/*Tarjeta del formulario  */
+.addp-card {
+  background: #f4f4f4;
+  padding: 24px;
+  max-width: 680px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.addp-section-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-top: 24px;
+}
+
+.addp-section-title.primero {
+  margin-top: 0;
+}
+
+.addp-section-desc {
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+.addp-subtitle {
+  font-weight: 700;
+  font-size: 14px;
+  margin: 24px 0 8px;
+}
+
+/*  Campos  */
+.addp-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.addp-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.addp-field.mitad {
+  flex: 0 0 calc(50% - 8px);
+}
+
+.addp-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.addp-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 14px;
+  border: 1px solid #333;
+  border-radius: 999px;
+  background: #fffafa;
+  font-size: 13px;
+}
+
+.addp-input:focus {
+  outline: none;
+  border-color: #ee3333;
+  box-shadow: 0 0 0 1px #ee3333;
+}
+
+.addp-input.vacio {
+  color: #888;
+}
+
+.addp-money {
+  position: relative;
+}
+
+.addp-money span {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+}
+
+.addp-money .addp-input {
+  padding-left: 28px;
+}
+
+/* Subir imagen  */
+.addp-upload {
+  width: 240px;
+  height: 160px;
+  background: #bdbdbd;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  font-size: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.addp-upload.arrastrando {
+  background: #a8a8a8;
+}
+
+.addp-upload img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Interruptor de edad  */
+.addp-switch-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.addp-switch {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: #bdbdbd;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.addp-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.addp-switch:checked {
+  background: #ee3333;
+}
+
+.addp-switch:checked::after {
+  transform: translateX(16px);
+}
+
+.addp-switch-estado {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.addp-switch-texto {
+  font-size: 11px;
+  color: #555;
+}
+
+/* Error y botones  */
+.addp-error {
+  color: #ef4444;
+  font-size: 13px;
+  margin-top: 16px;
+}
+
+.addp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}

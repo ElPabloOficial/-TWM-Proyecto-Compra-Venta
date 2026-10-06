@@ -1,0 +1,84 @@
+.home-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+.home-main { flex: 1; }
+
+/* ---------- Banner ---------- */
+.home-hero {
+  background: #ec3333;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 32px;
+}
+.home-hero-texto { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.home-hero-badge {
+  background: #fff;
+  color: #000;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 4px;
+}
+.home-hero h1 { margin: 0; font-size: 2rem; line-height: 1.3; font-weight: 700; }
+.home-hero p { margin: 0; font-size: 0.75rem; max-width: 520px; }
+.home-hero-link {
+  background: none;
+  border: none;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  cursor: pointer;
+}
+.home-hero-link:hover { text-decoration: underline; }
+.home-hero-img {
+  flex: 0 0 220px;
+  height: 130px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+/* ---------- Secciones ---------- */
+.home-section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px 24px;
+  text-align: center;
+}
+.home-etiqueta { color: #ec3333; font-size: 0.7rem; font-weight: 700; }
+.home-titulo { margin: 4px 0; font-size: 1.8rem; font-weight: 700; color: #000; }
+.home-descripcion { margin: 0 auto 20px; font-size: 0.8rem; color: #444; max-width: 640px; }
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 28px 24px;
+  margin-top: 20px;
+}
+
+/* ---------- Tarjeta ---------- */
+.home-card { display: flex; flex-direction: column; text-align: left; gap: 4px; }
+.home-card-img {
+  aspect-ratio: 4 / 3;
+  background: #d9d9d9;
+  margin-bottom: 6px;
+}
+.home-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.home-card-cat { color: #ec3333; font-size: 0.65rem; font-weight: 700; }
+.home-card-nombre { margin: 0; font-size: 0.8rem; font-weight: 600; color: #000; }
+.home-card-precios { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.home-card-precio { color: #16a34a; font-size: 1.15rem; font-weight: 700; }
+.home-card-antes { color: #6b7280; font-size: 0.7rem; text-decoration: line-through; }
+.home-card-desc { color: #16a34a; font-size: 0.7rem; font-weight: 600; }
+
+@media (max-width: 700px) {
+  .home-hero { flex-direction: column; align-items: flex-start; padding: 20px 16px; }
+  .home-hero h1 { font-size: 1.4rem; }
+  .home-hero-img { display: none; }
+}
