@@ -338,7 +338,6 @@ export default function RegisterScreen() {
             />
             <TextField
               fullWidth
-              required
               name="Pasaje"
               label="Pasaje"
               value={formData.Pasaje}
@@ -347,7 +346,6 @@ export default function RegisterScreen() {
             />
             <TextField
               fullWidth
-              required
               name="descripcion"
               label="Descripción"
               value={formData.descripcion}
@@ -356,7 +354,6 @@ export default function RegisterScreen() {
             />
             <TextField
               fullWidth
-              required
               name="sector"
               label="Sector"
               value={formData.sector}
