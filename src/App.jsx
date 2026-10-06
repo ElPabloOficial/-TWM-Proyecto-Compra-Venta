@@ -16,6 +16,7 @@ const App = () => {
           <Route path="/login" element={<LoginScreen />} />
           <Route path="/inventario" element={<InventoryScreen />} />
           <Route path="/inventario/nuevo" element={<AddProductScreen />} />
+          <Route path="/inventario/editar/:id" element={<AddProductScreen />} />
           <Route path="/mensajes" element={<MessageModerationScreen />} />
         </Routes>
       </ProductosProvider>

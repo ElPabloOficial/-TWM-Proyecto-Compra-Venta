@@ -4,7 +4,6 @@ import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemp
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import ProductToolbar from "../../components/molecules/ProductToolbar/ProductToolbar";
 import ProductTable from "../../components/organisms/ProductTable/ProductTable";
-import ProductFormDialog from "../../components/organisms/ProductFormDialog/ProductFormDialog";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import { useProductos } from "../../context/ProductContext";
 import "../../styles/Inventory.css";
@@ -21,29 +20,19 @@ const comparadores = {
 
 const InventoryScreen = () => {
   const navigate = useNavigate();
-  const { productos, categorias, actualizarProducto, eliminarProducto } = useProductos();
+  const { productos, categorias, eliminarProducto } = useProductos();
 
-  const [dialogAbierto, setDialogAbierto] = useState(false);
-  const [productoEditando, setProductoEditando] = useState(null);
   const [orden, setOrden] = useState("");
   const [filtro, setFiltro] = useState("");
   const [pagina, setPagina] = useState(1);
 
   // CRUD 
   const abrirEditar = (producto) => {
-    setProductoEditando(producto);
-    setDialogAbierto(true);
-  };
-
-  const guardarEdicion = (datos) => {
-    actualizarProducto(datos);
-    setDialogAbierto(false);
+    navigate(`/inventario/editar/${producto.id}`);
   };
 
   const confirmarEliminar = (producto) => {
     if (window.confirm(`¿Eliminar "${producto.nombre}"?`)) {
-      // SIMULACIÓN (solo frontend): con el backend pasa a ser una llamada DELETE
-      console.log("[Productos] Eliminar producto:", producto);
       eliminarProducto(producto.id);
     }
   };
@@ -167,14 +156,6 @@ const InventoryScreen = () => {
           </div>
         </div>
       </div>
-
-      <ProductFormDialog
-        open={dialogAbierto}
-        producto={productoEditando}
-        categorias={categorias}
-        onClose={() => setDialogAbierto(false)}
-        onGuardar={guardarEdicion}
-      />
     </SellerTemplate>
   );
 };
