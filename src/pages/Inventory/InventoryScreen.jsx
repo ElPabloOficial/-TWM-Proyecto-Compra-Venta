@@ -5,6 +5,7 @@ import StatCard from "../../components/molecules/StatCard/StatCard";
 import ProductToolbar from "../../components/molecules/ProductToolbar/ProductToolbar";
 import ProductTable from "../../components/organisms/ProductTable/ProductTable";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import CustomDialog from "../../components/atoms/CustomDialog/CustomDialog";
 import { useProductos } from "../../context/ProductContext";
 import "../../styles/Inventory.css";
 
@@ -22,6 +23,7 @@ const InventoryScreen = () => {
   const navigate = useNavigate();
   const { productos, categorias, eliminarProducto } = useProductos();
 
+  const [productoEliminar, setProductoEliminar] = useState(null);
   const [orden, setOrden] = useState("");
   const [filtro, setFiltro] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -31,10 +33,14 @@ const InventoryScreen = () => {
     navigate(`/inventario/editar/${producto.id}`);
   };
 
-  const confirmarEliminar = (producto) => {
-    if (window.confirm(`¿Eliminar "${producto.nombre}"?`)) {
-      eliminarProducto(producto.id);
-    }
+  // Al presionar el icono de eliminar se abre el diálogo
+  const confirmarEliminar = (producto) => setProductoEliminar(producto);
+
+  // Al presionar "Eliminar" en el diálogo se borra el producto
+  const eliminar = () => {
+    console.log("[InventoryScreen] confirmarEliminar() - ELIMINAR producto:", productoEliminar);
+    eliminarProducto(productoEliminar.id);
+    setProductoEliminar(null);
   };
 
   //  Filtro, orden y paginación 
@@ -156,6 +162,30 @@ const InventoryScreen = () => {
           </div>
         </div>
       </div>
+
+      <CustomDialog
+        open={Boolean(productoEliminar)}
+        onClose={() => setProductoEliminar(null)}
+        title="Eliminar producto"
+        maxWidth="xs"
+        actions={
+          <>
+            <CustomButton variant="secondary" size="small" onClick={() => setProductoEliminar(null)}>
+              Cancelar
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              size="small"
+              onClick={eliminar}
+              sx={{ border: "2px solid #EC3333" }}
+            >
+              Eliminar
+            </CustomButton>
+          </>
+        }
+      >
+        ¿Seguro que quieres eliminar "{productoEliminar?.nombre}"?
+      </CustomDialog>
     </SellerTemplate>
   );
 };

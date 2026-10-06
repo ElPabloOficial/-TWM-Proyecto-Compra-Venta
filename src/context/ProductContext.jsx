@@ -7,7 +7,39 @@ const categoriasIniciales = [
   { id: 3, nombre: "Hogar" },
 ];
 
-const productosIniciales = [];
+// TEMPORAL: productos de ejemplo hasta que se conecte el backend
+const productosIniciales = [
+  {
+    id: 1,
+    nombre: "Notebook Lenovo 14\"",
+    sku: "NB-LEN-14",
+    descripcion: "Notebook de 14 pulgadas, 8 GB de RAM y 256 GB de almacenamiento.",
+    categoriaId: 1,
+    precio: 389990,
+    stock: 5,
+    imagen: null,
+    restriccionEdad: false,
+    oferta: 10,
+    ofertaInicio: "2026-10-01",
+    ofertaFin: "2026-10-31",
+    estadoOferta: "vigente",
+  },
+  {
+    id: 2,
+    nombre: "Audífonos inalámbricos",
+    sku: "AUD-INA-01",
+    descripcion: "Audífonos Bluetooth con cancelación de ruido.",
+    categoriaId: 2,
+    precio: 29990,
+    stock: 0,
+    imagen: null,
+    restriccionEdad: false,
+    oferta: 0,
+    ofertaInicio: "",
+    ofertaFin: "",
+    estadoOferta: "",
+  },
+];
 
 const ProductContext = createContext(null);
 
