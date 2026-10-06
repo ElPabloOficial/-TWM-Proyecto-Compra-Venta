@@ -12,29 +12,29 @@ import ProfileSwitch from '../../molecules/ProfileSwitch/ProfileSwitch';
 export default function ProfileConfigCard({ user = {}, onGuardar, onCancelar }) {
   const [restriccionEdad, setRestriccionEdad] = useState(false);
 
-  const [form, setForm] = useState({
-    nombre: user.name || '',
-    rut: user.rut || '',
-    telefono: '',
-    fechaNacimiento: '',
-    correo: '',
-    rutEmpresa: '',
-    nombreEmpresa: '',
-    giroComercial: '',
-    paginaWeb: '',
-    direccionLocal: '',
-    calle: '',
-    numero: '',
-    pasaje: '',
-    descripcion: '',
-    sector: '',
-    comuna: '',
-    region: '',
-    provincia: '',
-    passwordActual: '',
-    passwordNueva: '',
-    passwordConfirmar: '',
-  });
+const [form, setForm] = useState({
+  nombre: user.name || '',
+  rut: user.rut || '',
+  telefono: user.telefono || '',
+  fechaNacimiento: user.fechaNacimiento || '',
+  correo: user.correo || '',
+  rutEmpresa: user.rutEmpresa || '',
+  nombreEmpresa: user.nombreEmpresa || '',
+  giroComercial: user.giroComercial || '',
+  paginaWeb: user.paginaWeb || '',
+  direccionLocal: user.direccionLocal || '',
+  calle: user.calle || '',
+  numero: user.numero || '',
+  pasaje: user.pasaje || '',
+  descripcion: user.descripcion || '',
+  sector: user.sector || '',
+  comuna: user.comuna || '',
+  region: user.region || '',
+  provincia: user.provincia || '',
+  passwordActual: '',
+  passwordNueva: '',
+  passwordConfirmar: '',
+});
 
   const esVendedor = user.role === 'vendedor';
 
