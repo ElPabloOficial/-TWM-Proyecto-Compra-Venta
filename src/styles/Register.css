@@ -1,0 +1,210 @@
+.register-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 16px;
+  background: #f4f4f4;
+}
+
+.register-card {
+  width: 100%;
+  max-width: 920px;
+  padding: 24px 36px 32px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.register-back {
+  color: #555;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.register-back:hover,
+.register-login-link a:hover {
+  text-decoration: underline;
+}
+
+.register-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 8px 0 20px;
+  text-align: center;
+}
+
+.register-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.register-title.MuiTypography-root {
+  margin-top: 4px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #171717;
+}
+
+.register-subtitle.MuiTypography-root {
+  margin-top: 4px;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.register-tabs.MuiTabs-root {
+  margin-bottom: 22px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.register-tabs .MuiTab-root {
+  min-height: 46px;
+  color: #666;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.register-tabs .Mui-selected {
+  color: #ec3333 !important;
+}
+
+.register-tabs .MuiTabs-indicator {
+  background-color: #ec3333;
+}
+
+.register-section-title.MuiTypography-root {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.register-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin-bottom: 22px;
+}
+
+.register-fields .MuiOutlinedInput-root {
+  border-radius: 999px;
+  background: #fffafa;
+  font-size: 0.8rem;
+  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.register-fields .MuiOutlinedInput-notchedOutline {
+  border: 1px solid #333;
+}
+
+.register-fields .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #333;
+}
+
+.register-fields .MuiOutlinedInput-root.Mui-focused {
+  box-shadow: 0 0 0 1px #ee3333;
+}
+
+.register-fields
+  .MuiOutlinedInput-root.Mui-focused
+  .MuiOutlinedInput-notchedOutline {
+  border-color: #ee3333;
+  border-width: 1px;
+}
+
+.register-fields .MuiOutlinedInput-input,
+.register-fields .MuiSelect-select {
+  padding: 10px 16px;
+  font-size: 0.8rem;
+}
+
+.register-fields .MuiInputLabel-root {
+  font-size: 0.8rem;
+}
+
+.register-fields .MuiInputLabel-root.Mui-focused {
+  color: #ee3333;
+}
+
+.register-fields .MuiInputBase-multiline {
+  border-radius: 14px;
+}
+
+.register-fields .MuiInputBase-inputMultiline {
+  padding: 0;
+}
+
+.register-full-width {
+  grid-column: 1 / -1;
+}
+
+.register-password-fields {
+  margin-bottom: 8px;
+}
+
+.register-terms.MuiFormControlLabel-root {
+  margin: 0 0 12px -8px;
+}
+
+.register-terms .MuiFormControlLabel-label,
+.register-login-link.MuiTypography-root {
+  font-size: 0.8rem;
+}
+
+.register-error.MuiTypography-root {
+  margin: -12px 0 12px;
+  color: #d32f2f;
+  font-size: 0.75rem;
+}
+
+.register-success.MuiAlert-root {
+  margin-bottom: 14px;
+  font-size: 0.8rem;
+}
+
+.register-submit.MuiButton-root {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 999px;
+  background: #ec3333;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.register-submit.MuiButton-root:hover {
+  background: #d92828;
+}
+
+.register-login-link.MuiTypography-root {
+  margin-top: 14px;
+  text-align: center;
+  color: #555;
+}
+
+.register-login-link a {
+  margin-left: 4px;
+  color: #ec3333;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (max-width: 560px) {
+  .register-page {
+    padding: 16px 10px;
+  }
+
+  .register-card {
+    padding: 20px 18px 26px;
+    border-radius: 16px;
+  }
+
+  .register-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .register-full-width {
+    grid-column: auto;
+  }
+}
