@@ -11,6 +11,8 @@ import StarIcon from "@mui/icons-material/Star";
 import UndoIcon from "@mui/icons-material/Undo";
 import InventoryIcon from "@mui/icons-material/Inventory2";
 import LogoutIcon from "@mui/icons-material/Logout";
+import LoginIcon from "@mui/icons-material/Login";
+import { authService } from "../../../services/authService";
 import CustomButton from "../../atoms/Button/CustomButton";
 import "../../../styles/ProfileMenu.css";
 
@@ -36,14 +38,14 @@ const opcionesVendedor = [
   },
 ];
 
-// TEMPORAL: mientras no haya login real, se muestra siempre.
-// Cuando exista sesión, esto debe venir del tipo de usuario que inició sesión.
-const ProfileMenu = ({ esVendedor = true }) => {
+
+const ProfileMenu = () => {
+  const [usuario, setUsuario] = useState(() => authService.getCurrentUser());
+  const esVendedor = usuario?.role === "vendedor";
   const [posicion, setPosicion] = useState(null);
   const navigate = useNavigate();
   const abierto = posicion !== null;
 
-  // Abre el menú justo debajo del botón, alineado a su borde derecho
   const abrir = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setPosicion({
@@ -57,6 +59,13 @@ const ProfileMenu = ({ esVendedor = true }) => {
   const irA = (ruta) => {
     cerrar();
     navigate(ruta);
+  };
+
+  const handleCerrarSesion = async () => {
+    console.log("[ProfileMenu] handleCerrarSesion():", usuario);
+    await authService.logout();
+    setUsuario(null);
+    irA("/inicio");
   };
 
   // Cierra con Esc o al cambiar el tamaño de la ventana
@@ -109,26 +118,40 @@ const ProfileMenu = ({ esVendedor = true }) => {
               role="menu"
               style={{ top: posicion.top, right: posicion.right }}
             >
-              {opcionesUsuario.map(renderOpcion)}
-
-              {esVendedor && (
+              {!usuario ? (
+                <button
+                  type="button"
+                  className="pm-item"
+                  role="menuitem"
+                  onClick={() => irA("/login")}
+                >
+                  <LoginIcon fontSize="small" />
+                  Iniciar sesión
+                </button>
+              ) : (
                 <>
+                  {opcionesUsuario.map(renderOpcion)}
+
+                  {esVendedor && (
+                    <>
+                      <hr className="pm-divider" />
+                      {opcionesVendedor.map(renderOpcion)}
+                    </>
+                  )}
+
                   <hr className="pm-divider" />
-                  {opcionesVendedor.map(renderOpcion)}
+
+                  <button
+                    type="button"
+                    className="pm-item"
+                    role="menuitem"
+                    onClick={handleCerrarSesion}
+                  >
+                    <LogoutIcon fontSize="small" />
+                    Cerrar sesión
+                  </button>
                 </>
               )}
-
-              <hr className="pm-divider" />
-
-              <button
-                type="button"
-                className="pm-item"
-                role="menuitem"
-                onClick={() => irA("/login")}
-              >
-                <LogoutIcon fontSize="small" />
-                Cerrar sesión
-              </button>
             </div>
           </>,
           document.body
