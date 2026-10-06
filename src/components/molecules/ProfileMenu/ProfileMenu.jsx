@@ -19,7 +19,7 @@ import "../../../styles/ProfileMenu.css";
 // Opciones para cualquier usuario.
 // Si una opción no tiene "ruta", por ahora solo cierra el menú (la pantalla aún no existe).
 const opcionesUsuario = [
-  { id: "perfil", label: "Mi perfil", icon: <AccountCircleIcon fontSize="small" /> },
+  { id: "perfil", label: "Mi perfil", icon: <AccountCircleIcon fontSize="small" />, ruta: "/perfil" },
   { id: "pedidos", label: "Mis pedidos", icon: <ReceiptLongIcon fontSize="small" /> },
   { id: "favoritos", label: "Mis favoritos", icon: <FavoriteIcon fontSize="small" /> },
   { id: "direcciones", label: "Mis direcciones", icon: <LocationOnIcon fontSize="small" /> },
