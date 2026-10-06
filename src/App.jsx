@@ -4,14 +4,6 @@ import { ServiciosProvider } from "./context/ServiceContext";
 import LoginScreen from "./pages/Login/LoginScreen";
 import RegisterScreen from "./pages/Register/RegisterScreen";
 
-const App = () => {
-  const currentPath = window.location.pathname.replace(/\/+$/, "");
-
-  if (currentPath === "/registro") {
-    return <RegisterScreen />;
-  }
-
-  return <LoginScreen />;
 import InventoryScreen from "./pages/Inventory/InventoryScreen";
 import AddProductScreen from "./pages/Inventory/AddProductScreen";
 import ServicesScreen from "./pages/Services/ServicesScreen";
@@ -35,6 +27,7 @@ const App = () => {
             <Route path="/servicios/nuevo" element={<ServiceFormScreen />} />
             <Route path="/servicios/editar/:id" element={<ServiceFormScreen />} />
             <Route path="/mensajes" element={<MessageModerationScreen />} />
+            <Route path="/registro" element={<RegisterScreen />} />
           </Routes>
         </ServiciosProvider>
       </ProductosProvider>
