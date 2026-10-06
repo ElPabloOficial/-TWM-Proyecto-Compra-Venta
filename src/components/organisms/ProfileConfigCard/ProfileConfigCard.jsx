@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import CustomAvatar from '../../atoms/Avatar/CustomAvatar';
 import CustomButton from '../../atoms/Button/CustomButton';
 import ProfileSection from '../../molecules/ProfileSection/ProfileSection';
@@ -14,10 +15,6 @@ import ProfileSwitch from '../../molecules/ProfileSwitch/ProfileSwitch';
  * Organismo que contiene toda la tarjeta de configuración
  * del perfil. Agrupa todas las secciones (Datos Personales,
  * Empresa, Dirección, Acceso) y los botones finales.
- *
- * @param {Object} user         → Datos del usuario (name, rut, role...)
- * @param {Function} onGuardar  → Callback al guardar
- * @param {Function} onCancelar → Callback al cancelar
  */
 export default function ProfileConfigCard({
   user = {},
@@ -26,7 +23,6 @@ export default function ProfileConfigCard({
 }) {
   const [restriccionEdad, setRestriccionEdad] = useState(false);
 
-  // TODO: conectar con backend - los datos vendrían de userService.getProfile()
   const [form, setForm] = useState({
     nombre: user.name || '',
     rut: user.rut || '',
@@ -67,51 +63,81 @@ export default function ProfileConfigCard({
         backgroundColor: '#fff',
         padding: 3,
         borderRadius: 2,
-        mx: 'auto',
       }}
     >
       {/* DATOS PERSONALES */}
       <ProfileSection title="Datos Personales">
-        <CustomAvatar alt={form.nombre || 'Usuario'} size={90} />
-
         <Box
           sx={{
-            mt: 3,
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-            gap: 2,
+            gridTemplateColumns: { xs: '1fr', md: '120px 1fr' },
+            gap: 3,
+            alignItems: 'start',
           }}
         >
-          <ProfileField
-            label="Nombre Completo"
-            value={form.nombre}
-            onChange={cambiar('nombre')}
-            placeholder="Ingresa tu nombre"
-          />
-          <ProfileField
-            label="RUT"
-            value={form.rut}
-            onChange={cambiar('rut')}
-            placeholder="12345678-9"
-          />
-          <ProfileField
-            label="Teléfono de Contacto"
-            value={form.telefono}
-            onChange={cambiar('telefono')}
-            placeholder="+56 9 1234 5678"
-          />
-          <ProfileField
-            label="Fecha de Nacimiento"
-            type="date"
-            value={form.fechaNacimiento}
-            onChange={cambiar('fechaNacimiento')}
-          />
-          <ProfileField
-            label="Correo Electrónico"
-            value={form.correo}
-            onChange={cambiar('correo')}
-            placeholder="correo@ejemplo.com"
-          />
+          {/* Columna izquierda: Avatar + "Cambiar foto" */}
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <CustomAvatar alt={form.nombre || 'Usuario'} size={90} />
+            <Typography
+              sx={{
+                fontSize: '0.75rem',
+                color: '#EC3333',
+                fontWeight: 600,
+                cursor: 'pointer',
+                textAlign: 'center',
+                '&:hover': { textDecoration: 'underline' },
+              }}
+            >
+              Cambiar foto
+            </Typography>
+          </Box>
+
+          {/* Columna derecha: los campos */}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              gap: 2,
+            }}
+          >
+            <ProfileField
+              label="Nombre Completo"
+              value={form.nombre}
+              onChange={cambiar('nombre')}
+              placeholder="Ingresa tu nombre"
+            />
+            <ProfileField
+              label="RUT"
+              value={form.rut}
+              onChange={cambiar('rut')}
+              placeholder="12345678-9"
+            />
+            <ProfileField
+              label="Teléfono de Contacto"
+              value={form.telefono}
+              onChange={cambiar('telefono')}
+              placeholder="+56 9 1234 5678"
+            />
+            <ProfileField
+              label="Fecha de Nacimiento"
+              type="date"
+              value={form.fechaNacimiento}
+              onChange={cambiar('fechaNacimiento')}
+            />
+            <ProfileField
+              label="Correo Electrónico"
+              value={form.correo}
+              onChange={cambiar('correo')}
+              placeholder="correo@ejemplo.com"
+            />
+          </Box>
         </Box>
       </ProfileSection>
 
