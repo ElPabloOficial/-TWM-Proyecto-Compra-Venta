@@ -21,6 +21,12 @@ import "../../../styles/ProfileMenu.css";
 const opcionesUsuario = [
   { id: "perfil", label: "Mi perfil", icon: <AccountCircleIcon fontSize="small" /> },
   { id: "pedidos", label: "Mis pedidos", icon: <ReceiptLongIcon fontSize="small" /> },
+  {
+    id: "cotizaciones",
+    label: "Mis Cotizaciones",
+    icon: <ReceiptLongIcon fontSize="small" />,
+    ruta: "/cotizaciones",
+  },
   { id: "favoritos", label: "Mis favoritos", icon: <FavoriteIcon fontSize="small" /> },
   { id: "direcciones", label: "Mis direcciones", icon: <LocationOnIcon fontSize="small" /> },
   { id: "mensajes", label: "Mensajes", icon: <ChatIcon fontSize="small" /> },
