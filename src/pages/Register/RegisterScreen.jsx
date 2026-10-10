@@ -16,19 +16,22 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import formatRut, { isValidRut } from '../../services/format';
 import logo from '../../assets/logo.png';
 import '../../styles/Register.css';
 
 const initialFormData = {
   nombres: '',
   apellidos: '',
+  rut: '',
+  rutEmpresa: '',
   fechaNacimiento: '',
   email: '',
   telefono: '',
+  numero: '',
   direccion: '',
   ciudad: '',
   nombreTienda: '',
-  rutEmpresa: '',
   categoria: '',
   descripcionTienda: '',
   contrasena: '',
@@ -44,6 +47,9 @@ const categories = [
   'Servicios',
   'Otro',
 ];
+
+const isValidEmail = (email) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
 export default function RegisterScreen() {
   const [userType, setUserType] = useState(0);
@@ -62,6 +68,33 @@ export default function RegisterScreen() {
     setSuccess(false);
   };
 
+  const handleRutChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({
+      ...previous,
+      [name]: formatRut(value),
+    }));
+    setSuccess(false);
+  };
+
+  const handleDigitsChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value.replace(/\D/g, ''),
+    }));
+    setSuccess(false);
+  };
+
+  const handleLettersChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value.replace(/[^\p{L}\s]/gu, ''),
+    }));
+    setSuccess(false);
+  };
+
   const handleTabChange = (_event, newValue) => {
     setUserType(newValue);
     setSubmitted(false);
@@ -71,6 +104,9 @@ export default function RegisterScreen() {
   const passwordsMatch =
     formData.contrasena === formData.confirmaContrasena;
   const passwordIsLongEnough = formData.contrasena.length >= 8;
+  const rutField = userType === 0 ? 'rut' : 'rutEmpresa';
+  const currentRutIsValid = isValidRut(formData[rutField] || '');
+  const emailIsValid = isValidEmail(formData.email);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -84,6 +120,8 @@ export default function RegisterScreen() {
 
     if (
       !event.currentTarget.reportValidity() ||
+      !currentRutIsValid ||
+      !emailIsValid ||
       !passwordsMatch ||
       !passwordIsLongEnough ||
       !formData.terminosAceptados
@@ -185,7 +223,7 @@ export default function RegisterScreen() {
                   name="nombres"
                   label="Nombre"
                   value={formData.nombres}
-                  onChange={handleChange}
+                  onChange={handleLettersChange}
                   autoComplete="given-name"
                 />
               </>
@@ -197,7 +235,7 @@ export default function RegisterScreen() {
                   name="nombreTienda"
                   label="Nombre de la tienda"
                   value={formData.nombreTienda}
-                  onChange={handleChange}
+                  onChange={handleLettersChange}
                   autoComplete="organization"
                 />
                 <TextField
@@ -205,9 +243,15 @@ export default function RegisterScreen() {
                   required
                   name="rutEmpresa"
                   label="RUT de la empresa"
-                  placeholder="12.345.678-9"
+                  placeholder="12.345.678-5"
                   value={formData.rutEmpresa}
-                  onChange={handleChange}
+                  onChange={handleRutChange}
+                  error={submitted && !isValidRut(formData.rutEmpresa || '')}
+                  helperText={
+                    submitted && !isValidRut(formData.rutEmpresa || '')
+                      ? 'Ingresa un RUT válido, por ejemplo 12.345.678-5.'
+                      : ' '
+                  }
                 />
                 <FormControl fullWidth required>
                   <InputLabel id="category-label">Categoría</InputLabel>
@@ -231,7 +275,7 @@ export default function RegisterScreen() {
                   name="nombres"
                   label="Nombre de contacto"
                   value={formData.nombres}
-                  onChange={handleChange}
+                  onChange={handleLettersChange}
                   autoComplete="name"
                 />
                 <TextField
@@ -243,6 +287,12 @@ export default function RegisterScreen() {
                   value={formData.email}
                   onChange={handleChange}
                   autoComplete="email"
+                  error={submitted && !emailIsValid}
+                  helperText={
+                    submitted && !emailIsValid
+                      ? 'Ingresa un correo válido, por ejemplo nombre@dominio.cl.'
+                      : ' '
+                  }
                 />
                 <TextField
                   fullWidth
@@ -251,7 +301,8 @@ export default function RegisterScreen() {
                   label="Teléfono"
                   type="tel"
                   value={formData.telefono}
-                  onChange={handleChange}
+                  onChange={handleDigitsChange}
+                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                   autoComplete="tel"
                 />
                 <TextField
@@ -275,9 +326,15 @@ export default function RegisterScreen() {
                   required
                   name="rut"
                   label="RUT"
-                  placeholder="12.345.678-9"
+                  placeholder="12.345.678-5"
                   value={formData.rut}
-                  onChange={handleChange}
+                  onChange={handleRutChange}
+                  error={submitted && !isValidRut(formData.rut || '')}
+                  helperText={
+                    submitted && !isValidRut(formData.rut || '')
+                      ? 'Ingresa un RUT válido, por ejemplo 12.345.678-5.'
+                      : ' '
+                  }
                 />
                 <TextField
                   fullWidth
@@ -286,7 +343,8 @@ export default function RegisterScreen() {
                   label="Teléfono"
                   type="tel"
                   value={formData.telefono}
-                  onChange={handleChange}
+                  onChange={handleDigitsChange}
+                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                   autoComplete="tel"
                 />
                 <TextField
@@ -308,6 +366,12 @@ export default function RegisterScreen() {
                   value={formData.email}
                   onChange={handleChange}
                   autoComplete="email"
+                  error={submitted && !emailIsValid}
+                  helperText={
+                    submitted && !emailIsValid
+                      ? 'Ingresa un correo válido, por ejemplo nombre@dominio.cl.'
+                      : ' '
+                  }
                 />
               </>
             )}
@@ -333,7 +397,8 @@ export default function RegisterScreen() {
               name="numero"
               label="Número"
               value={formData.numero}
-              onChange={handleChange}
+              onChange={handleDigitsChange}
+              inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
               autoComplete="numero"
             />
             <TextField

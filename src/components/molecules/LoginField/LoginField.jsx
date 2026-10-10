@@ -2,7 +2,16 @@ import { useState } from "react";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
-const LoginField = ({ id, label, type = "text", placeholder, value, onChange }) => {
+const LoginField = ({
+  id,
+  label,
+  type = "text",
+  placeholder,
+  value,
+  onChange,
+  required = false,
+  errorMessage = "",
+}) => {
   const [visible, setVisible] = useState(false);
   const isPassword = type === "password";
 
@@ -17,6 +26,9 @@ const LoginField = ({ id, label, type = "text", placeholder, value, onChange }) 
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          required={required}
+          aria-invalid={Boolean(errorMessage)}
+          aria-describedby={errorMessage ? `${id}-error` : undefined}
         />
         {isPassword && (
           <button
@@ -29,6 +41,11 @@ const LoginField = ({ id, label, type = "text", placeholder, value, onChange }) 
           </button>
         )}
       </div>
+      {errorMessage && (
+        <p id={`${id}-error`} className="login-error" role="alert">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 };

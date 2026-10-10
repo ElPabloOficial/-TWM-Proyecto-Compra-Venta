@@ -3,27 +3,40 @@ import LoginField from "../../molecules/LoginField/LoginField";
 import RememberUser from "../../molecules/RememberUser/RememberUser";
 import CustomButton from "../../atoms/Button/CustomButton";
 
-import formatRut from "../../../services/format";
+import formatRut, { isValidRut } from "../../../services/format";
 
 
 const LoginForm = ({ onSubmit }) => {
   const [rut, setRut] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
+  const [rutSubmitted, setRutSubmitted] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setRutSubmitted(true);
+
+    if (!isValidRut(rut)) {
+      return;
+    }
+
     onSubmit?.({ rut, password, remember });
   };
 
   return (
-    <form className="login-form" onSubmit={handleSubmit}>
+    <form className="login-form" onSubmit={handleSubmit} noValidate>
       <LoginField
         id="rut"
         label="RUT"
         placeholder="Ingresa tu rut"
         value={rut}
         onChange={(e) => setRut(formatRut(e.target.value))}
+        required
+        errorMessage={
+          rutSubmitted && !isValidRut(rut)
+            ? "Ingresa un RUT válido, por ejemplo 12.345.678-5."
+            : ""
+        }
       />
       <LoginField
         id="password"
