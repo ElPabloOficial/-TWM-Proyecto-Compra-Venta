@@ -18,6 +18,7 @@ import ReviewsScreen from "./pages/Reviews/ReviewsScreen";
 import OrdersScreen from "./pages/Orders/OrdersScreen";
 import ReceiptScreen from "./pages/Receipt/ReceiptScreen";
 import ReportsScreen from "./pages/Reports/ReportsScreen";
+import TransHistoryScreen from "./pages/TransHistoryScreen/TransHistoryScreen";
 
 const App = () => {
   return (
@@ -44,6 +45,7 @@ const App = () => {
               <Route path="/pedidos" element={<OrdersScreen />} />
               <Route path="/recibo" element={<ReceiptScreen />} />
               <Route path="/reportes" element={<ReportsScreen />} />
+              <Route path="/transacciones" element={<TransHistoryScreen />} />
             </Routes>
           </QuotesProvider>
         </ServiciosProvider>
