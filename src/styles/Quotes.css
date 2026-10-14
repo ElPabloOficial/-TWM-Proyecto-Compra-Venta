@@ -405,3 +405,10 @@
     background: #fff;
   }
 }
+
+
+.inv-main-content .quotes-main {
+  padding: 0;
+  margin: 0;
+  max-width: none;
+}

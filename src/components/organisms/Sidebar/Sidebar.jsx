@@ -24,6 +24,10 @@ const items = [
 const rutas = {
   productos: "/inventario",
   servicios: "/servicios",
+  pedidos: "/pedidos",
+  mensajes: "/mensajes",
+  resenas: "/resenas",
+  cotizacion: "/cotizaciones",
 };
 
 const Sidebar = ({ onSelect }) => {

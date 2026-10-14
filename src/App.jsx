@@ -14,6 +14,8 @@ import HomeScreen from "./pages/Home/HomeScreen";
 import ProfileScreen from "./pages/Profile/ProfileScreen";
 import QuotesScreen from "./pages/Quotes/QuotesScreen";
 import QuoteDetailScreen from "./pages/Quotes/QuoteDetailScreen";
+import ReviewsScreen from "./pages/Reviews/ReviewsScreen";
+import OrdersScreen from "./pages/Orders/OrdersScreen";
 
 const App = () => {
   return (
@@ -36,6 +38,8 @@ const App = () => {
               <Route path="/perfil" element={<ProfileScreen />} />
               <Route path="/cotizaciones" element={<QuotesScreen />} />
               <Route path="/cotizaciones/:id" element={<QuoteDetailScreen />} />
+              <Route path="/resenas" element={<ReviewsScreen />} />
+              <Route path="/pedidos" element={<OrdersScreen />} />
             </Routes>
           </QuotesProvider>
         </ServiciosProvider>

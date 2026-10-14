@@ -1,10 +1,12 @@
 import CustomAvatar from "../../components/atoms/Avatar/CustomAvatar";
+import Header from "../../components/organisms/Header/Header";
 import ProfileSection from "../../components/molecules/ProfileSection/ProfileSection";
 import ProfileField from "../../components/molecules/ProfileField/ProfileField";
 
 const ProfileScreen = () => {
   return (
-    <div style={{ padding: 40, background: "#f4f4f4", minHeight: "100vh" }}>
+    <div style={{background: "#f4f4f4", minHeight: "100vh" }}>
+      <Header/>
       <h1 style={{ color: "#000", marginBottom: 4 }}>Configuración de Perfil</h1>
       <p style={{ color: "#555", fontSize: 14, marginTop: 0, marginBottom: 24 }}>
         Mantén tus datos personales y comerciales actualizados para operar con seguridad en Ahorraton.

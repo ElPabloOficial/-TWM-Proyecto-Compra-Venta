@@ -36,7 +36,7 @@ const Header = () => {
         >
           <CustomLogo
             text="Ahorraton"
-            size={35}
+            size={50}
           />
         </Box>
 

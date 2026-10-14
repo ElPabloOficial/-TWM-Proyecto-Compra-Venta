@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
+// import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Button from '@mui/material/Button';
-import Link from '@mui/material/Link';
-import Typography from '@mui/material/Typography';
+// import Link from '@mui/material/Link';
+// import Typography from '@mui/material/Typography';
 import AddIcon from '@mui/icons-material/Add';
-import Header from '../../components/organisms/Header/Header';
+import SellerTemplate from '../../components/templates/SellerTemplate/SellerTemplate';
 import useQuotes from '../../context/useQuotes';
+import '../../styles/Inventory.css';
 import '../../styles/Quotes.css';
 
 const QUOTES_PER_PAGE = 5;
@@ -54,15 +55,18 @@ const QuotesScreen = () => {
   );
 
   return (
-    <div className="quotes-layout">
-      <Header />
-      <main className="quotes-main">
+    <SellerTemplate>
+      {/* SellerTemplate ya incluye el Header y el menú lateral (botón ☰).
+          Se usa <div> y no <main> porque la plantilla ya tiene un <main>. */}
+      <div className="quotes-main">
+        {/* Ruta "Inicio / Cotizaciones" (oculta por ahora)
         <Breadcrumbs aria-label="Ruta de navegación" className="quotes-breadcrumbs">
           <Link component={RouterLink} to="/inicio" underline="hover" color="inherit">
             Inicio
           </Link>
           <Typography color="text.primary">Cotizaciones</Typography>
         </Breadcrumbs>
+        */}
 
         <div className="quotes-heading">
           <div>
@@ -191,8 +195,8 @@ const QuotesScreen = () => {
         >
           Volver al inicio
         </Button>
-      </main>
-    </div>
+      </div>
+    </SellerTemplate>
   );
 };
 
