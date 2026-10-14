@@ -16,7 +16,11 @@ import QuotesScreen from "./pages/Quotes/QuotesScreen";
 import QuoteDetailScreen from "./pages/Quotes/QuoteDetailScreen";
 import ReviewsScreen from "./pages/Reviews/ReviewsScreen";
 import OrdersScreen from "./pages/Orders/OrdersScreen";
+<<<<<<< HEAD
 import ReceiptScreen from "./pages/Receipt/ReceiptScreen";
+=======
+import ReportsScreen from "./pages/Reports/ReportsScreen";
+>>>>>>> c4e70a4 (Agregar reportes)
 
 const App = () => {
   return (
@@ -41,7 +45,11 @@ const App = () => {
               <Route path="/cotizaciones/:id" element={<QuoteDetailScreen />} />
               <Route path="/resenas" element={<ReviewsScreen />} />
               <Route path="/pedidos" element={<OrdersScreen />} />
+<<<<<<< HEAD
               <Route path="/recibo" element={<ReceiptScreen />} />
+=======
+              <Route path="/reportes" element={<ReportsScreen />} />
+>>>>>>> c4e70a4 (Agregar reportes)
             </Routes>
           </QuotesProvider>
         </ServiciosProvider>

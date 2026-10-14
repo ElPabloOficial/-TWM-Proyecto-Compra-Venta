@@ -25,6 +25,7 @@ const rutas = {
   productos: "/inventario",
   servicios: "/servicios",
   pedidos: "/pedidos",
+  reportes: "/reportes",
   mensajes: "/mensajes",
   resenas: "/resenas",
   cotizacion: "/cotizaciones",
