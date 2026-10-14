@@ -16,6 +16,7 @@ import QuotesScreen from "./pages/Quotes/QuotesScreen";
 import QuoteDetailScreen from "./pages/Quotes/QuoteDetailScreen";
 import ReviewsScreen from "./pages/Reviews/ReviewsScreen";
 import OrdersScreen from "./pages/Orders/OrdersScreen";
+import ReceiptScreen from "./pages/Receipt/ReceiptScreen";
 
 const App = () => {
   return (
@@ -40,6 +41,7 @@ const App = () => {
               <Route path="/cotizaciones/:id" element={<QuoteDetailScreen />} />
               <Route path="/resenas" element={<ReviewsScreen />} />
               <Route path="/pedidos" element={<OrdersScreen />} />
+              <Route path="/recibo" element={<ReceiptScreen />} />
             </Routes>
           </QuotesProvider>
         </ServiciosProvider>
