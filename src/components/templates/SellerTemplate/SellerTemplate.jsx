@@ -1,29 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
 import Header from "../../organisms/Header/Header";
 import Sidebar from "../../organisms/Sidebar/Sidebar";
 
-// Rutas del menú lateral. Si una opción no aparece aquí, por ahora solo cierra el menú
-// (la pantalla aún no existe). Se agrega su ruta cuando se cree.
-const rutasMenu = {
-  productos: "/inventario",
-  servicios: "/servicios",
-  mensajes: "/mensajes",
-  resenas: "/resenas",
-  cotizacion: "/cotizaciones",
-};
-
-// "activo" es el id de la opción del menú que se marca como seleccionada
-const SellerTemplate = ({ children, activo = "productos" }) => {
+const SellerTemplate = ({ children }) => {
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const navigate = useNavigate();
-
-  const seleccionarOpcion = (id) => {
-    setMenuAbierto(false);
-    const ruta = rutasMenu[id];
-    if (ruta) navigate(ruta);
-  };
 
   useEffect(() => {
     if (!menuAbierto) return;
@@ -42,9 +23,11 @@ const SellerTemplate = ({ children, activo = "productos" }) => {
         <div className="inv-overlay" onClick={() => setMenuAbierto(false)} />
       )}
 
-      {/* Barra lateral: aparece al presionar el botón ☰ */}
+      {/* Barra lateral: aparece al presionar el botón ☰.
+          El Sidebar navega y marca la opción activa por sí solo (según la URL);
+          aquí solo se cierra el menú. */}
       <aside className={`inv-drawer ${menuAbierto ? "abierto" : ""}`}>
-        <Sidebar activo={activo} onSelect={seleccionarOpcion} />
+        <Sidebar onSelect={() => setMenuAbierto(false)} />
       </aside>
 
       <main className="inv-main">

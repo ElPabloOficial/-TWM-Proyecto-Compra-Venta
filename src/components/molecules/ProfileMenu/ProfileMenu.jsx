@@ -17,7 +17,8 @@ import CustomButton from "../../atoms/Button/CustomButton";
 import "../../../styles/ProfileMenu.css";
 
 // Opciones para cualquier usuario.
-// Si una opción no tiene "ruta", por ahora solo cierra el menú (la pantalla aún no existe).
+// "ruta" es la pantalla del cliente. Si el usuario es vendedor y la opción tiene
+// "rutaVendedor", se va a esa pantalla (su versión del panel de vendedor).
 const opcionesUsuario = [
   {
     id: "perfil",
@@ -25,18 +26,51 @@ const opcionesUsuario = [
     icon: <AccountCircleIcon fontSize="small" />,
     ruta: "/perfil",
   },
-  { id: "pedidos", label: "Mis pedidos", icon: <ReceiptLongIcon fontSize="small" /> },
+  {
+    id: "pedidos",
+    label: "Mis pedidos",
+    icon: <ReceiptLongIcon fontSize="small" />,
+    ruta: "/mis-pedidos",
+    rutaVendedor: "/pedidos",
+  },
   {
     id: "cotizaciones",
     label: "Mis Cotizaciones",
     icon: <ReceiptLongIcon fontSize="small" />,
     ruta: "/cotizaciones",
   },
-  { id: "favoritos", label: "Mis favoritos", icon: <FavoriteIcon fontSize="small" /> },
-  { id: "direcciones", label: "Mis direcciones", icon: <LocationOnIcon fontSize="small" /> },
-  { id: "mensajes", label: "Mensajes", icon: <ChatIcon fontSize="small" /> },
-  { id: "resenas", label: "Mis reseñas", icon: <StarIcon fontSize="small" /> },
-  { id: "devoluciones", label: "Devoluciones", icon: <UndoIcon fontSize="small" /> },
+  {
+    id: "favoritos",
+    label: "Mis favoritos",
+    icon: <FavoriteIcon fontSize="small" />,
+    ruta: "/favoritos",
+  },
+  {
+    id: "direcciones",
+    label: "Mis direcciones",
+    icon: <LocationOnIcon fontSize="small" />,
+    ruta: "/direcciones",
+  },
+  {
+    id: "mensajes",
+    label: "Mensajes",
+    icon: <ChatIcon fontSize="small" />,
+    ruta: "/mis-mensajes",
+    rutaVendedor: "/mensajes/vendedor",
+  },
+  {
+    id: "resenas",
+    label: "Mis reseñas",
+    icon: <StarIcon fontSize="small" />,
+    ruta: "/mis-resenas",
+    rutaVendedor: "/resenas",
+  },
+  {
+    id: "devoluciones",
+    label: "Devoluciones",
+    icon: <UndoIcon fontSize="small" />,
+    ruta: "/devoluciones",
+  },
 ];
 
 // Opciones solo para vendedores
@@ -94,18 +128,23 @@ const ProfileMenu = () => {
     };
   }, [abierto]);
 
-  const renderOpcion = (opcion) => (
-    <button
-      key={opcion.id}
-      type="button"
-      className="pm-item"
-      role="menuitem"
-      onClick={() => (opcion.ruta ? irA(opcion.ruta) : cerrar())}
-    >
-      {opcion.icon}
-      {opcion.label}
-    </button>
-  );
+  const renderOpcion = (opcion) => {
+    // El vendedor va a su versión de la pantalla, si la opción tiene una
+    const ruta = esVendedor && opcion.rutaVendedor ? opcion.rutaVendedor : opcion.ruta;
+
+    return (
+      <button
+        key={opcion.id}
+        type="button"
+        className="pm-item"
+        role="menuitem"
+        onClick={() => (ruta ? irA(ruta) : cerrar())}
+      >
+        {opcion.icon}
+        {opcion.label}
+      </button>
+    );
+  };
 
   return (
     <>

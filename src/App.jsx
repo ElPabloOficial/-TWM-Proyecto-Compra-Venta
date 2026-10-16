@@ -10,6 +10,7 @@ import AddProductScreen from "./pages/Inventory/AddProductScreen";
 import ServicesScreen from "./pages/Services/ServicesScreen";
 import ServiceFormScreen from "./pages/Services/ServiceFormScreen";
 import MessageModerationScreen from "./pages/MessageModeration/MessageModerationScreen";
+import MessagesScreen from "./pages/Messages/MessagesScreen";
 import HomeScreen from "./pages/Home/HomeScreen";
 import ProfileScreen from "./pages/Profile/ProfileScreen";
 import QuotesScreen from "./pages/Quotes/QuotesScreen";
@@ -19,6 +20,7 @@ import OrdersScreen from "./pages/Orders/OrdersScreen";
 import ReceiptScreen from "./pages/Receipt/ReceiptScreen";
 import ReportsScreen from "./pages/Reports/ReportsScreen";
 import TransHistoryScreen from "./pages/TransHistoryScreen/TransHistoryScreen";
+import ShippingCostsScreen from "./pages/Shipping/ShippingCostsScreen";
 
 const App = () => {
   return (
@@ -37,6 +39,7 @@ const App = () => {
               <Route path="/servicios/nuevo" element={<ServiceFormScreen />} />
               <Route path="/servicios/editar/:id" element={<ServiceFormScreen />} />
               <Route path="/mensajes" element={<MessageModerationScreen />} />
+              <Route path="/mensajes/vendedor" element={<MessagesScreen />} />
               <Route path="/registro" element={<RegisterScreen />} />
               <Route path="/perfil" element={<ProfileScreen />} />
               <Route path="/cotizaciones" element={<QuotesScreen />} />
@@ -46,6 +49,7 @@ const App = () => {
               <Route path="/recibo" element={<ReceiptScreen />} />
               <Route path="/reportes" element={<ReportsScreen />} />
               <Route path="/transacciones" element={<TransHistoryScreen />} />
+              <Route path="/envios" element={<ShippingCostsScreen />} />
             </Routes>
           </QuotesProvider>
         </ServiciosProvider>
