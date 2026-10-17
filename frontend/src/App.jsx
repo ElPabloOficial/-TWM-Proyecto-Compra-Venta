@@ -21,6 +21,7 @@ import ReceiptScreen from "./pages/Receipt/ReceiptScreen";
 import ReportsScreen from "./pages/Reports/ReportsScreen";
 import TransHistoryScreen from "./pages/TransHistoryScreen/TransHistoryScreen";
 import ShippingCostsScreen from "./pages/Shipping/ShippingCostsScreen";
+import WishlistScreen from "./pages/Wishlist/WishlistScreen";
 
 const App = () => {
   return (
@@ -50,6 +51,7 @@ const App = () => {
               <Route path="/reportes" element={<ReportsScreen />} />
               <Route path="/transacciones" element={<TransHistoryScreen />} />
               <Route path="/envios" element={<ShippingCostsScreen />} />
+              <Route path="/listadedeseos" element={<WishlistScreen />} />
             </Routes>
           </QuotesProvider>
         </ServiciosProvider>
