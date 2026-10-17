@@ -22,6 +22,7 @@ import ReportsScreen from "./pages/Reports/ReportsScreen";
 import TransHistoryScreen from "./pages/TransHistoryScreen/TransHistoryScreen";
 import ShippingCostsScreen from "./pages/Shipping/ShippingCostsScreen";
 import WishlistScreen from "./pages/Wishlist/WishlistScreen";
+import CategoryManagementScreen from "./pages/Category/CategoryManagementScreen";
 
 const App = () => {
   return (
@@ -52,6 +53,7 @@ const App = () => {
               <Route path="/transacciones" element={<TransHistoryScreen />} />
               <Route path="/envios" element={<ShippingCostsScreen />} />
               <Route path="/listadedeseos" element={<WishlistScreen />} />
+              <Route path="/categorias" element={<CategoryManagementScreen />} />
             </Routes>
           </QuotesProvider>
         </ServiciosProvider>
