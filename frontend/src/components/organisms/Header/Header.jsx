@@ -1,4 +1,6 @@
 import Box from '@mui/material/Box';
+import Badge from '@mui/material/Badge';
+import { useNavigate } from 'react-router-dom';
 
 import CustomLogo from '../../atoms/Logo/CustomLogo';
 import SearchBar from '../../molecules/SearchBar/SearchBar';
@@ -8,8 +10,12 @@ import CustomButton from '../../atoms/Button/CustomButton';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import useCart from '../../../context/useCart';
 
 const Header = () => {
+  const navigate = useNavigate();
+  const { cartCount, user } = useCart();
+
   return (
     <Box>
       <Box
@@ -87,7 +93,12 @@ const Header = () => {
           <CustomButton
             variant="primary"
             size="small"
-            startIcon={<ShoppingCartIcon />}
+            startIcon={
+              <Badge badgeContent={cartCount} color="error">
+                <ShoppingCartIcon />
+              </Badge>
+            }
+            onClick={() => navigate(user ? '/carrito' : '/login')}
           >
             Carrito
           </CustomButton>
