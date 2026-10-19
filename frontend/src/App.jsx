@@ -23,6 +23,8 @@ import TransHistoryScreen from "./pages/TransHistoryScreen/TransHistoryScreen";
 import ShippingCostsScreen from "./pages/Shipping/ShippingCostsScreen";
 import WishlistScreen from "./pages/Wishlist/WishlistScreen";
 import CategoryManagementScreen from "./pages/Category/CategoryManagementScreen";
+import AdminUserManagementScreen from "./pages/AdminUser/AdminUserAdministrationScreen";
+import ConfirmPurchaseScreen from "./pages/ConfirmPurchase/ConfirmPurchaseScreen";
 
 const App = () => {
   return (
@@ -54,6 +56,8 @@ const App = () => {
               <Route path="/envios" element={<ShippingCostsScreen />} />
               <Route path="/listadedeseos" element={<WishlistScreen />} />
               <Route path="/categorias" element={<CategoryManagementScreen />} />
+              <Route path="/usuarios" element={<AdminUserManagementScreen />} />
+              <Route path="/confirmarcompra" element={<ConfirmPurchaseScreen />} />
             </Routes>
           </QuotesProvider>
         </ServiciosProvider>
