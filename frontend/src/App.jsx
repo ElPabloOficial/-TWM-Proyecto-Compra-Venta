@@ -28,6 +28,7 @@ import AdminUserManagementScreen from "./pages/AdminUser/AdminUserAdministration
 import ConfirmPurchaseScreen from "./pages/ConfirmPurchase/ConfirmPurchaseScreen";
 import CartScreen from "./pages/Cart/CartScreen";
 import CatalogScreen from "./pages/Catalog/CatalogScreen";
+import AdminScreen from './pages/Admin/AdminScreen';
 
 const App = () => {
   return (
@@ -64,6 +65,7 @@ const App = () => {
                 <Route path="/usuarios" element={<AdminUserManagementScreen />} />
                 <Route path="/confirmarcompra" element={<ConfirmPurchaseScreen />} />
                 <Route path="/catalogo" element={<CatalogScreen />} />
+                <Route path="/admin" element={<AdminScreen />} />
               </Routes>
             </CartProvider>
           </QuotesProvider>
