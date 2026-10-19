@@ -29,7 +29,7 @@ import ConfirmPurchaseScreen from "./pages/ConfirmPurchase/ConfirmPurchaseScreen
 import CartScreen from "./pages/Cart/CartScreen";
 import CatalogScreen from "./pages/Catalog/CatalogScreen";
 import AdminScreen from './pages/Admin/AdminScreen';
-
+import NewQuoteScreen from './pages/NewQuote/NewQuoteScreen';
 const App = () => {
   return (
     <BrowserRouter>
@@ -66,6 +66,7 @@ const App = () => {
                 <Route path="/confirmarcompra" element={<ConfirmPurchaseScreen />} />
                 <Route path="/catalogo" element={<CatalogScreen />} />
                 <Route path="/admin" element={<AdminScreen />} />
+                <Route path="/cotizaciones/nueva" element={<NewQuoteScreen />} />
               </Routes>
             </CartProvider>
           </QuotesProvider>
