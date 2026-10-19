@@ -1,0 +1,401 @@
+
+/* ============================
+ *   Category management page
+ *   ============================ */
+
+.category-management-page {
+    max-width: 1200px;
+    width: calc(100% - 48px);
+    margin: 0 auto;
+    padding: 32px 0 64px;
+    color: #242424;
+    box-sizing: border-box;
+}
+
+.category-management-page *,
+.category-management-page *::before,
+.category-management-page *::after {
+    box-sizing: border-box;
+}
+
+/* ============================
+ *   Page header
+ *   ============================ */
+
+.category-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.category-page-heading {
+    min-width: 0;
+}
+
+.category-eyebrow {
+    margin: 0 0 8px;
+    color: #777;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.category-page-heading h1 {
+    margin: 0;
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 700;
+    letter-spacing: -0.8px;
+    line-height: 1.2;
+}
+
+.category-page-subtitle {
+    margin: 12px 0 0;
+    color: #777;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* ============================
+ *   Summary cards
+ *   ============================ */
+
+.category-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 32px;
+}
+
+.category-summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 22px 24px;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.category-summary-label {
+    color: #777;
+    font-size: 14px;
+}
+
+.category-summary-card strong {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============================
+ *   Table section
+ *   ============================ */
+
+.category-table-section {
+    overflow: hidden;
+    border: 1px solid #eaeaea;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.category-table-heading {
+    padding: 24px;
+    border-bottom: 1px solid #eaeaea;
+}
+
+.category-table-heading h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.category-table-heading p {
+    margin: 8px 0 0;
+    color: #777;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* ============================
+ *   Category table
+ *   ============================ */
+
+.category-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.category-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.category-table thead {
+    background: #f8f8f8;
+}
+
+.category-table th {
+    padding: 16px 20px;
+    color: #666;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    border-bottom: 1px solid #eaeaea;
+}
+
+.category-table td {
+    padding: 17px 20px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+.category-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.category-row {
+    transition: background 0.15s ease;
+}
+
+.category-row:hover {
+    background: #fafafa;
+}
+
+/* Category name and hierarchy */
+
+.category-name-cell {
+    min-width: 220px;
+}
+
+.category-name-content {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 30px;
+}
+
+.category-tree-marker {
+    flex-shrink: 0;
+    color: #aaa;
+    font-size: 18px;
+}
+
+.category-folder-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #888;
+}
+
+.category-folder-icon.root-category {
+    color: #ec3333;
+}
+
+.category-name {
+    color: #292929;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* Product count */
+
+.category-count-cell {
+    min-width: 130px;
+    color: #555;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Category level */
+
+.category-level-cell {
+    width: 80px;
+}
+
+.category-level {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    min-height: 28px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #f1f1f1;
+    color: #555;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.category-level.root-level {
+    background: #fff0f0;
+    color: #ec3333;
+}
+
+/* Actions */
+
+.category-actions-cell {
+    min-width: 260px;
+}
+
+.category-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.category-actions .MuiButton-root {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.category-actions .MuiButton-startIcon {
+    margin-right: 4px;
+}
+
+/* ============================
+ *   Empty state
+ *   ============================ */
+
+.category-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    padding: 40px 24px;
+    text-align: center;
+}
+
+.category-empty-icon {
+    color: #aaa;
+    font-size: 48px !important;
+}
+
+.category-empty-state h3 {
+    margin: 16px 0 8px;
+    font-size: 20px;
+}
+
+.category-empty-state p {
+    max-width: 420px;
+    margin: 0 0 24px;
+    color: #777;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* ============================
+ *   Tablet
+ *   ============================ */
+
+@media (max-width: 850px) {
+    .category-management-page {
+        width: calc(100% - 32px);
+        padding-top: 24px;
+    }
+
+    .category-page-header {
+        align-items: flex-start;
+    }
+
+    .category-summary {
+        gap: 12px;
+    }
+
+    .category-summary-card {
+        padding: 18px;
+    }
+
+    .category-table-heading {
+        padding: 20px;
+    }
+
+    .category-table th,
+    .category-table td {
+        padding: 14px 16px;
+    }
+
+    .category-table {
+        min-width: 760px;
+    }
+}
+
+/* ============================
+ *   Mobile
+ *   ============================ */
+
+@media (max-width: 520px) {
+    .category-management-page {
+        width: calc(100% - 32px);
+        padding-top: 20px;
+    }
+
+    .category-page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 18px;
+        margin-bottom: 24px;
+    }
+
+    .category-page-header > button {
+        align-self: flex-start;
+    }
+
+    .category-page-heading h1 {
+        font-size: 29px;
+    }
+
+    .category-page-subtitle {
+        margin-top: 8px;
+        font-size: 14px;
+    }
+
+    .category-summary {
+        gap: 10px;
+        margin-bottom: 24px;
+    }
+
+    .category-summary-card {
+        gap: 10px;
+        padding: 15px;
+    }
+
+    .category-summary-label {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .category-summary-card strong {
+        font-size: 26px;
+    }
+
+    .category-table-heading {
+        padding: 18px;
+    }
+
+    .category-table-heading h2 {
+        font-size: 18px;
+    }
+
+    .category-table-heading p {
+        font-size: 13px;
+    }
+
+    .category-table {
+        min-width: 720px;
+    }
+
+    .category-table th,
+    .category-table td {
+        padding: 13px 14px;
+    }
+}

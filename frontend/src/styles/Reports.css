@@ -1,0 +1,130 @@
+/* ---------- Encabezado: selector de período y exportar ---------- */
+.rep-acciones {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rep-periodo {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rep-periodo:focus {
+  outline: none;
+  border-color: #ec3333;
+}
+
+/* ---------- Títulos de cada panel ---------- */
+.rep-titulo {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.rep-subtitulo {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.rep-vacio {
+  text-align: center;
+  padding: 24px;
+  font-size: 14px;
+  color: #555;
+}
+
+/* ---------- Gráfico de barras: ventas por día ---------- */
+.rep-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 180px;
+  padding-top: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.rep-col {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.rep-bar {
+  width: 100%;
+  min-height: 2px;
+  background: #ec3333;
+  border-radius: 3px 3px 0 0;
+  transition: opacity 0.15s;
+}
+
+.rep-bar.vacia {
+  background: #e5e7eb;
+}
+
+.rep-col:hover .rep-bar {
+  opacity: 0.75;
+}
+
+.rep-labels {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.rep-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  color: #6b7280;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ---------- Productos y categorías, lado a lado ---------- */
+.rep-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .rep-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Barras horizontales: ventas por categoría ---------- */
+.rep-fila {
+  display: grid;
+  grid-template-columns: 100px 1fr 90px;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.rep-pista {
+  height: 10px;
+  background: #f4f4f4;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.rep-relleno {
+  height: 100%;
+  background: #ec3333;
+  border-radius: 999px;
+}
+
+.rep-monto {
+  text-align: right;
+  font-weight: 700;
+}

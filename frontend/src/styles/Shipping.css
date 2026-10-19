@@ -1,0 +1,208 @@
+/* ---------- Página (el relleno y el fondo los pone SellerTemplate) ---------- */
+.env-content {
+  max-width: 960px;
+}
+
+.env-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.env-title {
+  margin: 0;
+  font-size: 26px;
+}
+
+.env-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #555;
+}
+
+/* ---------- Botones ---------- */
+.env-btn-nueva {
+  padding: 10px 20px;
+  border: 2px solid #ec3333;
+  border-radius: 6px;
+  background: #ec3333;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.env-btn-nueva:hover {
+  background: #d62c2c;
+}
+
+.env-btn-secundario {
+  padding: 10px 20px;
+  border: 2px solid #333;
+  border-radius: 6px;
+  background: #fff;
+  color: #000;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.env-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.env-link:hover {
+  color: #ec3333;
+  text-decoration: underline;
+}
+
+/* ---------- Tarjetas ---------- */
+.env-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background: #fff;
+}
+
+/* ---------- Tabla de tarifas ---------- */
+.env-tabla-wrap {
+  overflow-x: auto;
+}
+
+.env-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.env-tabla th {
+  padding: 10px 16px;
+  border-bottom: 1px solid #e5e5e5;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.env-tabla td {
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.env-tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.env-vacio {
+  text-align: center;
+  color: #555;
+}
+
+.env-dinamico {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.env-estado {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.env-estado.activa {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.13);
+}
+
+.env-estado.inactiva {
+  color: #9ca3af;
+  background: rgba(156, 163, 175, 0.13);
+}
+
+/* ---------- Formulario ---------- */
+.env-form {
+  margin-top: 32px;
+}
+
+.env-form-titulo {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.env-form-card {
+  padding: 16px;
+  max-width: 640px;
+}
+
+.env-fila {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.env-campo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.env-label {
+  font-size: 12px;
+}
+
+.env-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #d4d4d4;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.env-input:focus {
+  outline: none;
+  border-color: #ec3333;
+  box-shadow: 0 0 0 1px #ec3333;
+}
+
+.env-ayuda {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.env-error {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.env-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ---------- Pantallas angostas ---------- */
+@media (max-width: 700px) {
+  .env-head {
+    flex-direction: column;
+  }
+
+  .env-fila {
+    flex-direction: column;
+  }
+}
