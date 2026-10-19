@@ -1,6 +1,8 @@
 import Header from "../../components/organisms/Header/Header";
 import Footer from "../../components/organisms/Footer/Footer";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import useCart from "../../context/useCart";
+import { useNavigate } from "react-router-dom";
 import "../../styles/Home.css";
 
 // TEMPORAL: datos de ejemplo hasta que se conecte el backend
@@ -25,8 +27,18 @@ const formatoCLP = (n) =>
   }).format(n);
 
 const HomeScreen = () => {
+  const { addItem, user } = useCart();
+  const navigate = useNavigate();
+
   const handleAgregarCarro = (item) => {
-    console.log("[HomeScreen] handleAgregarCarro():", item);
+    const added = addItem({
+      id: item.id,
+      name: item.nombre,
+      price: item.precio,
+    });
+    if (!added && !user) {
+      navigate("/login");
+    }
   };
 
   const handleVerOfertas = () => {
