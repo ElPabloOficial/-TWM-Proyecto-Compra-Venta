@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import PersonIcon from "@mui/icons-material/Person";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ChatIcon from "@mui/icons-material/Chat";
@@ -19,6 +20,8 @@ import "../../../styles/ProfileMenu.css";
 // Opciones para cualquier usuario.
 // "ruta" es la pantalla del cliente. Si el usuario es vendedor y la opción tiene
 // "rutaVendedor", se va a esa pantalla (su versión del panel de vendedor).
+// Si una opción no tiene la ruta que le corresponde, por ahora solo cierra el menú
+// (la pantalla aún no existe). Se agrega su "ruta" cuando se cree.
 const opcionesUsuario = [
   {
     id: "perfil",
@@ -30,8 +33,13 @@ const opcionesUsuario = [
     id: "pedidos",
     label: "Mis pedidos",
     icon: <ReceiptLongIcon fontSize="small" />,
-    ruta: "/mis-pedidos",
     rutaVendedor: "/pedidos",
+  },
+  {
+    id: "compras",
+    label: "Mis compras",
+    icon: <ShoppingBagIcon fontSize="small" />,
+    ruta: "/transacciones",
   },
   {
     id: "cotizaciones",
@@ -43,7 +51,7 @@ const opcionesUsuario = [
     id: "favoritos",
     label: "Mis favoritos",
     icon: <FavoriteIcon fontSize="small" />,
-    ruta: "/favoritos",
+    ruta: "/listadedeseos",
   },
   {
     id: "direcciones",
@@ -55,21 +63,18 @@ const opcionesUsuario = [
     id: "mensajes",
     label: "Mensajes",
     icon: <ChatIcon fontSize="small" />,
-    ruta: "/mis-mensajes",
     rutaVendedor: "/mensajes/vendedor",
   },
   {
     id: "resenas",
     label: "Mis reseñas",
     icon: <StarIcon fontSize="small" />,
-    ruta: "/mis-resenas",
     rutaVendedor: "/resenas",
   },
   {
     id: "devoluciones",
     label: "Devoluciones",
     icon: <UndoIcon fontSize="small" />,
-    ruta: "/devoluciones",
   },
 ];
 

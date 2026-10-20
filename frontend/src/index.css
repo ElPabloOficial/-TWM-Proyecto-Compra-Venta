@@ -1,5 +1,7 @@
 :root {
-  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  /* Tipografía única de todo el proyecto: se cambia solo aquí */
+  --fuente: system-ui, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--fuente);
   color: #000;
   background: #fff;
 }
@@ -12,4 +14,11 @@
 
 body {
   margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }

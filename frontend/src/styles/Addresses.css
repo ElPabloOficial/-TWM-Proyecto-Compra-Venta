@@ -1,0 +1,253 @@
+/* ---------- Página ---------- */
+.dir-page {
+  min-height: 100vh;
+  padding: 40px;
+  background: #f4f4f4;
+  box-sizing: border-box;
+}
+
+.dir-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.dir-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dir-title {
+  margin: 0;
+  font-size: 26px;
+  color: #000;
+}
+
+.dir-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #555;
+}
+
+/* ---------- Botones ---------- */
+.dir-btn {
+  padding: 10px 20px;
+  border: 2px solid #ec3333;
+  border-radius: 6px;
+  background: #ec3333;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dir-btn:hover {
+  background: #d62c2c;
+}
+
+.dir-btn-secundario {
+  padding: 10px 20px;
+  border: 2px solid #333;
+  border-radius: 6px;
+  background: #fff;
+  color: #000;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dir-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dir-link:hover {
+  color: #ec3333;
+  text-decoration: underline;
+}
+
+/* ---------- Formulario ---------- */
+.dir-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.dir-form-titulo {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dir-fila {
+  display: flex;
+  gap: 16px;
+}
+
+.dir-campo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dir-campo.dir-ancho {
+  flex: 2;
+}
+
+.dir-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dir-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #d4d4d4;
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+
+.dir-input:focus {
+  outline: none;
+  border-color: #ec3333;
+  box-shadow: 0 0 0 1px #ec3333;
+}
+
+.dir-input:disabled {
+  background: #f4f4f4;
+  cursor: not-allowed;
+}
+
+textarea.dir-input {
+  resize: vertical;
+}
+
+.dir-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.dir-check input {
+  accent-color: #ec3333;
+}
+
+.dir-error {
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.dir-acciones-form {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- Lista de direcciones ---------- */
+.dir-lista {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.dir-vacio {
+  grid-column: 1 / -1;
+  padding: 32px;
+  text-align: center;
+  font-size: 14px;
+  color: #555;
+}
+
+.dir-card {
+  padding: 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.dir-card.principal {
+  border-color: #ec3333;
+}
+
+.dir-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dir-alias {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dir-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(236, 51, 51, 0.12);
+  color: #ec3333;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dir-nombre {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dir-linea {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #333;
+}
+
+.dir-ref {
+  margin-top: 8px;
+  font-size: 12px;
+  font-style: italic;
+  color: #6b7280;
+}
+
+.dir-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* ---------- Pantallas angostas ---------- */
+@media (max-width: 700px) {
+  .dir-page {
+    padding: 20px;
+  }
+
+  .dir-head,
+  .dir-fila {
+    flex-direction: column;
+  }
+
+  .dir-lista {
+    grid-template-columns: 1fr;
+  }
+}
