@@ -1,0 +1,1209 @@
+---------------------------------------------------------------
+--TRIGGER 1: Los clientes que han comprado más de 5 veces en el mismo mes asignarles un descuento
+-- del 10%. Agregar un nota/descripción en la compra de esta acción.
+
+CREATE OR REPLACE FUNCTION aplicar_descuento_mensual()
+RETURNS TRIGGER
+AS $$
+DECLARE
+    v_fecha       TIMESTAMP := COALESCE(NEW.Fecha, CURRENT_TIMESTAMP);
+    v_compras_mes INTEGER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_compras_mes
+    FROM Venta
+    WHERE Id_Cliente = NEW.Id_Cliente
+      AND Fecha >= date_trunc('month', v_fecha)
+      AND Fecha <  date_trunc('month', v_fecha) + INTERVAL '1 month';
+
+    IF v_compras_mes > 5 THEN
+        NEW.Neto := ROUND(NEW.Neto * 0.90);
+        NEW.Nota := 'Descuento 10% por más de 5 compras en el mismo mes';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_01_descuento_mensual
+BEFORE INSERT ON Venta
+FOR EACH ROW
+EXECUTE FUNCTION aplicar_descuento_mensual();
+
+--DEMO 
+--BEGIN;
+--SELECT insertar_venta(990001, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');
+--SELECT insertar_venta(990002, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');
+--SELECT insertar_venta(990003, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');
+--SELECT insertar_venta(990004, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');
+--SELECT insertar_venta(990005, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');
+--SELECT insertar_venta(990006, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');
+--SELECT insertar_venta(990007, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');
+--SELECT Id, Neto, Nota FROM Venta WHERE Id BETWEEN 990001 AND 990007 ORDER BY Id;   -- la 990007: 9000 + nota
+--ROLLBACK;
+
+---------------------------------------------------------------
+-- TRIGGER 2: Calcular dinámicamente el costo de envío proyectado
+-- basándose en el volumen (ancho, alto, fondo) de DatosLogisticos.
+
+CREATE OR REPLACE FUNCTION calculo_costo_envio_proyectado()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_ancho NUMERIC;
+    v_alto  NUMERIC;
+    v_fondo NUMERIC;
+    v_costo_proyectado NUMERIC;
+BEGIN
+    IF NEW.DatosLogisticos IS NOT NULL THEN
+        v_ancho := NULLIF((NEW.DatosLogisticos::jsonb)->>'ancho_cm', '')::NUMERIC;
+        v_alto  := NULLIF((NEW.DatosLogisticos::jsonb)->>'alto_cm', '')::NUMERIC;
+        v_fondo := NULLIF((NEW.DatosLogisticos::jsonb)->>'fondo_cm', '')::NUMERIC;
+
+        IF v_ancho IS NOT NULL AND v_alto IS NOT NULL AND v_fondo IS NOT NULL THEN
+            v_costo_proyectado := ROUND((v_ancho * v_alto * v_fondo / 5000.0 * 1555.0), 0);
+
+            NEW.DatosLogisticos := jsonb_set(
+                NEW.DatosLogisticos::jsonb,
+                '{costo_envio}',
+                to_jsonb(v_costo_proyectado),
+                TRUE
+            )::json;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_calculo_costo_envio_proyectado
+BEFORE INSERT OR UPDATE ON Despacho
+FOR EACH ROW
+EXECUTE FUNCTION calculo_costo_envio_proyectado();
+
+--DEMO
+--BEGIN;
+--SELECT DatosLogisticos->>'costo_envio' AS costo_calculado FROM Despacho WHERE Id = 200; 
+--SELECT actualizar_despacho('En reparto', '{"ancho_cm":20,"alto_cm":10,"fondo_cm":10}'::json, 1, 200);
+--SELECT DatosLogisticos->>'costo_envio' AS costo_calculado FROM Despacho WHERE Id = 200;   
+--ROLLBACK;
+
+--------------------------------------------------------------
+-- TRIGGER 3: Habilitar un campo en productos/servicio que permita ocultar un productos/servicio que
+-- no tenga actividad en más de 40 días.
+-- Actividad: al menos una venta en los últimos 40 días.
+
+CREATE OR REPLACE FUNCTION fn_ocultar_inactivos() RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE Producto p
+    SET Caracteristicas = jsonb_set(p.Caracteristicas::jsonb, '{visibilidad}', '"Oculto"')::json
+    WHERE (p.Caracteristicas->>'visibilidad') = 'Activo'
+      AND NOT EXISTS (
+          SELECT 1 FROM Generar3 g, Venta v
+          WHERE g.Id_Venta = v.Id AND g.Id_Producto = p.Id
+            AND v.Fecha >= CURRENT_TIMESTAMP - INTERVAL '40 days');
+
+    UPDATE Servicio s
+    SET Caracteristicas = jsonb_set(COALESCE(s.Caracteristicas::jsonb, '{}'::jsonb), '{visibilidad}', '"Oculto"')::json
+    WHERE COALESCE(s.Caracteristicas->>'visibilidad', 'Activo') = 'Activo'
+      AND NOT EXISTS (
+          SELECT 1 FROM Generar4 g, Venta v
+          WHERE g.Id_Venta = v.Id AND g.Id_Servicio = s.Id
+            AND v.Fecha >= CURRENT_TIMESTAMP - INTERVAL '40 days');
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_ocultar_inactivos_generar3
+AFTER INSERT ON Generar3
+FOR EACH STATEMENT EXECUTE FUNCTION fn_ocultar_inactivos();
+
+CREATE TRIGGER trg_ocultar_inactivos_generar4
+AFTER INSERT ON Generar4
+FOR EACH STATEMENT EXECUTE FUNCTION fn_ocultar_inactivos();
+
+--DEMO
+--BEGIN;
+--SELECT COUNT(*) FILTER (WHERE Caracteristicas->>'visibilidad' = 'Activo') AS activos,
+--       COUNT(*) FILTER (WHERE Caracteristicas->>'visibilidad' = 'Oculto') AS ocultos FROM Producto;  
+--SELECT insertar_venta(900050, 222600, 0.19, NULL, FALSE, 'En proceso', '8735650-7', '20111222-3');
+--SELECT insertar_generar3(900050, 1, 1, 0, 1);
+--SELECT COUNT(*) FILTER (WHERE Caracteristicas->>'visibilidad' = 'Activo') AS activos,
+--      COUNT(*) FILTER (WHERE Caracteristicas->>'visibilidad' = 'Oculto') AS ocultos FROM Producto;   
+--SELECT Caracteristicas->>'visibilidad' FROM Producto WHERE Id = 1;   -- Activo (tiene una venta reciente)
+--ROLLBACK;
+
+---------------------------------------------------------------
+-- TRIGGER 4: Verificar que un producto/servicio solo pueda tener una oferta activa al mismo tiempo, no
+--tiene que ser periodo exacto
+
+
+CREATE OR REPLACE FUNCTION fn_oferta_unica_activa() RETURNS TRIGGER AS $$
+DECLARE
+    v_oferta_activa BOOLEAN;
+BEGIN
+    IF NEW.Id_Oferta IS DISTINCT FROM OLD.Id_Oferta AND OLD.Id_Oferta IS NOT NULL THEN
+        SELECT (o.Estado IS TRUE AND CURRENT_DATE BETWEEN OLD.FechaInicio AND OLD.FechaFin)
+        INTO v_oferta_activa
+        FROM Oferta o WHERE o.Id = OLD.Id_Oferta;
+ 
+        IF v_oferta_activa THEN
+            RAISE EXCEPTION 'No se puede asignar una nueva oferta: la oferta actual (%) sigue vigente hasta %.',
+                OLD.Id_Oferta, OLD.FechaFin;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+ 
+
+CREATE TRIGGER trg_oferta_unica_activa_producto
+BEFORE UPDATE ON Producto
+FOR EACH ROW EXECUTE FUNCTION fn_oferta_unica_activa();
+ 
+CREATE TRIGGER trg_oferta_unica_activa_servicio
+BEFORE UPDATE ON Servicio
+FOR EACH ROW EXECUTE FUNCTION fn_oferta_unica_activa();
+
+
+--DEMO
+--BEGIN;
+--UPDATE Producto SET Id_Oferta = NULL WHERE Id = 1008;
+--ROLLBACK;
+
+
+
+
+--------------------------------------------------------------
+-- TRIGGER 5: Verificar que si un producto/servicio posee oferta vigente, usar este precio, si no, usar el
+-- precio original. Usa f_inventario_2(TRUE).
+
+CREATE OR REPLACE FUNCTION fn_calcular_total_generar3()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_precio    NUMERIC;
+    v_descuento NUMERIC;
+BEGIN
+    SELECT (Caracteristicas->>'precio')::NUMERIC
+    INTO v_precio
+    FROM Producto
+    WHERE Id = NEW.Id_Producto;
+
+    IF v_precio IS NULL THEN
+        RAISE EXCEPTION 'El producto % no tiene precio definido.', NEW.Id_Producto;
+    END IF;
+
+    SELECT PrecioOferta
+    INTO v_descuento
+    FROM f_inventario_2(TRUE)
+    WHERE IdProducto = NEW.Id_Producto
+      AND CURRENT_DATE BETWEEN FechaInicio AND FechaFin
+    LIMIT 1;
+
+    NEW.TotalFinal := ROUND(v_precio * (1 - COALESCE(v_descuento, 0)) * NEW.Cantidad);
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_calcular_total_generar3
+BEFORE INSERT ON Generar3
+FOR EACH ROW
+EXECUTE FUNCTION fn_calcular_total_generar3();
+
+--DEMO 
+--BEGIN;
+--INSERT INTO Almacenar (Id_Inventario, Id_Producto, StockActual) VALUES (945, 1008, 50);
+--SELECT insertar_venta(900012, 84000, 0.19, NULL, FALSE, 'En proceso', '8735650-7', '22821635-6');
+--SELECT insertar_generar3(900012, 1008, 2, 0, 1);
+--SELECT Id_Producto, Cantidad, TotalFinal FROM Generar3 WHERE Id_Venta = 900012 AND Id_Producto = 1008;
+--ROLLBACK;
+
+-- ------------------------------------------------------------
+-- TRIGGER 5 (servicios): el precio del servicio está en Valorar
+-- (Id_Servicio, Id_Usuario, Precio);
+
+CREATE OR REPLACE FUNCTION fn_calcular_total_generar4()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_vendedor  VARCHAR(11);
+    v_precio    NUMERIC;
+    v_descuento NUMERIC;
+BEGIN
+    SELECT Id_Vendedor INTO v_vendedor FROM Venta WHERE Id = NEW.Id_Venta;
+
+    IF v_vendedor IS NULL THEN
+        RAISE EXCEPTION 'La venta % no existe.', NEW.Id_Venta;
+    END IF;
+
+    SELECT Precio INTO v_precio
+    FROM Valorar
+    WHERE Id_Servicio = NEW.Id_Servicio AND Id_Usuario = v_vendedor;
+
+    IF v_precio IS NULL THEN
+        RAISE EXCEPTION 'El servicio % no tiene precio valorado por el vendedor %.',
+            NEW.Id_Servicio, v_vendedor;
+    END IF;
+
+    SELECT o.PrecioOferta INTO v_descuento
+    FROM Servicio s, Oferta o
+    WHERE s.Id = NEW.Id_Servicio
+      AND s.Id_Oferta = o.Id
+      AND o.Estado IS TRUE
+      AND CURRENT_DATE BETWEEN s.FechaInicio AND s.FechaFin;
+
+    NEW.TotalFinal := ROUND(v_precio * (1 - COALESCE(v_descuento, 0)) * NEW.Cantidad);
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_calcular_total_generar4
+BEFORE INSERT ON Generar4
+FOR EACH ROW
+EXECUTE FUNCTION fn_calcular_total_generar4();
+
+--DEMO (el servicio 268 lo valoró el vendedor 15318461-5 en 68500 y no tiene oferta: TotalFinal debe ser 68500)
+--BEGIN;
+--SELECT insertar_venta(900006, 68500, 0.19, NULL, FALSE, 'En proceso', '15318461-5', '10001431-9');
+--SELECT insertar_generar4(900006, 268, 0, 1);
+--SELECT TotalFinal FROM Generar4 WHERE Id_Venta = 900006 AND Id_Servicio = 268;
+--ROLLBACK;
+
+
+
+
+
+-- ------------------------------------------------------------
+-- TRIGGER 6: Impedir la contratación de servicios con barrera etaria
+-- por parte de clientes que no cumplen la edad mínima.
+
+CREATE OR REPLACE FUNCTION fn_validar_edad_servicio() RETURNS TRIGGER AS $$
+DECLARE
+    v_restriccion BOOLEAN;
+    v_edad INTEGER;
+    v_id_cliente VARCHAR(11);
+    v_edad_minima CONSTANT INTEGER := 18;
+BEGIN
+    SELECT RestriccionEdad INTO v_restriccion FROM Servicio WHERE Id = NEW.Id_Servicio;
+    SELECT Id_Cliente INTO v_id_cliente FROM Venta WHERE Id = NEW.Id_Venta;
+    SELECT DATE_PART('year', AGE(FechaNacimiento)) INTO v_edad FROM Usuario WHERE Rut = v_id_cliente;
+
+    IF v_restriccion = TRUE AND (v_edad IS NULL OR v_edad < v_edad_minima) THEN
+        RAISE EXCEPTION 'El cliente % (edad %) no cumple la edad mínima (%) para contratar el servicio %.',
+            v_id_cliente, v_edad, v_edad_minima, NEW.Id_Servicio;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_a_validar_edad_servicio
+BEFORE INSERT ON Generar4
+FOR EACH ROW EXECUTE FUNCTION fn_validar_edad_servicio();
+
+--DEMO
+--BEGIN;
+--SELECT insertar_venta(900001, 5000, 0.19, NULL, FALSE, 'En proceso', '8870226-3', '20111222-3');
+--SELECT insertar_generar4(900001, 2, 1, 1);   -- error: cliente de 16 años
+--ROLLBACK;
+
+
+--------------------------------------------------------------
+-- TRIGGER 7: Detectar direcciones de correo electrónico registradas que presenten anomalías
+--estructurales o dominios de red inválidos, utilizando expresiones regulares o LIKE.
+
+
+CREATE OR REPLACE FUNCTION validar_correo_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.Correo IS NULL
+       OR NEW.Correo NOT LIKE '%_@_%.__%'
+       OR NEW.Correo LIKE '%@%@%'
+       OR NEW.Correo LIKE '@%'
+       OR NEW.Correo LIKE '%@'
+       OR NEW.Correo LIKE '%..%'
+       OR NEW.Correo LIKE '% %'
+       OR NEW.Correo LIKE '.%'
+       OR NEW.Correo LIKE '%.'
+       OR NEW.Correo LIKE '%.@%'
+       OR NEW.Correo LIKE '%@.%'
+    THEN
+        RAISE EXCEPTION
+            'Correo electrónico inválido: %',
+            NEW.Correo;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_validar_correo
+BEFORE INSERT OR UPDATE ON Correo
+FOR EACH ROW
+EXECUTE FUNCTION validar_correo_trigger();
+
+-- DEMO
+-- BEGIN;
+-- SELECT insertar_correo('correo..malo@@dominio.com', '23099899-K', NULL);   -- error
+-- ROLLBACK;
+
+
+-------------------------------------------------------------------
+-- TRIGGER 8: Alerta de inventario crítico: productos cuyo stock
+-- baja de las diez unidades.
+
+CREATE OR REPLACE FUNCTION fn_alerta_stock_critico() RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.StockActual < 10 THEN
+        RAISE NOTICE 'ALERTA: el producto % (inventario %) quedó con stock crítico (% unidades, menor a 10).',
+            NEW.Id_Producto, NEW.Id_Inventario, NEW.StockActual;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_alerta_stock_critico
+AFTER INSERT OR UPDATE ON Almacenar
+FOR EACH ROW EXECUTE FUNCTION fn_alerta_stock_critico();
+
+--DEMO
+--BEGIN;
+--SELECT actualizar_almacenar(5, 681, 964);   -- NOTICE de stock crítico
+--ROLLBACK;
+
+--------------------------------------------------------------
+-- TRIGGER 9:Cada compra que se concrete de un producto descontar el stock
+
+CREATE OR REPLACE FUNCTION fn_venta_concretada(p_estado VARCHAR) RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN COALESCE(p_estado IN ('Pagado', 'Entregado', 'Completada'), FALSE);
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION fn_descontar_stock_producto(p_id_producto INTEGER, p_cantidad INTEGER)
+RETURNS VOID AS $$
+DECLARE
+    r           Almacenar%ROWTYPE;
+    v_restante  INTEGER := p_cantidad;
+    v_tomar     INTEGER;
+    v_total     INTEGER;
+BEGIN
+    SELECT COALESCE(SUM(StockActual), 0) INTO v_total
+    FROM Almacenar WHERE Id_Producto = p_id_producto;
+
+    IF v_total < p_cantidad THEN
+        RAISE EXCEPTION 'Stock insuficiente para el producto %: se piden % unidades y hay % en total.',
+            p_id_producto, p_cantidad, v_total;
+    END IF;
+
+    FOR r IN SELECT *
+             FROM Almacenar
+             WHERE Id_Producto = p_id_producto AND StockActual > 0
+             ORDER BY StockActual DESC
+             FOR UPDATE
+    LOOP
+        EXIT WHEN v_restante <= 0;
+        v_tomar := LEAST(r.StockActual, v_restante);
+
+        UPDATE Almacenar
+        SET StockActual = StockActual - v_tomar
+        WHERE Id_Inventario = r.Id_Inventario AND Id_Producto = p_id_producto;
+
+        v_restante := v_restante - v_tomar;
+    END LOOP;
+
+    IF v_restante > 0 THEN
+        RAISE EXCEPTION 'Stock insuficiente para el producto % (faltaron % unidades).',
+            p_id_producto, v_restante;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION fn_descontar_stock_generar3() RETURNS TRIGGER AS $$
+DECLARE
+    v_estado VARCHAR(20);
+BEGIN
+    SELECT Estado INTO v_estado FROM Venta WHERE Id = NEW.Id_Venta;
+
+    IF fn_venta_concretada(v_estado) THEN
+        PERFORM fn_descontar_stock_producto(NEW.Id_Producto, NEW.Cantidad);
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_descontar_stock_venta
+AFTER INSERT ON Generar3
+FOR EACH ROW EXECUTE FUNCTION fn_descontar_stock_generar3();
+
+
+CREATE OR REPLACE FUNCTION fn_descontar_stock_estado_venta() RETURNS TRIGGER AS $$
+DECLARE
+    r Generar3%ROWTYPE;
+BEGIN
+    IF fn_venta_concretada(NEW.Estado) AND NOT fn_venta_concretada(OLD.Estado) THEN
+        FOR r IN SELECT * FROM Generar3 WHERE Id_Venta = NEW.Id LOOP
+            PERFORM fn_descontar_stock_producto(r.Id_Producto, r.Cantidad);
+        END LOOP;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_descontar_stock_estado_venta
+AFTER UPDATE OF Estado ON Venta
+FOR EACH ROW EXECUTE FUNCTION fn_descontar_stock_estado_venta();
+
+
+--DEMO
+--BEGIN;
+--SELECT Id_Inventario, StockActual FROM Almacenar WHERE Id_Producto = 1 ORDER BY Id_Inventario;
+--SELECT COALESCE(SUM(StockActual),0) AS stock_inicial FROM Almacenar WHERE Id_Producto = 1;        -- 488
+--SELECT insertar_venta(900010, 445200, 0.19, CURRENT_TIMESTAMP::timestamp, FALSE, 'En proceso', '8735650-7', '20111222-3');
+--SELECT insertar_generar3(900010, 1, 2, 445200, 1);
+--SELECT COALESCE(SUM(StockActual),0) AS stock_en_proceso FROM Almacenar WHERE Id_Producto = 1;    -- 488: la venta aún no se concreta
+--SELECT actualizar_venta(445200, 0.19, CURRENT_TIMESTAMP::timestamp, FALSE, 'Pagado', '8735650-7', '20111222-3', NULL, 900010);
+--SELECT COALESCE(SUM(StockActual),0) AS stock_pagado FROM Almacenar WHERE Id_Producto = 1;        -- 486: baja 2 unidades
+--ROLLBACK;
+
+
+
+---------------------------------------------------------------
+-- TRIGGER 10: Cada devolución que se concrete de un producto aumentar el stock.
+
+CREATE OR REPLACE FUNCTION fn_aumentar_stock_devolucion() RETURNS TRIGGER AS $$
+DECLARE
+    r     Generar1%ROWTYPE;
+    v_alm Almacenar%ROWTYPE;
+BEGIN
+    IF NEW.Estado = 'Entregado' AND OLD.Estado IS DISTINCT FROM 'Entregado' THEN
+        FOR r IN SELECT * FROM Generar1 WHERE Id_Devolucion = NEW.Id LOOP
+            SELECT * INTO v_alm
+            FROM Almacenar
+            WHERE Id_Producto = r.Id_Producto
+            ORDER BY StockActual ASC
+            LIMIT 1
+            FOR UPDATE;
+
+            IF FOUND THEN
+                UPDATE Almacenar
+                SET StockActual = StockActual + r.Cantidad
+                WHERE Id_Inventario = v_alm.Id_Inventario
+                  AND Id_Producto   = v_alm.Id_Producto;
+            ELSE
+                RAISE WARNING 'No existe registro de stock para el producto % al procesar la devolución %.',
+                    r.Id_Producto, NEW.Id;
+            END IF;
+        END LOOP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_aumentar_stock_devolucion
+AFTER UPDATE OF Estado ON Devolucion
+FOR EACH ROW EXECUTE FUNCTION fn_aumentar_stock_devolucion();
+
+--DEMO: la devolución se concreta al pasar a 'Entregado' aumenta el stock
+--BEGIN;
+--SELECT Id, Estado FROM Devolucion WHERE Id = 699;                                                   -- Despachado
+--SELECT Id_Inventario, StockActual FROM Almacenar WHERE Id_Producto = 533 ORDER BY Id_Inventario;
+--SELECT COALESCE(SUM(StockActual),0) AS stock_antes FROM Almacenar WHERE Id_Producto = 533;
+--UPDATE Devolucion SET Estado = 'Entregado' WHERE Id = 699;
+--SELECT COALESCE(SUM(StockActual),0) AS stock_despues FROM Almacenar WHERE Id_Producto = 533;        -- stock_antes + 1
+--SELECT Id_Inventario, StockActual FROM Almacenar WHERE Id_Producto = 533 ORDER BY Id_Inventario;
+--ROLLBACK;
+
+---------------------------------------------------------------
+--Trigger 11: Ocultar productos que tengan stock 0 para ofertar (ajustar tabla si es necesario).
+
+
+CREATE OR REPLACE FUNCTION fn_ocultar_producto_sin_stock() RETURNS TRIGGER AS $$
+DECLARE
+    v_stock_total INTEGER;
+    v_visibilidad TEXT;
+BEGIN
+    SELECT COALESCE(SUM(StockActual), 0) INTO v_stock_total
+    FROM Almacenar
+    WHERE Id_Producto = NEW.Id_Producto;
+
+    v_visibilidad := CASE WHEN v_stock_total <= 0 THEN 'Oculto' ELSE 'Activo' END;
+
+    UPDATE Producto
+    SET Caracteristicas = jsonb_set(
+        Caracteristicas::jsonb,
+        '{visibilidad}',
+        to_jsonb(v_visibilidad),
+        TRUE
+    )::json
+    WHERE Id = NEW.Id_Producto
+      AND (Caracteristicas->>'visibilidad') IS DISTINCT FROM v_visibilidad;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_ocultar_producto_sin_stock
+AFTER INSERT OR UPDATE ON Almacenar
+FOR EACH ROW EXECUTE FUNCTION fn_ocultar_producto_sin_stock();
+
+--DEMO
+--BEGIN;
+--SELECT Caracteristicas->>'visibilidad' AS visibilidad_con_stock_0 FROM Producto WHERE Id = 184;
+--SELECT actualizar_almacenar(0, 945, 184);
+--SELECT Caracteristicas->>'visibilidad' AS visibilidad_con_stock_0 FROM Producto WHERE Id = 184;
+--ROLLBACK;
+
+------------------------------------------------------------
+--Trigger 12:  Cálculo Automático del Total de la Factura/boleta: Un trigger que se 
+-- active antes de insertar o actualizar una Factura. 
+-- Calculará automáticamente el campo Total sumando el Valor Neto y el IVA
+
+CREATE OR REPLACE FUNCTION calcular_total_venta()
+RETURNS TRIGGER
+AS $$
+DECLARE
+    total NUMERIC;
+BEGIN
+
+    total := NEW.Neto + (NEW.Neto * NEW.Iva);
+
+    RAISE NOTICE 'Total de la venta: %', total;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE TRIGGER trigger_calcular_total_venta
+BEFORE INSERT OR UPDATE ON Venta
+FOR EACH ROW
+EXECUTE FUNCTION calcular_total_venta();
+
+--DEMO
+--BEGIN;
+--INSERT INTO Venta(Id, Neto, Iva, Fecha, RequiereDespacho, Estado, Id_Vendedor, Id_Cliente) VALUES
+--(1022, 25000, 0.19, CURRENT_DATE, TRUE, 'Pagado', '10001431-9', '15522831-8');
+--ROLLBACK;
+
+--------------------------------------------------------------
+-- TRIGGER 13: Validar la consistencia numérica, confirmando que el importe total abonado coincide con la suma aritmética de brutos e IVA, restando el descuento
+
+CREATE OR REPLACE FUNCTION fn_validar_consistencia_venta()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_id_venta        INTEGER;
+    v_neto            INTEGER;
+    v_iva             NUMERIC;
+    v_requiere        BOOLEAN;
+    v_total_productos NUMERIC;
+    v_total_servicios NUMERIC;
+    v_envio           NUMERIC := 0;
+    v_esperado        NUMERIC;
+    v_nota            VARCHAR(200);
+    v_factor          NUMERIC := 1;
+BEGIN
+    IF TG_TABLE_NAME = 'venta' THEN
+        v_id_venta := NEW.Id;
+    ELSE
+        v_id_venta := NEW.Id_Venta;
+    END IF;
+
+    SELECT Neto, Iva, RequiereDespacho, Nota INTO v_neto, v_iva, v_requiere, v_nota
+    FROM Venta
+    WHERE Id = v_id_venta;
+
+    IF NOT FOUND THEN
+        RETURN NULL;
+    END IF;
+
+    IF v_iva <> 0.19 THEN
+        RAISE EXCEPTION 'IVA inválido en Venta %: se registró % y debe ser 0.19 (19%%).',
+            v_id_venta, v_iva;
+    END IF;
+
+    SELECT COALESCE(SUM(TotalFinal), 0) INTO v_total_productos
+    FROM Generar3 WHERE Id_Venta = v_id_venta;
+
+    SELECT COALESCE(SUM(TotalFinal), 0) INTO v_total_servicios
+    FROM Generar4 WHERE Id_Venta = v_id_venta;
+
+    IF v_requiere THEN
+        SELECT COALESCE(SUM(NULLIF(d.DatosLogisticos->>'costo_envio', '')::NUMERIC), 0)
+        INTO v_envio
+        FROM Generar2 g2
+        JOIN Despacho d ON d.Id = g2.Id_Despacho
+        WHERE g2.Id_Venta = v_id_venta;
+    END IF;
+
+    -- Si la venta tiene descuento (lo indica Venta.Nota), el Neto debe ser la
+    -- suma de los detalles con ese descuento aplicado.
+    v_factor := CASE WHEN v_nota LIKE 'Descuento 10%' THEN 0.90
+                     WHEN v_nota LIKE 'Descuento 5%'  THEN 0.95
+                     ELSE 1 END;
+
+    v_esperado := ROUND((v_total_productos + v_total_servicios + v_envio) * v_factor);
+
+    IF v_esperado <> v_neto THEN
+        RAISE EXCEPTION
+            'Inconsistencia numérica en Venta %: Neto registrado = %, esperado = % (productos % + servicios % + envío %), bruto esperado con IVA = %.',
+            v_id_venta, v_neto, v_esperado, v_total_productos, v_total_servicios, v_envio,
+            ROUND(v_esperado * (1 + v_iva));
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER trg_validar_consistencia_venta
+AFTER INSERT ON Venta
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION fn_validar_consistencia_venta();
+
+
+CREATE CONSTRAINT TRIGGER trg_validar_consistencia_generar3
+AFTER INSERT ON Generar3
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION fn_validar_consistencia_venta();
+
+
+CREATE CONSTRAINT TRIGGER trg_validar_consistencia_generar4
+AFTER INSERT ON Generar4
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION fn_validar_consistencia_venta();
+
+
+CREATE CONSTRAINT TRIGGER trg_validar_consistencia_generar2
+AFTER INSERT ON Generar2
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION fn_validar_consistencia_venta();
+
+--DEMO  (Neto = 15000 pero el producto 1 vale 222600 debe dar error)
+--BEGIN;
+--SELECT insertar_venta(900021, 15000, 0.19, NULL, FALSE, 'En proceso', '8735650-7', '20111222-3');
+--SELECT insertar_generar3(900021, 1, 1, 0, 1);
+--SET CONSTRAINTS ALL IMMEDIATE;   -- fuerza la validación (normalmente ocurre en el COMMIT)
+--ROLLBACK;
+
+
+---------------------------------------------------------------
+--Trigger 14: Validación y Corrección del Dígito Verificador del RUT: Un trigger que se active antes de
+--insertar o actualizar un Cliente o Emprendedor. Validará el dígito verificador del RUT; si es
+--incorrecto, lo corregirá y generará una advertencia (NOTICE)
+
+CREATE OR REPLACE FUNCTION fn_calcular_dv(numero BIGINT) RETURNS VARCHAR(1) AS $$
+DECLARE
+    suma INTEGER := 0;
+    factor INTEGER := 2;
+    resto INTEGER := 0 ;
+BEGIN
+    WHILE numero > 0 LOOP
+        suma := suma + (numero % 10) * factor;
+        numero := numero / 10;
+        factor := factor + 1;
+        IF factor > 7 THEN
+            factor := 2;
+        END IF;
+    END LOOP;
+
+    resto := 11 - (suma % 11);
+
+    IF resto = 11 THEN RETURN '0';
+    ELSIF resto = 10 THEN RETURN 'K';
+    ELSE RETURN resto::TEXT;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION fn_validar_corregir_rut() RETURNS TRIGGER AS $$
+DECLARE
+    numero_rut BIGINT;
+    dv_ingresado VARCHAR(1);
+    dv_correcto VARCHAR(1);
+BEGIN
+    numero_rut := SPLIT_PART(NEW.Rut, '-', 1)::BIGINT;
+    dv_ingresado := UPPER(SPLIT_PART(NEW.Rut, '-', 2));
+    dv_correcto := fn_calcular_dv(numero_rut);
+
+    IF dv_ingresado <> dv_correcto THEN
+        RAISE NOTICE 'RUT % tenía el DV incorrecto (%); se corrigió a %-%.',
+            NEW.Rut, dv_ingresado, numero_rut, dv_correcto;
+        NEW.Rut := numero_rut || '-' || dv_correcto;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_validar_corregir_rut
+BEFORE INSERT OR UPDATE OF Rut ON Usuario
+FOR EACH ROW
+WHEN (NEW.TipoUsuario IN ('cliente','vendedor','ambos'))
+EXECUTE FUNCTION fn_validar_corregir_rut();
+
+--DEMO
+--BEGIN;
+--SELECT insertar_usuario('90000008-5', 'Cliente DV Malo', 'clave123', '1992-02-02', CURRENT_DATE, 'cliente');
+--SELECT Rut FROM Usuario WHERE Rut = '90000008-1';
+--ROLLBACK;
+
+---------------------------------------------------------------
+-- TRIGGER 15: Al crear una venta sin fecha, se establece la fecha y hora actual.
+
+
+CREATE OR REPLACE FUNCTION fn_fecha_automatica_venta() RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.Fecha IS NULL THEN
+        NEW.Fecha := CURRENT_TIMESTAMP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_fecha_automatica_venta
+BEFORE INSERT ON Venta
+FOR EACH ROW EXECUTE FUNCTION fn_fecha_automatica_venta();
+
+--DEMO
+--BEGIN;
+--SELECT insertar_venta(900002, 8000, 0.19, NULL, FALSE, 'En proceso', '8735650-7', '20111222-3');   -- fecha NULL
+--SELECT Id, Fecha FROM Venta WHERE Id = 900002;
+--ROLLBACK;
+
+
+--------------------------------------------------------------
+-- TRIGGER 16: Evitar eliminar clientes con compras sin entregar o
+-- realizadas en los últimos 60 días. 
+
+CREATE OR REPLACE FUNCTION fn_evitar_eliminar_cliente() RETURNS TRIGGER AS $$
+DECLARE
+    v_pendientes INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_pendientes
+    FROM Venta v
+    LEFT JOIN Generar2 g2 ON g2.Id_Venta = v.Id
+    LEFT JOIN Despacho d ON d.Id = g2.Id_Despacho
+    WHERE v.Id_Cliente = OLD.Rut
+      AND v.Estado <> 'Anulado'
+      AND (
+            v.Estado IN ('Pendiente','En proceso','Pagado')
+            OR (d.Id IS NOT NULL AND d.Estado <> 'Entregado')
+            OR v.Fecha >= CURRENT_DATE - INTERVAL '60 days'
+          );
+
+    IF v_pendientes > 0 THEN
+        RAISE EXCEPTION 'No se puede eliminar al cliente %: tiene compras sin entregar o dentro de los últimos 60 días.', OLD.Rut;
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_evitar_eliminar_cliente
+BEFORE DELETE ON Usuario
+FOR EACH ROW
+WHEN (OLD.TipoUsuario IN ('cliente','ambos'))
+EXECUTE FUNCTION fn_evitar_eliminar_cliente();
+
+--DEMO
+--BEGIN;
+--SELECT eliminar_usuario('20111222-3');
+--ROLLBACK;
+
+
+--------------------------------------------------------------
+-- TRIGGER 17: Evitar que el stock quede negativo.
+
+CREATE OR REPLACE FUNCTION fn_evitar_stock_negativo() RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.StockActual < 0 THEN
+        RAISE EXCEPTION 'Stock inválido: el producto % (inventario %) no puede quedar con stock negativo (%).',
+            NEW.Id_Producto, NEW.Id_Inventario, NEW.StockActual;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_evitar_stock_negativo
+BEFORE INSERT OR UPDATE ON Almacenar
+FOR EACH ROW EXECUTE FUNCTION fn_evitar_stock_negativo();
+
+--DEMO
+--BEGIN;
+--SELECT actualizar_almacenar(-5, 681, 964);
+--ROLLBACK;
+
+
+--------------------------------------------------------------
+-- TRIGGER 18:  Impedir Modificación de Facturas/Boletas Emitidas: Prevenga la modificación de cualquier 
+--campo de una Factura/Boleta una vez que ha sido marcada como “Pagada” y/o su estado esta como “Entregado”
+
+CREATE OR REPLACE FUNCTION fn_bloquear_venta_pagada() RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.Estado = 'Entregado' THEN
+        RAISE EXCEPTION 'No se puede modificar la Venta % porque ya está marcada como Entregado.', OLD.Id;
+    ELSIF OLD.Estado = 'Pagado' THEN
+        IF (NEW.Id, NEW.Neto, NEW.Iva, NEW.Fecha, NEW.RequiereDespacho, NEW.Id_Vendedor, NEW.Id_Cliente, NEW.Nota)
+           IS DISTINCT FROM
+           (OLD.Id, OLD.Neto, OLD.Iva, OLD.Fecha, OLD.RequiereDespacho, OLD.Id_Vendedor, OLD.Id_Cliente, OLD.Nota)
+           OR NEW.Estado NOT IN ('Pagado', 'Entregado')
+        THEN
+            RAISE EXCEPTION 'No se puede modificar la Venta % porque ya está Pagada (solo puede pasar a Entregado).', OLD.Id;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_bloquear_venta_pagada
+BEFORE UPDATE ON Venta
+FOR EACH ROW EXECUTE FUNCTION fn_bloquear_venta_pagada();
+
+--DEMO
+--BEGIN;
+--SELECT actualizar_venta(999999, 0.19, '2023-11-19 16:38:01', TRUE, 'Pagado', '7347931-2', '10128434-4', NULL, 8);      -- error: la venta 8 está Pagada
+--ROLLBACK;
+
+--------------------------------------------------------------
+-- TRIGGER 19: Los clientes pueden seleccionar uno o varios productos para solicitar una
+-- cotización, esta debe almacenar la fecha, productos, valores y tendrá una duración de 15 días,
+-- después de eso los precios deberán ajustarse automáticamente cada semana y después de 45 días
+-- debe ser eliminada la cotización.
+
+CREATE OR REPLACE FUNCTION gestionar_cotizaciones()
+RETURNS TRIGGER
+AS $$
+BEGIN
+
+    IF OLD.SecionIniciada IS DISTINCT FROM NEW.SecionIniciada
+       AND NEW.SecionIniciada = TRUE THEN
+
+        -- 1. Eliminar cotizaciones que cumplieron 45 días
+        DELETE FROM Cotizacion c
+        WHERE c.FechaCreacion <= CURRENT_DATE - 45
+          AND (
+              EXISTS (
+                  SELECT 1
+                  FROM Solicitar1 s1
+                  WHERE s1.Id_Cotizacion = c.Id
+                    AND s1.Id_Usuario = NEW.Rut
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM Solicitar2 s2
+                  WHERE s2.Id_Cotizacion = c.Id
+                    AND s2.Id_Usuario = NEW.Rut
+              )
+          );
+
+        UPDATE Solicitar1 s
+        SET Precio = (p.Caracteristicas->>'precio')::INTEGER
+        FROM Producto p, Cotizacion c
+        WHERE s.Id_Producto = p.Id
+          AND s.Id_Cotizacion = c.Id
+          AND s.Id_Usuario = NEW.Rut
+          AND c.FechaCreacion <= CURRENT_DATE - 15
+          AND CURRENT_DATE >=
+              COALESCE(c.FechaUltimaActualizacion, c.FechaCreacion) + 7
+          AND c.FechaCreacion > CURRENT_DATE - 45
+          AND p.Caracteristicas->>'precio' IS NOT NULL;
+
+        UPDATE Solicitar2 s
+        SET Precio = v.Precio
+        FROM Valorar v, Cotizacion c
+        WHERE s.Id_Servicio = v.Id_Servicio
+          AND s.Id_Oferente = v.Id_Usuario
+          AND s.Id_Cotizacion = c.Id
+          AND s.Id_Usuario = NEW.Rut
+          AND c.FechaCreacion <= CURRENT_DATE - 15
+          AND CURRENT_DATE >=
+              COALESCE(c.FechaUltimaActualizacion, c.FechaCreacion) + 7
+          AND c.FechaCreacion > CURRENT_DATE - 45;
+
+        UPDATE Cotizacion c
+        SET FechaUltimaActualizacion = CURRENT_DATE
+        WHERE c.FechaCreacion <= CURRENT_DATE - 15
+          AND CURRENT_DATE >=
+              COALESCE(c.FechaUltimaActualizacion, c.FechaCreacion) + 7
+          AND c.FechaCreacion > CURRENT_DATE - 45
+          AND (
+              EXISTS (
+                  SELECT 1
+                  FROM Solicitar1 s1
+                  WHERE s1.Id_Cotizacion = c.Id
+                    AND s1.Id_Usuario = NEW.Rut
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM Solicitar2 s2
+                  WHERE s2.Id_Cotizacion = c.Id
+                    AND s2.Id_Usuario = NEW.Rut
+              )
+          );
+
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_gestionar_cotizaciones
+AFTER UPDATE OF SecionIniciada
+ON Usuario
+FOR EACH ROW
+WHEN (
+    OLD.SecionIniciada IS DISTINCT FROM NEW.SecionIniciada
+    AND NEW.SecionIniciada = TRUE
+)
+EXECUTE FUNCTION gestionar_cotizaciones();
+
+--DEMO
+--BEGIN;
+--UPDATE Cotizacion SET FechaCreacion = CURRENT_DATE - 15 WHERE Id = 2;
+--UPDATE Usuario SET SecionIniciada = TRUE WHERE Rut = '5655383-5';
+--SELECT Precio FROM Solicitar1 WHERE Id_Cotizacion = 2;                    -- 188300 (antes 627600): precio actual del producto
+--SELECT FechaUltimaActualizacion FROM Cotizacion WHERE Id = 2;             -- hoy
+--UPDATE Cotizacion SET FechaCreacion = CURRENT_DATE - 46 WHERE Id = 2;
+--UPDATE Usuario SET SecionIniciada = FALSE WHERE Rut = '5655383-5';
+--UPDATE Usuario SET SecionIniciada = TRUE WHERE Rut = '5655383-5';
+--SELECT COUNT(*) AS cotizaciones FROM Cotizacion WHERE Id = 2;             -- 0: se eliminó a los 45 días
+--ROLLBACK;
+
+
+--------------------------------------------------------------
+-- TRIGGER 20: Verificar disponibilidad al añadir un producto a la
+-- compra, el carrito o la cotización. Advierte si se piden más unidades
+-- que las existentes en stock.
+
+CREATE OR REPLACE FUNCTION fn_verificar_disponibilidad_stock() RETURNS TRIGGER AS $$
+DECLARE
+    v_stock_total INTEGER;
+BEGIN
+    SELECT COALESCE(SUM(StockActual), 0) INTO v_stock_total
+    FROM Almacenar WHERE Id_Producto = NEW.Id_Producto;
+
+    IF NEW.Cantidad > v_stock_total THEN
+        RAISE WARNING 'Se solicitan % unidades del producto %, pero solo hay % disponibles en stock.',
+            NEW.Cantidad, NEW.Id_Producto, v_stock_total;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Compra
+CREATE TRIGGER trg_verificar_disponibilidad_generar3
+BEFORE INSERT ON Generar3
+FOR EACH ROW EXECUTE FUNCTION fn_verificar_disponibilidad_stock();
+
+-- Carrito
+CREATE TRIGGER trg_verificar_disponibilidad_crear3
+BEFORE INSERT ON Crear3
+FOR EACH ROW EXECUTE FUNCTION fn_verificar_disponibilidad_stock();
+
+-- Cotización
+CREATE TRIGGER trg_verificar_disponibilidad_solicitar1
+BEFORE INSERT ON Solicitar1
+FOR EACH ROW EXECUTE FUNCTION fn_verificar_disponibilidad_stock();
+
+-- DEMO 
+--BEGIN;
+--SELECT insertar_carritocompra(999999, 'Activo', CURRENT_DATE::timestamp);
+--SELECT insertar_crear3(1, 999999, '10001431-9', 9999, 5000);
+--ROLLBACK;
+
+
+---------------------------------------------------------------
+--TRIGGER 21: Validación Masiva y Corrección de RUTs: Desarrolla una función que itere sobre todos los
+--clientes y personal en la base de datos para validar el dígito verificador de sus RUTs. En
+--caso de ser incorrecto enviar una una advertencia.
+--Requiere fn_calcular_dv (Trigger 14)
+
+CREATE OR REPLACE FUNCTION fn_validar_ruts_masivo() RETURNS INTEGER AS $$
+DECLARE
+    r                 Usuario%ROWTYPE;
+    numero_rut        BIGINT;
+    dv_ingresado      VARCHAR(1);
+    dv_correcto       VARCHAR(1);
+    total_revisados   INTEGER := 0;
+    total_incorrectos INTEGER := 0;
+BEGIN
+    FOR r IN SELECT * FROM Usuario LOOP
+        total_revisados := total_revisados + 1;
+        numero_rut   := SPLIT_PART(r.Rut, '-', 1)::BIGINT;
+        dv_ingresado := UPPER(SPLIT_PART(r.Rut, '-', 2));
+        dv_correcto  := fn_calcular_dv(numero_rut);
+
+        IF dv_ingresado <> dv_correcto THEN
+            RAISE WARNING 'RUT inválido: % (dígito correcto: %)', r.Rut, dv_correcto;
+            total_incorrectos := total_incorrectos + 1;
+        END IF;
+    END LOOP;
+
+    RAISE NOTICE 'Revisión terminada: % RUT revisados, % con problemas.',
+        total_revisados, total_incorrectos;
+
+    RETURN total_incorrectos;
+END;
+$$ LANGUAGE plpgsql;
+
+-- DEMO
+--BEGIN;
+--SELECT fn_validar_ruts_masivo();   -- 3 RUT con dígito incorrecto: 20111222-3, 21333444-5, 90000001-1
+--ROLLBACK;
+
+
+--------------------------------------------------------
+-- Trigger 22:Los clientes que no hayan tenido actividad (compras) en los últimos 6 meses asignarles
+-- un 5% dedescuento en la próxima compra.
+
+CREATE OR REPLACE FUNCTION revisar_descuento_carrito()
+RETURNS TRIGGER
+AS $$
+DECLARE
+    v_id_usuario    VARCHAR(11);
+    v_tiene_marca   BOOLEAN;
+    v_ultima_compra TIMESTAMP;
+BEGIN
+    SELECT c3.Id_Usuario
+    INTO v_id_usuario
+    FROM Crear3 AS c3
+    WHERE c3.Id_Carrito = NEW.Id
+    LIMIT 1;
+
+    IF v_id_usuario IS NULL THEN
+        SELECT c4.Id_Usuario
+        INTO v_id_usuario
+        FROM Crear4 AS c4
+        WHERE c4.Id_Carrito = NEW.Id
+        LIMIT 1;
+    END IF;
+
+    IF v_id_usuario IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT (u.Descuentos->>'descuento5%') IS NOT NULL
+    INTO v_tiene_marca
+    FROM Usuario AS u
+    WHERE u.Rut = v_id_usuario;
+
+    IF COALESCE(v_tiene_marca, FALSE) THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT MAX(v.Fecha)
+    INTO v_ultima_compra
+    FROM Venta AS v
+    WHERE v.Id_Cliente = v_id_usuario;
+
+    IF v_ultima_compra IS NOT NULL
+       AND v_ultima_compra <= CURRENT_TIMESTAMP - INTERVAL '6 months' THEN
+        UPDATE Usuario AS u
+        SET Descuentos = (COALESCE(u.Descuentos::jsonb, '{}'::jsonb)
+                          || jsonb_build_object('descuento5%', CURRENT_DATE))::json
+        WHERE u.Rut = v_id_usuario;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_revisar_descuento_carrito
+AFTER UPDATE ON CarritoCompra
+FOR EACH ROW
+EXECUTE FUNCTION revisar_descuento_carrito();
+
+
+CREATE OR REPLACE FUNCTION asignar_descuento_inactivos()
+RETURNS INTEGER AS $$
+DECLARE
+    v_afectados INTEGER;
+BEGIN
+    UPDATE Usuario u
+    SET Descuentos = (COALESCE(u.Descuentos::jsonb, '{}'::jsonb)
+                      || jsonb_build_object('descuento5%', CURRENT_DATE))::json
+    WHERE (u.Descuentos->>'descuento5%') IS NULL
+      AND EXISTS (SELECT 1 FROM Venta v WHERE v.Id_Cliente = u.Rut)
+      AND NOT EXISTS (
+            SELECT 1 FROM Venta v
+            WHERE v.Id_Cliente = u.Rut
+              AND v.Fecha > CURRENT_TIMESTAMP - INTERVAL '6 months');
+
+    GET DIAGNOSTICS v_afectados = ROW_COUNT;
+    RETURN v_afectados;
+END;
+$$ LANGUAGE plpgsql;
+
+--DEMO (falla: el cliente tiene una compra reciente, no es inactivo y no recibe el 5%)
+--BEGIN;
+--SELECT insertar_venta(995001, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');   -- compra reciente (hoy)
+--SELECT asignar_descuento_inactivos();
+--SELECT Rut, Descuentos FROM Usuario WHERE Rut = '15522831-8';   -- NULL: tiene compra reciente, no recibe el 5%
+--ROLLBACK;
+
+----------------------------------------------------
+--Trigger 23:La duración del descuento de 5% que se asigne a un cliente debe durar solo 45 días.
+
+CREATE OR REPLACE FUNCTION aplicar_descuento_inactividad()
+RETURNS TRIGGER
+AS $$
+DECLARE
+    v_fecha TIMESTAMP := COALESCE(NEW.Fecha, CURRENT_TIMESTAMP);
+    v_marca DATE;
+BEGIN
+    SELECT (Descuentos->>'descuento5%')::DATE
+    INTO v_marca
+    FROM Usuario
+    WHERE Rut = NEW.Id_Cliente;
+
+    IF v_marca IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    -- vencida (más de 45 días): se elimina y no se aplica
+    IF v_fecha::DATE > v_marca + 45 THEN
+        UPDATE Usuario
+        SET Descuentos = (Descuentos::jsonb - 'descuento5%')::json
+        WHERE Rut = NEW.Id_Cliente;
+        RETURN NEW;
+    END IF;
+
+    -- si el T1 ya aplicó el 10%, no se acumula
+    IF NEW.Nota IS NOT NULL THEN
+        RETURN NEW;
+    END IF;
+
+    NEW.Neto := ROUND(NEW.Neto * 0.95);
+    NEW.Nota := 'Descuento 5% por inactividad de 6 meses (vigencia 45 días)';
+
+    UPDATE Usuario
+    SET Descuentos = (Descuentos::jsonb - 'descuento5%')::json
+    WHERE Rut = NEW.Id_Cliente;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_02_descuento_inactividad
+BEFORE INSERT ON Venta
+FOR EACH ROW
+EXECUTE FUNCTION aplicar_descuento_inactividad();
+
+--DEMO T23 (falla: la marca de 5% tiene más de 45 días, no se aplica y se elimina)
+--BEGIN;
+--UPDATE Usuario SET Descuentos = jsonb_build_object('descuento5%', CURRENT_DATE - 50)::json WHERE Rut = '15522831-8';
+--SELECT insertar_venta(995002, 10000, 0.19, NULL, FALSE, 'En proceso', '10001431-9', '15522831-8');
+--SELECT Id, Neto, Nota FROM Venta WHERE Id = 995002;                 -- 10000 sin descuento: la marca tiene 50 días
+--SELECT Descuentos FROM Usuario WHERE Rut = '15522831-8';            -- {}: la marca vencida se eliminó
+--ROLLBACK;

@@ -1,0 +1,5012 @@
+--Consolidación Temporal y Volumetría de Transacciones
+
+--Consulta 1: Determinar cuántos clientes han comprado un producto X en un período determinado
+CREATE OR REPLACE FUNCTION f_consolidacion_1(nombre_producto VARCHAR, fecha_inicio DATE, fecha_fin DATE) RETURNS INTEGER AS $$
+DECLARE
+    resultado INTEGER;
+BEGIN
+    SELECT COUNT(DISTINCT v.Id_Cliente)
+    INTO resultado
+    FROM Venta v, Generar3 g3, Producto p
+    WHERE g3.Id_Venta = v.Id
+    AND p.Id = g3.Id_Producto
+    AND LOWER(p.Nombre) = LOWER(nombre_producto)
+    AND v.Fecha::DATE BETWEEN fecha_inicio AND fecha_fin;
+    RETURN resultado;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT f_consolidacion_1('Laptop Apple MacBook Air', '2022-01-01', '2024-12-31');
+
+
+
+--Consulta 2: Determinar los clientes que han comprado un determinado producto X 
+--en un período determinado
+
+CREATE OR REPLACE FUNCTION f_consolidacion_2(nombre_producto VARCHAR, fecha_inicio DATE, fecha_fin DATE)
+RETURNS TABLE (rut VARCHAR, nombre VARCHAR) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT u.rut, u.nombre
+    FROM Usuario u, Generar3 g3, Producto p, Venta v
+    WHERE v.Id = g3.Id_Venta
+    AND g3.Id_Producto = p.Id
+    AND v.Id_Cliente = u.rut
+    AND LOWER(p.Nombre) = LOWER(nombre_producto)
+    AND v.Fecha::DATE BETWEEN fecha_inicio AND fecha_fin;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_consolidacion_2('Laptop Apple MacBook Air', '2022-01-01', '2024-12-31');
+
+
+--Consulta 3: Determinar cuántos clientes han comprado un servicio X en un período determinado
+CREATE OR REPLACE FUNCTION f_consolidacion_3(p_nombre_servicio VARCHAR, p_fecha_inicio DATE, p_fecha_fin DATE) RETURNS INTEGER AS $$
+DECLARE
+    resultado INTEGER;
+BEGIN
+    SELECT COUNT(DISTINCT v.Id_Cliente)
+    INTO resultado
+    FROM Venta v, Generar4 g4, Servicio s
+    WHERE v.Id = g4.Id_Venta
+    AND g4.Id_Servicio = s.Id
+    AND LOWER(s.Nombre) = LOWER(p_nombre_servicio)
+    AND v.Fecha::DATE BETWEEN p_fecha_inicio AND p_fecha_fin;
+    RETURN resultado;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT f_consolidacion_3('CATERING DE COCINA INTERNACIONAL', '2022-01-01', '2024-12-31');
+
+--Consulta 4: Determinar los clientes que han comprado un determinado servicio X 
+--en un período determinado
+CREATE OR REPLACE FUNCTION f_consolidacion_4(nombre_servicio VARCHAR, fecha_inicio DATE, fecha_fin DATE)
+RETURNS TABLE (rut VARCHAR, nombre VARCHAR) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT u.rut, u.nombre
+    FROM Usuario u, Generar4 g4, Servicio s, Venta v
+    WHERE v.Id = g4.Id_Venta
+    AND g4.Id_Servicio = s.id
+    AND v.Id_Cliente = u.rut
+    AND LOWER(s.Nombre) = LOWER(nombre_servicio)
+    AND v.Fecha::DATE BETWEEN fecha_inicio AND fecha_fin;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_consolidacion_4('Catering de cocina internacional', '2022-01-01', '2024-12-31');
+
+
+--Consulta 5: Mostrar el total de compras y total pagado del mes actual por cliente X,
+--e indique los clientes que han comprado más de 5 veces para asignarles un descuento.
+
+CREATE OR REPLACE FUNCTION f_consolidacion_5(
+    p_rut VARCHAR,
+    p_fecha_inicio DATE,
+    p_fecha_fin DATE
+)
+RETURNS TABLE (rut VARCHAR, TotalCompras BIGINT, TotalPagado NUMERIC, CalificaDescuento BOOLEAN) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        u.rut,
+        COUNT(*) AS TotalCompras,
+        ROUND(SUM(v.Neto + (v.Neto * v.Iva))) AS TotalPagado,
+        COUNT(*) > 5 AS CalificaDescuento
+    FROM Usuario u
+    JOIN Venta v ON u.rut = v.Id_Cliente
+    WHERE u.rut = p_rut
+      AND v.Fecha::DATE BETWEEN p_fecha_inicio AND p_fecha_fin
+    GROUP BY u.rut;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_consolidacion_5('10282565-9', '2022-01-01', '2024-12-31');
+
+
+
+--Consulta 6: Total de ventas del mes por artículo y por vendedor. Totalizando al vendedor
+
+CREATE OR REPLACE FUNCTION f_consolidacion_6(fecha_inicio DATE, fecha_fin DATE)
+RETURNS TABLE (RutVendedor VARCHAR, Vendedor VARCHAR, Articulo VARCHAR, TotalVendido NUMERIC) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT resultado.* FROM (
+        SELECT v.Id_Vendedor AS RutVendedor, u.Nombre AS Vendedor, p.Nombre AS Articulo, 
+               SUM(g3.TotalFinal)::NUMERIC AS TotalVendido
+        FROM Venta v, Generar3 g3, Producto p, Usuario u
+        WHERE v.Id = g3.Id_Venta
+        AND g3.Id_Producto = p.Id
+        AND v.Id_Vendedor = u.Rut
+        AND v.Fecha::DATE BETWEEN fecha_inicio AND fecha_fin
+        GROUP BY v.Id_Vendedor, u.Nombre, p.Nombre
+        UNION ALL
+        SELECT v.Id_Vendedor, u.Nombre, 'TOTAL VENDEDOR' AS Articulo, 
+               SUM(g3.TotalFinal)::NUMERIC AS TotalVendido
+        FROM Venta v, Generar3 g3, Producto p, Usuario u
+        WHERE v.Id = g3.Id_Venta
+        AND g3.Id_Producto = p.Id
+        AND v.Id_Vendedor = u.Rut
+        AND v.Fecha::DATE BETWEEN fecha_inicio AND fecha_fin
+        GROUP BY v.Id_Vendedor, u.Nombre
+    ) resultado
+    ORDER BY resultado.RutVendedor, (resultado.Articulo = 'TOTAL VENDEDOR'), resultado.Articulo;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_consolidacion_6('2024-12-01', '2024-12-31');
+
+
+--Consulta 7: Volumen de ventas: fines de semana vs. días hábiles
+CREATE OR REPLACE FUNCTION f_consolidacion_7(fecha_inicio DATE,fecha_fin DATE)
+RETURNS TABLE (TipoDia VARCHAR, TotalVentas BIGINT, TotalVendido NUMERIC) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 'Fin de Semana'::VARCHAR AS TipoDia,
+    COUNT(*) AS TotalVentas,
+    COALESCE(ROUND(SUM(Neto + (Neto * Iva))), 0) AS TotalVendido
+    FROM Venta
+    WHERE Fecha::DATE BETWEEN fecha_inicio AND fecha_fin
+    AND EXTRACT(DOW FROM Fecha) IN (0, 6)
+    
+	UNION ALL
+    
+	SELECT 'Día Hábil'::VARCHAR AS TipoDia,
+	COUNT(*) AS TotalVentas,
+    COALESCE(ROUND(SUM(Neto + (Neto * Iva))), 0) AS TotalVendido
+    FROM Venta
+    WHERE Fecha::DATE BETWEEN fecha_inicio AND fecha_fin
+    AND EXTRACT(DOW FROM Fecha) NOT IN (0, 6);
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_consolidacion_7('2022-01-01', '2026-12-31');
+
+
+--Consulta 8: Variación porcentual de ingresos: mes actual vs. mes anterior
+CREATE OR REPLACE FUNCTION f_consolidacion_8(p_fecha DATE)
+RETURNS TABLE (IngresoMesActual NUMERIC, IngresoMesAnterior NUMERIC, VariacionPorcentual NUMERIC) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        ing_actual,
+        ing_anterior,
+        ROUND(((ing_actual - ing_anterior) / NULLIF(ing_anterior, 0)) * 100, 2) AS VariacionPorcentual
+    FROM (
+        SELECT
+            COALESCE(ROUND((SELECT SUM(Neto + (Neto * Iva)) FROM Venta 
+                WHERE Fecha::DATE BETWEEN date_trunc('month', p_fecha)::DATE AND (date_trunc('month', p_fecha) + INTERVAL '1 month - 1 day')::DATE)), 0) AS ing_actual,
+            COALESCE(ROUND((SELECT SUM(Neto + (Neto * Iva)) FROM Venta 
+                WHERE Fecha::DATE BETWEEN (date_trunc('month', p_fecha) - INTERVAL '1 month')::DATE AND (date_trunc('month', p_fecha) - INTERVAL '1 day')::DATE)), 0) AS ing_anterior
+    ) AS ingresos;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_consolidacion_8('2024-06-15'); 
+
+
+--Consulta 9: Ventas con descuento aplicado (último trimestre)
+CREATE OR REPLACE FUNCTION f_consolidacion_9(anio INTEGER)
+RETURNS TABLE (
+    Id_Venta INTEGER,
+    Fecha TIMESTAMP,
+    ValorBruto NUMERIC,
+    Cliente VARCHAR,
+    PRECIOOFERTA NUMERIC
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT
+        v.Id AS Id_Venta,
+        v.Fecha,
+        ROUND(v.Neto + (v.Neto * v.Iva)) AS ValorBruto,
+        v.Id_Cliente AS Cliente,
+        ROUND((v.Neto + (v.Neto * v.Iva)) * (1 - o.preciooferta)) AS PRECIOOFERTA
+		FROM Venta v, Generar3 g3, Producto p, oferta o
+		WHERE v.Id = g3.Id_Venta
+		AND g3.Id_Producto = p.Id
+		AND p.Id_Oferta IS NOT NULL
+		AND p.Id_Oferta = o.id
+		AND EXTRACT(YEAR FROM v.Fecha) = anio
+		AND EXTRACT(MONTH FROM v.Fecha) IN (10, 11, 12);
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_consolidacion_9(2024);
+
+
+------------------------------------------------
+-- Georreferenciación y Comportamiento Logístico
+
+--1.-
+--Función Principal
+
+CREATE OR REPLACE FUNCTION f_georreferenciacion_1(
+    p_nombre_servicio VARCHAR
+)
+RETURNS TABLE (
+    Ciudad VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT DISTINCT c.nombre AS Ciudad
+    FROM comuna c
+    JOIN direccion d ON c.id = d.id_comuna
+    JOIN registrar2 r2 ON d.id = r2.id_direccion
+    JOIN venta v ON r2.id_usuario = v.id_cliente
+    JOIN generar4 g4 ON v.id = g4.id_venta
+    JOIN servicio s ON g4.id_servicio = s.id
+    WHERE s.nombre = p_nombre_servicio;
+END;
+$$ LANGUAGE plpgsql;
+
+--DEMO
+--SELECT * FROM f_georreferenciacion_1('Transporte ejecutivo');
+
+--2.-
+--Función Principal
+
+CREATE OR REPLACE FUNCTION f_georreferenciacion_2(
+	p_nombre_producto VARCHAR
+)
+RETURNS TABLE (
+	Ciudad VARCHAR
+) AS $$
+BEGIN
+	RETURN QUERY
+    SELECT DISTINCT c.nombre AS Ciudad
+    FROM comuna c
+    JOIN direccion d ON c.id = d.id_comuna
+    JOIN despacho desp ON d.id = desp.id_direccion
+    JOIN generar2 g2 ON desp.id = g2.id_despacho
+    JOIN generar3 g3 ON g2.id_venta = g3.id_venta
+    JOIN producto p ON g3.id_producto = p.id
+    WHERE p.nombre = p_nombre_producto;
+END;
+$$ LANGUAGE plpgsql;
+
+--DEMO
+--SELECT * FROM f_georreferenciacion_2('Escritorio en L');
+
+--3.-
+--Función Principal
+
+CREATE OR REPLACE FUNCTION f_georreferenciacion_3(
+	p_rut_vendedor VARCHAR DEFAULT NULL
+)
+RETURNS TABLE (
+	Vendedor VARCHAR,
+	Producto VARCHAR
+) AS $$
+BEGIN
+	RETURN QUERY
+    SELECT DISTINCT u.nombre AS Vendedor, p.nombre AS Producto
+    FROM producto p
+    JOIN generar3 g3 ON p.id = g3.id_producto
+    JOIN venta v ON g3.id_venta = v.id
+    JOIN generar2 g2 ON v.id = g2.id_venta
+    JOIN despacho d ON g2.id_despacho = d.id
+    JOIN usuario u ON v.id_vendedor = u.rut
+    WHERE v.requieredespacho = TRUE
+      AND d.estado <> 'Entregado'
+      AND (p_rut_vendedor IS NULL OR v.id_vendedor = p_rut_vendedor)
+    ORDER BY u.nombre, p.nombre;
+END;
+$$ LANGUAGE plpgsql;
+
+--DEMO
+--SELECT * FROM f_georreferenciacion_3();
+
+
+--4.-
+--Función Principal
+
+CREATE OR REPLACE FUNCTION f_georreferenciacion_4()
+RETURNS TABLE (
+	EmpresaTransporte VARCHAR,
+	PromedioDias NUMERIC
+) AS $$
+BEGIN
+	RETURN QUERY
+    SELECT 
+        ed.nombre AS EmpresaTransporte, 
+        ROUND(AVG(EXTRACT(DAY FROM ((d.datoslogisticos->>'fecha_llegada_real')::TIMESTAMP - (d.datoslogisticos->>'fecha_salida')::TIMESTAMP))), 2) AS PromedioDias
+    FROM despacho d
+    JOIN despachar2 d2 ON d.id = d2.id_despacho
+    JOIN empresadespacho ed ON d2.id_empresad = ed.id
+    WHERE d.datoslogisticos->>'fecha_salida' IS NOT NULL
+      AND d.datoslogisticos->>'fecha_llegada_real' IS NOT NULL
+      AND d.datoslogisticos->>'fecha_salida' <> ''
+      AND d.datoslogisticos->>'fecha_llegada_real' <> ''
+    GROUP BY ed.nombre
+    ORDER BY PromedioDias;
+END;
+$$ LANGUAGE plpgsql;
+
+--DEMO
+--SELECT * FROM f_georreferenciacion_4();
+
+
+--5.-
+--Función Principal
+
+CREATE OR REPLACE FUNCTION f_georreferenciacion_5(
+	p_peso_minimo NUMERIC DEFAULT 10
+)
+RETURNS TABLE (
+	Region VARCHAR,
+	Volumen BIGINT
+) AS $$
+BEGIN
+	RETURN QUERY
+    SELECT r.nombre AS Region, COUNT(DISTINCT d.id) AS Volumen
+    FROM despacho d
+    JOIN direccion dir ON d.id_direccion = dir.id
+    JOIN comuna c ON dir.id_comuna = c.id
+    JOIN provincia p ON c.id_provincia = p.id
+    JOIN region r ON p.id_region = r.id
+    WHERE (d.datoslogisticos->>'peso_kg')::NUMERIC > p_peso_minimo
+    GROUP BY r.nombre
+    ORDER BY Volumen DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+--DEMO
+--SELECT * FROM f_georreferenciacion_5(10);
+
+
+
+--7.-
+--Función Principal
+
+CREATE OR REPLACE FUNCTION f_georreferenciacion_7()
+RETURNS TABLE (
+	Comuna VARCHAR,
+	Calle VARCHAR,
+	Numero INT
+) AS $$
+BEGIN
+	RETURN QUERY
+    SELECT DISTINCT c.nombre AS Comuna, d.calle, d.numero
+    FROM direccion d
+    JOIN comuna c ON d.id_comuna = c.id
+    JOIN registrar2 r2 ON d.id = r2.id_direccion
+    JOIN venta v ON r2.id_usuario = v.id_cliente
+    WHERE v.requieredespacho = TRUE
+      AND (d.pasaje IS NULL OR d.pasaje = '')
+      AND (d.sector IS NULL OR d.sector = '');
+END;
+$$ LANGUAGE plpgsql;
+
+--DEMO
+--SELECT * FROM f_georreferenciacion_7();
+
+------------------------------------
+-- Fidelización, Valoraciones y Desempeño Comercial
+-- Funcion 1
+CREATE OR REPLACE FUNCTION f_fidelizacion_1(varchar)
+RETURNS TABLE (
+    IdProducto integer,
+    NombreProducto varchar,
+    CantidadVentas bigint
+) AS $$
+DECLARE
+    idvendedor ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.Id AS IdProducto,
+        p.Nombre AS NombreProducto,
+        COUNT(*) AS CantidadVentas
+    FROM Venta v, Generar3 g, Producto p
+    WHERE v.Id = g.Id_Venta
+      AND g.Id_Producto = p.Id
+      AND v.Id_Vendedor = idvendedor
+    GROUP BY
+        p.Id,
+        p.Nombre
+    ORDER BY COUNT(*) DESC
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_fidelizacion_1('13958289-6');
+
+
+-- Funcion 2
+CREATE OR REPLACE FUNCTION f_fidelizacion_2(varchar)
+RETURNS TABLE (
+    IdServicio integer,
+    NombreServicio varchar,
+    CantidadVentas bigint
+) AS $$
+DECLARE
+    idvendedor ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        s.Id AS IdServicio,
+        s.Nombre AS NombreServicio,
+        COUNT(*) AS CantidadVentas
+    FROM Venta v, Generar4 g, Servicio s
+    WHERE v.Id = g.Id_Venta
+      AND g.Id_Servicio = s.Id
+      AND v.Id_Vendedor = idvendedor
+    GROUP BY
+        s.Id,
+        s.Nombre
+    ORDER BY COUNT(*) DESC
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_fidelizacion_2('18701888-9');
+
+
+-- Funcion 3
+CREATE OR REPLACE FUNCTION f_fidelizacion_3(integer)
+RETURNS integer AS $$
+DECLARE
+    idproducto ALIAS FOR $1;
+    resultado integer;
+BEGIN
+    SELECT COUNT(pr.Id)
+    INTO resultado
+    FROM Producto p, Hacer1 h, Preguntas pr
+    WHERE p.Id = h.Id_Producto
+      AND h.Id_Pregunta = pr.Id
+      AND pr.Respuesta IS NULL
+      AND p.Id = idproducto;
+
+    RETURN resultado;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_fidelizacion_3(2);
+
+
+-- Funcion 4
+CREATE OR REPLACE FUNCTION f_fidelizacion_4(varchar)
+RETURNS TABLE (
+    IdProducto integer,
+    NombreProducto varchar,
+    PromedioCalificacion numeric
+) AS $$
+DECLARE
+    rutusuario ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.Id AS IdProducto,
+        p.Nombre AS NombreProducto,
+        AVG(c.Calificacion) AS PromedioCalificacion
+    FROM Usuario u, Ofrecer1 o, Producto p, Escribir1 e, Calificacion c
+    WHERE u.Rut = o.Id_Usuario
+      AND o.Id_Producto = p.Id
+      AND p.Id = e.Id_Producto
+      AND e.Id_Calificacion = c.Id
+      AND u.Rut = rutusuario
+    GROUP BY
+        p.Id,
+        p.Nombre
+    HAVING AVG(c.Calificacion) >= 4;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_fidelizacion_4('14684164-3');
+
+
+-- Funcion 5
+CREATE OR REPLACE FUNCTION f_fidelizacion_5()
+RETURNS TABLE (
+    Rut varchar,
+    Nombre varchar
+) AS $$
+BEGIN
+    RETURN QUERY
+
+    SELECT DISTINCT
+        u.Rut,
+        u.Nombre
+    FROM Usuario u, Ofrecer1 o, (
+        SELECT e.Id_Producto
+        FROM Escribir1 e, Calificacion c
+        WHERE e.Id_Calificacion = c.Id
+        GROUP BY e.Id_Producto
+        HAVING AVG(c.Calificacion) < 3
+    ) p
+    WHERE u.Rut = o.Id_Usuario
+      AND o.Id_Producto = p.Id_Producto
+
+    UNION
+
+    SELECT DISTINCT
+        u.Rut,
+        u.Nombre
+    FROM Usuario u, Ofrecer2 o, (
+        SELECT e.Id_Servicio
+        FROM Escribir2 e, Calificacion c
+        WHERE e.Id_Calificacion = c.Id
+        GROUP BY e.Id_Servicio
+        HAVING AVG(c.Calificacion) < 3
+    ) s
+    WHERE u.Rut = o.Id_Usuario
+      AND o.Id_Servicio = s.Id_Servicio;
+
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_fidelizacion_5();
+
+
+-- Funcion 6
+CREATE OR REPLACE FUNCTION f_fidelizacion_6()
+RETURNS TABLE (
+    Rut varchar,
+    Nombre varchar
+) AS $$
+BEGIN
+    RETURN QUERY
+
+    SELECT
+        u.Rut,
+        u.Nombre
+    FROM Usuario u
+    WHERE EXISTS (
+        -- Verifica que el usuario sea un emprendedor que ofrece servicios
+        SELECT 1
+        FROM Ofrecer2 o
+        WHERE o.Id_Usuario = u.Rut
+    )
+    AND NOT EXISTS (
+        -- Verifica que no tenga calificaciones en los últimos 6 meses
+        SELECT 1
+        FROM Calificacion c, Escribir2 e, Ofrecer2 o
+        WHERE c.Id = e.Id_Calificacion
+          AND e.Id_Servicio = o.Id_Servicio
+          AND o.Id_Usuario = u.Rut
+          AND c.Fecha >= CURRENT_TIMESTAMP - INTERVAL '6 months'
+    );
+
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_fidelizacion_6();
+
+
+-- Funcion 7
+CREATE OR REPLACE FUNCTION f_fidelizacion_7(varchar)
+RETURNS TABLE (
+    RutVendedor varchar,
+    Vendedor varchar,
+    IdProducto integer,
+    Producto varchar,
+    Calificacion integer,
+    Comentario varchar
+) AS $$
+DECLARE
+    palabra ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        u.Rut AS RutVendedor,
+        u.Nombre AS Vendedor,
+        p.Id AS IdProducto,
+        p.Nombre AS Producto,
+        c.Calificacion,
+        c.Comentario
+    FROM Usuario u, Ofrecer1 o, Producto p, Escribir1 e, Calificacion c
+    WHERE u.Rut = o.Id_Usuario
+      AND o.Id_Producto = p.Id
+      AND p.Id = e.Id_Producto
+      AND e.Id_Calificacion = c.Id
+      AND c.Comentario IS NOT NULL
+      AND c.Comentario LIKE '%' || palabra || '%';
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_fidelizacion_7('recomendado');
+
+
+-- Funcion 8
+CREATE OR REPLACE FUNCTION f_fidelizacion_8()
+RETURNS TABLE (
+    Rut varchar,
+    Nombre varchar,
+    TotalCalificaciones bigint
+) AS $$
+BEGIN
+    RETURN QUERY
+
+    SELECT
+        u.Rut,
+        u.Nombre,
+        COUNT(*) AS TotalCalificaciones
+    FROM
+        Usuario u,
+        (
+            SELECT Id_Usuario FROM Escribir1
+            UNION ALL
+            SELECT Id_Usuario FROM Escribir2
+        ) e
+    WHERE
+        u.Rut = e.Id_Usuario
+    GROUP BY
+        u.Rut,
+        u.Nombre
+    HAVING
+        COUNT(*) > 10
+    ORDER BY
+        TotalCalificaciones DESC;
+
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_fidelizacion_8();
+
+
+-- Funcion 9
+CREATE OR REPLACE FUNCTION f_fidelizacion_9(varchar)
+RETURNS INTERVAL AS $$
+DECLARE
+    idvendedor ALIAS FOR $1;
+    tiempo_promedio INTERVAL;
+BEGIN
+    SELECT AVG(r.FechaRespuesta - r.FechaCreacion)
+    INTO tiempo_promedio
+    FROM (
+        -- Preguntas asociadas a productos
+        SELECT
+            o1.Id_Usuario AS RutVendedor,
+            p.FechaCreacion,
+            p.FechaRespuesta
+        FROM Ofrecer1 o1, Hacer1 h1, Preguntas p
+        WHERE o1.Id_Producto = h1.Id_Producto
+          AND h1.Id_Pregunta = p.Id
+          AND p.FechaRespuesta IS NOT NULL
+
+        UNION ALL
+
+        -- Preguntas asociadas a servicios
+        SELECT
+            o2.Id_Usuario AS RutVendedor,
+            p.FechaCreacion,
+            p.FechaRespuesta
+        FROM Ofrecer2 o2, Hacer2 h2, Preguntas p
+        WHERE o2.Id_Servicio = h2.Id_Servicio
+          AND h2.Id_Pregunta = p.Id
+          AND p.FechaRespuesta IS NOT NULL
+    ) r
+    WHERE r.RutVendedor = idvendedor;
+
+    RETURN tiempo_promedio;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_fidelizacion_9('14684164-3');
+
+
+-- funcion 10
+CREATE OR REPLACE FUNCTION f_fidelizacion_10()
+RETURNS TABLE (
+    IdMensaje integer,
+    Contenido varchar,
+    FechaEnvio date,
+    Vendedor varchar,
+    Cliente varchar,
+    IdVenta integer
+) AS $$
+BEGIN
+    RETURN QUERY
+
+    SELECT
+        m.Id AS IdMensaje,
+        m.Contenido,
+        m.FechaEnvio,
+        u_vendedor.Nombre AS Vendedor,
+        u_cliente.Nombre AS Cliente,
+        v.Id AS IdVenta
+    FROM
+        Mensaje m,
+        Enviar e,
+        Venta v,
+        Usuario u_vendedor,
+        Usuario u_cliente
+    WHERE m.Id = e.Id_Mensaje
+      AND e.Id_Venta = v.Id
+      AND v.Id_Vendedor = u_vendedor.Rut
+      AND v.Id_Cliente = u_cliente.Rut
+      AND m.FechaRespuesta IS NULL
+      AND m.FechaEnvio <= CURRENT_TIMESTAMP - INTERVAL '48 hours';
+
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_fidelizacion_10();
+
+
+
+-------------------------------
+--Manipulación Estructural de Atributos JSON
+
+
+--Consulta 1: Extraer el valor específico del "Material principal" desde el atributo JSON de características 
+-- para todos los productos pertenecientes a la categoría de vestuario.
+
+CREATE OR REPLACE FUNCTION f_json_1(TEXT,TEXT)
+RETURNS TABLE (
+    Id INTEGER,
+    Nombre VARCHAR(50),
+    Valor TEXT
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.Id,
+        p.Nombre,
+        p.Caracteristicas->> Lower($1) AS Valor
+    FROM Producto p
+    INNER JOIN Pertenecer1 p1
+        ON p.Id = p1.Id_Producto
+    INNER JOIN Categoria c
+        ON p1.Id_Categoria = c.Id
+    WHERE LOWER(c.Nombre) = LOWER($2);
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_json_1('material', 'Hogar y Cocina') LIMIT 5;
+
+
+-- Consulta 2: Filtrar los servicios profesionales cuyo campo JSON estructurado contenga una restricción explícita de "Modalidad: Remoto"
+CREATE OR REPLACE FUNCTION f_json_2(text)
+RETURNS TABLE (
+    Id INTEGER,
+    Nombre VARCHAR(50),
+    Modalidad TEXT
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        s.Id,
+        s.Nombre,
+        s.Caracteristicas->>'modalidad' AS Modalidad
+    FROM Servicio s
+    WHERE LOWER(s.Caracteristicas->>'modalidad') = LOWER($1);
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- select *from f_json_2('Remoto') limit 10; 
+
+-- Consulta 3: Calcular el peso promedio de los productos disponibles en inventario, accediendo y operando directamente 
+-- el nodo numérico correspondiente dentro de su estructura JSON.
+CREATE OR REPLACE FUNCTION f_json_3()
+RETURNS TABLE (
+    Id_Inventario INTEGER,
+    Peso_Promedio NUMERIC
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        i.Id AS Id_Inventario,
+        (
+            SELECT AVG((p.Caracteristicas->>'peso')::numeric)
+            FROM Producto p
+            WHERE p.Id IN (
+                SELECT a.Id_Producto
+                FROM Almacenar a
+                WHERE a.Id_Inventario = i.Id
+            )
+        ) AS Peso_Promedio
+    FROM Inventario i
+    WHERE EXISTS (
+        SELECT 1
+        FROM Almacenar a
+        WHERE a.Id_Inventario = i.Id
+          AND EXISTS (
+              SELECT 1
+              FROM Producto p
+              WHERE p.Id = a.Id_Producto
+                AND p.Caracteristicas::jsonb ? 'peso'
+          )
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_json_3();
+
+
+-- Consulta 4: Identificar aquellos productos tecnológicos donde el arreglo JSON de características carezca por completo de la llave correspondiente a "Garantía".
+CREATE OR REPLACE FUNCTION f_json_4(TEXT,TEXT)
+RETURNS TABLE (
+    Id_Producto INTEGER,
+    Nombre VARCHAR(50)
+)
+AS $$
+BEGIN
+    RETURN QUERY
+
+    WITH RECURSIVE categorias AS (
+        SELECT
+            c.Id,
+            c.Nombre,
+            c.Id_Categoria
+        FROM Categoria c
+        WHERE c.Nombre = $1
+
+        UNION ALL
+        SELECT
+            sub.Id,
+            sub.Nombre,
+            sub.Id_Categoria
+        FROM Categoria sub
+        INNER JOIN categorias padre
+            ON sub.Id_Categoria = padre.Id
+    )
+
+    SELECT
+        p.Id AS Id_Producto,
+        p.Nombre
+    FROM Producto p
+
+    INNER JOIN Pertenecer1 p1
+        ON p.Id = p1.Id_Producto
+
+    INNER JOIN categorias c
+        ON p1.Id_Categoria = c.Id
+
+    WHERE NOT (p.Caracteristicas::jsonb ? $2);
+
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_json_4('Productos', 'material');
+
+-- Consulta 5: Elaborar una vista que desnormalice las variantes de color y tamaño alojadas en el JSON, transformándolas 
+-- en columnas relacionales independientes de fácil lectura.
+CREATE OR REPLACE FUNCTION f_json_5()
+RETURNS TABLE (
+    Id_Producto INTEGER,
+    Nombre VARCHAR(50),
+    color TEXT,
+    talla TEXT,
+    altura TEXT,
+    ancho TEXT
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.Id AS Id_Producto,
+        p.Nombre,
+        p.Caracteristicas::jsonb->>'color' AS color,
+        p.Caracteristicas::jsonb->>'talla' AS talla,
+        p.Caracteristicas::jsonb->>'alto_cm' AS altura,
+        p.Caracteristicas::jsonb->>'ancho_cm' AS ancho
+    FROM Producto p;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_json_5();
+
+
+-- Consulta 6: Listar los productos cuyas dimensiones físicas declaradas en el atributo JSON 
+-- superen los estándares máximos volumétricos permitidos por las empresas logísticas.
+CREATE OR REPLACE FUNCTION f_json_6()
+RETURNS TABLE (
+    Id INTEGER,
+    Nombre VARCHAR(50)
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.Id,
+        p.Nombre
+    FROM Producto p
+    WHERE EXISTS (
+        SELECT 1
+        FROM EmpresaDespacho ed
+        WHERE
+            COALESCE(
+                (p.Caracteristicas->>'ancho_cm')::numeric,
+                0
+            ) >
+            COALESCE(
+                (ed.EstandaresVolumetricos->>'ancho_max_cm')::numeric,
+                0
+            )
+            OR
+            COALESCE(
+                (p.Caracteristicas->>'alto_cm')::numeric,
+                0
+            ) >
+            COALESCE(
+                (ed.EstandaresVolumetricos->>'alto_max_cm')::numeric,
+                0
+            )
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_json_6();
+
+
+
+---------------------------
+-- Exclusión, Conjuntos y Consultas Correlacionadas
+
+-- Consulta 1:  Liste los servicios que no se han contratado en el mes de diciembre
+
+CREATE OR REPLACE FUNCTION f_exclusion_1(fecha_inicio DATE, fecha_fin DATE)
+RETURNS TABLE (Id_Servicio INTEGER, Nombre VARCHAR) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT s.Id, s.Nombre
+    FROM Servicio s
+    WHERE s.Id NOT IN (
+        SELECT DISTINCT g4.Id_Servicio
+        FROM Generar4 g4, Venta v
+        WHERE g4.Id_Venta = v.Id
+        AND v.Fecha::DATE BETWEEN fecha_inicio AND fecha_fin
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_exclusion_1('2022-01-01', '2026-12-31');
+
+
+
+-- Consulta 2: Total de los pedidos por vendedor 13958289-6 y a su vez por categorías Y de artículos.
+
+CREATE OR REPLACE FUNCTION f_exclusion_2(rutV VARCHAR, categoriaV VARCHAR)
+RETURNS TABLE (rutVendedor VARCHAR, nombreVendedor VARCHAR, categoria VARCHAR, Total_pedidos INT) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT vend.RUTVendedor, vend.NombreVendedor, vend.Categoria, COUNT(DISTINCT vend.Id_Venta)::INT AS conteo
+  FROM (
+    -- Servicios
+    SELECT v.Id_Vendedor AS RUTVendedor, ven.Nombre AS NombreVendedor, c.Nombre AS Categoria, v.Id AS Id_Venta
+    FROM Venta v, Generar4 g4, Servicio s, Pertenecer2 p2, Categoria c, Usuario ven
+    WHERE v.Id = g4.Id_Venta 
+      AND g4.Id_Servicio = s.Id 
+      AND s.Id = p2.Id_Servicio 
+      AND p2.Id_Categoria = c.Id 
+      AND v.Id_Vendedor = ven.Rut 
+      AND v.Id_Vendedor = rutV
+      AND c.Nombre = categoriaV
+    UNION 
+    -- Productos
+    SELECT v.Id_Vendedor AS RUTVendedor, ven.Nombre AS NombreVendedor, c.Nombre AS Categoria, v.Id AS Id_Venta
+    FROM Venta v, Generar3 g3, Producto pr, Pertenecer1 p1, Categoria c, Usuario ven
+    WHERE v.Id = g3.Id_Venta 
+      AND g3.Id_Producto = pr.Id 
+      AND pr.Id = p1.Id_Producto 
+      AND p1.Id_Categoria = c.Id 
+      AND v.Id_Vendedor = ven.Rut 
+      AND v.Id_Vendedor = rutV
+      AND c.Nombre = categoriaV
+  ) vend
+  GROUP BY vend.RUTVendedor, vend.NombreVendedor, vend.Categoria
+  ORDER BY conteo DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_exclusion_2('13958289-6', 'Ropa, moda y calzado');
+
+
+
+
+-- Consulta 3: Listado de clientes a los que un vendedor X ha realizado un negocio.
+
+CREATE OR REPLACE FUNCTION f_exclusion_3(rutVendedor VARCHAR)
+RETURNS TABLE (RUT_Cliente VARCHAR, Nombre_Cliente VARCHAR, Compras BIGINT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.Rut AS RUT_Cliente, u.Nombre AS Nombre_Cliente, COUNT(v.Id) AS Compras
+    FROM Usuario u, Venta v
+    WHERE u.Rut = v.Id_Cliente
+      AND v.Id_Vendedor = rutVendedor
+    GROUP BY u.Rut, u.Nombre
+    ORDER BY Compras DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_exclusion_3('13958289-6');
+
+
+
+-- Consulta 4: Identificar a los usuarios registrados que cumplen el rol dual de clientes y emprendedores 
+-- simultáneamente, validando su existencia cruzada mediante subconsultas anidadas.
+
+CREATE OR REPLACE FUNCTION f_exclusion_4()
+RETURNS TABLE (
+    Rut VARCHAR,
+    Nombre VARCHAR,
+    RolDual TEXT,
+    Compras_Realizadas BIGINT,
+    Productos_Ofrecidos BIGINT,
+    Servicios_Ofrecidos BIGINT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        u.Rut,
+        u.Nombre,
+        'Cliente y Emprendedor'::TEXT AS RolDual,
+        (SELECT COUNT(*) FROM Venta v WHERE v.Id_Cliente = u.Rut)        AS Compras_Realizadas,
+        (SELECT COUNT(*) FROM Ofrecer1 of1 WHERE of1.Id_Usuario = u.Rut) AS Productos_Ofrecidos,
+        (SELECT COUNT(*) FROM Ofrecer2 of2 WHERE of2.Id_Usuario = u.Rut) AS Servicios_Ofrecidos
+    FROM Usuario u
+    WHERE EXISTS (SELECT 1 FROM Venta v WHERE v.Id_Cliente = u.Rut)
+      AND EXISTS (
+            SELECT 1 FROM Ofrecer1 of1 WHERE of1.Id_Usuario = u.Rut
+            UNION
+            SELECT 1 FROM Ofrecer2 of2 WHERE of2.Id_Usuario = u.Rut
+          )
+    ORDER BY u.Nombre;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_exclusion_4() LIMIT 10;
+
+
+-- Consulta 5: Extraer mediante la cláusula NOT IN a los clientes activos que poseen productos en su 
+-- lista de deseos pero que nunca han concretado una operación de compra.
+CREATE OR REPLACE FUNCTION f_exclusion_5()
+RETURNS TABLE (
+    RUT_Cliente VARCHAR,
+    Nombre_Cliente VARCHAR,
+    Tipo VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        u.Rut AS RUT_Cliente,
+        u.Nombre AS Nombre_Cliente,
+        u.TipoUsuario AS Tipo
+    FROM Usuario u
+    WHERE u.Rut IN (
+        SELECT DISTINCT c1.Id_Usuario FROM Crear1 c1
+        UNION
+        SELECT DISTINCT c2.Id_Usuario FROM Crear2 c2
+    )
+    AND u.Rut NOT IN (
+        SELECT DISTINCT v.Id_Cliente FROM Venta v WHERE v.Id_Cliente IS NOT NULL
+    )
+    ORDER BY u.Nombre;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_exclusion_5();
+
+
+-- Consulta 6: Determinar qué categorías principales de la plataforma no poseen subcategorías asociadas ni productos vinculados, empleando la cláusula NOT EXISTS.
+
+CREATE OR REPLACE FUNCTION f_exclusion_6()
+RETURNS TABLE (
+    ID_Categoria INT,
+    Nombre_Categoria VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.Id AS ID_Categoria,
+        c.Nombre AS Nombre_Categoria
+    FROM Categoria c
+    WHERE c.Id_Categoria IS NULL
+      AND NOT EXISTS (
+          SELECT 1 FROM Categoria sub
+          WHERE sub.Id_Categoria = c.Id
+      )
+      AND NOT EXISTS (
+          SELECT 1 FROM Pertenecer1 p1
+          WHERE p1.Id_Categoria = c.Id
+      )
+      AND NOT EXISTS (
+          SELECT 1 FROM Pertenecer2 p2
+          WHERE p2.Id_Categoria = c.Id
+      );
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_exclusion_6() LIMIT 10;
+
+-- Consulta 7: Formular una división relacional que identifique a los clientes que han adquirido al 
+-- menos un producto de cada categoría principal disponible en el sistema.
+
+CREATE OR REPLACE FUNCTION f_exclusion_7(
+    p_id_categoria_principal INTEGER,
+    p_solo_cumplen           BOOLEAN
+)
+RETURNS TABLE (
+    rut_cliente          TEXT,
+    nombre_cliente       TEXT,
+    categorias_compradas BIGINT,
+    total_categorias     BIGINT,
+    cumple               BOOLEAN
+)
+AS $$
+DECLARE
+    v_total BIGINT;
+BEGIN
+    IF p_id_categoria_principal IS NULL THEN
+        RAISE EXCEPTION 'p_id_categoria_principal no puede ser NULL';
+    END IF;
+    IF p_solo_cumplen IS NULL THEN
+        RAISE EXCEPTION 'p_solo_cumplen no puede ser NULL';
+    END IF;
+
+    SELECT COUNT(*) INTO v_total
+    FROM Categoria cat
+    WHERE cat.Id_Categoria = p_id_categoria_principal;
+
+    RETURN QUERY
+    SELECT
+        u.Rut::TEXT,
+        u.Nombre::TEXT,
+        COUNT(DISTINCT c.Id),
+        v_total,
+        (COUNT(DISTINCT c.Id) = v_total)
+    FROM Usuario u, Venta v, Generar3 g3, Producto p, Pertenecer1 p1, Categoria c
+    WHERE u.Rut = v.Id_Cliente
+      AND v.Id = g3.Id_Venta
+      AND g3.Id_Producto = p.Id
+      AND p.Id = p1.Id_Producto
+      AND p1.Id_Categoria = c.Id
+      AND c.Id_Categoria = p_id_categoria_principal
+    GROUP BY u.Rut, u.Nombre
+    HAVING NOT p_solo_cumplen OR COUNT(DISTINCT c.Id) = v_total
+    ORDER BY COUNT(DISTINCT c.Id) DESC, u.Nombre;
+
+    IF NOT FOUND THEN
+        RETURN QUERY
+        SELECT NULL::TEXT, NULL::TEXT, NULL::BIGINT, v_total, FALSE;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_exclusion_7(2, FALSE) LIMIT 10;
+
+
+
+-- Consulta 8: Seleccionar los servicios profesionales que son ofrecidos en múltiples regiones 
+-- geográficas de manera simultánea, agrupando por identificador y filtrando con HAVING.
+CREATE OR REPLACE FUNCTION f_exclusion_8(
+    p_id_categoria INTEGER,
+    p_min_regiones INTEGER
+)
+RETURNS TABLE (
+    id_servicio     BIGINT,
+    nombre_servicio TEXT,
+    regiones        BIGINT
+)
+AS $$
+BEGIN
+    IF p_id_categoria IS NULL THEN
+        RAISE EXCEPTION 'p_id_categoria no puede ser NULL';
+    END IF;
+    IF p_min_regiones IS NULL OR p_min_regiones < 1 THEN
+        RAISE EXCEPTION 'p_min_regiones debe ser un entero mayor o igual a 1 (recibido: %)', p_min_regiones;
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        s.Id::BIGINT,
+        s.Nombre::TEXT,
+        COUNT(DISTINCT r.Id)
+    FROM Servicio s, Ofrecer2 of2, Usuario u, Registrar2 r2, Direccion d, Comuna c,
+         Provincia p, Region r, Pertenecer2 p2, Categoria cat
+    WHERE s.Id = of2.Id_Servicio
+      AND of2.Id_Usuario = u.Rut
+      AND u.Rut = r2.Id_Usuario
+      AND r2.Id_Direccion = d.Id
+      AND d.Id_Comuna = c.Id
+      AND c.Id_Provincia = p.Id
+      AND p.Id_Region = r.Id
+      AND s.Id = p2.Id_Servicio
+      AND p2.Id_Categoria = cat.Id
+      AND (cat.Id = p_id_categoria OR cat.Id_Categoria = p_id_categoria)
+    GROUP BY s.Id, s.Nombre
+    HAVING COUNT(DISTINCT r.Id) >= p_min_regiones
+    ORDER BY COUNT(DISTINCT r.Id) DESC;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT * FROM f_exclusion_8(11, 2) LIMIT 10;
+
+
+-- Consulta 9: Identificar correlaciones transaccionales determinando qué productos son frecuentemente adquiridos de manera conjunta en una misma orden de compra.
+
+CREATE OR REPLACE FUNCTION f_exclusion_9(
+    p_min_veces INTEGER
+)
+RETURNS TABLE (
+    producto_a             TEXT,
+    producto_b             TEXT,
+    veces_comprados_juntos BIGINT
+)
+AS $$
+BEGIN
+    IF p_min_veces IS NULL OR p_min_veces < 1 THEN
+        RAISE EXCEPTION 'p_min_veces debe ser un entero mayor o igual a 1 (recibido: %)', p_min_veces;
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        p1.Nombre::TEXT,
+        p2.Nombre::TEXT,
+        COUNT(*)
+    FROM Generar3 g3_1, Generar3 g3_2, Producto p1, Producto p2, Venta v
+    WHERE g3_1.Id_Venta = g3_2.Id_Venta
+      AND g3_1.Id_Producto < g3_2.Id_Producto
+      AND g3_1.Id_Producto = p1.Id
+      AND g3_2.Id_Producto = p2.Id
+      AND g3_1.Id_Venta = v.Id
+    GROUP BY p1.Id, p2.Id, p1.Nombre, p2.Nombre
+    HAVING COUNT(*) >= p_min_veces
+    ORDER BY COUNT(*) DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_exclusion_9(1) LIMIT 10;
+
+
+-----------------------------------
+-- Inventario, Cotizaciones y Retornos Financieros
+-- Funcion Inventario 1: Listar devoluciones por cliente (o de un cliente específico si se pasa su Rut)
+CREATE OR REPLACE FUNCTION f_inventario_1(varchar)
+RETURNS TABLE (
+    Cliente varchar,
+    Producto varchar,
+    Motivo varchar
+) AS $$
+DECLARE
+    rutcliente ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        u.Nombre AS Cliente,
+        p.Nombre AS Producto,
+        d.Motivo
+    FROM Devolucion d, Generar1 g1, Usuario u, Generar3 g3, Producto p
+    WHERE d.Id = g1.Id_Devolucion
+      AND g1.Id_Usuario = u.Rut
+      AND g1.Id_Venta = g3.Id_Venta
+      AND g3.Id_Producto = p.Id
+      AND (rutcliente IS NULL OR u.Rut = rutcliente)
+    ORDER BY u.Nombre, p.Nombre;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_inventario_1('24580115-7') LIMIT 10;
+
+
+
+-- Funcion Inventario 2: Obtener productos en oferta filtrando por el estado de la oferta (TRUE / FALSE)
+CREATE OR REPLACE FUNCTION f_inventario_2(boolean)
+RETURNS TABLE (
+    IdProducto integer,
+    NombreProducto varchar,
+    PrecioOriginal text,
+    FechaInicio date,
+    FechaFin date,
+    IdOferta integer,
+    PrecioOferta numeric,
+    EstadoOferta boolean
+) AS $$
+DECLARE
+    estado_oferta ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.Id AS IdProducto,
+        p.Nombre AS NombreProducto,
+        p.Caracteristicas->>'precio' AS PrecioOriginal,
+        p.FechaInicio,
+        p.FechaFin,
+        o.Id AS IdOferta,
+        o.PrecioOferta,
+        o.Estado AS EstadoOferta
+    FROM Producto p, Oferta o
+    WHERE p.Id_Oferta = o.Id
+      AND (estado_oferta IS NULL OR o.Estado = estado_oferta);
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_inventario_2(TRUE) LIMIT 10;
+
+
+
+-- Funcion Inventario 3: Cuantificar el capital total reintegrado por devoluciones según un año determinado
+CREATE OR REPLACE FUNCTION f_inventario_3(integer)
+RETURNS numeric AS $$
+DECLARE
+    anio_consulta ALIAS FOR $1;
+    total_reintegrado numeric;
+BEGIN
+    SELECT COALESCE(SUM(MontoReintegrado), 0)
+    INTO total_reintegrado
+    FROM Devolucion
+    WHERE EXTRACT(YEAR FROM FechaResolucion) = anio_consulta;
+
+    RETURN total_reintegrado;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_inventario_3(2024) LIMIT 10;
+
+
+
+-- Funcion Inventario 4: Listar deseos con ofertas activas según fecha límite de vigencia
+CREATE OR REPLACE FUNCTION f_inventario_4(date)
+RETURNS TABLE (
+    Rut varchar,
+    NombreUsuario varchar,
+    NombreLista varchar,
+    NombreProducto varchar,
+    PrecioOferta numeric,
+    FechaFin date
+) AS $$
+DECLARE
+    fecha_limite ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        u.Rut,
+        u.Nombre AS NombreUsuario,
+        ld.NombreLista,
+        p.Nombre AS NombreProducto,
+        o.PrecioOferta,
+        p.FechaFin
+    FROM Usuario u, ListaDeseos ld, Crear1 c, Producto p, Oferta o
+    WHERE u.Rut = c.Id_Usuario
+      AND ld.Id = c.Id_Lista
+      AND p.Id = c.Id_Producto
+      AND o.Id = p.Id_Oferta
+      AND o.Estado = TRUE
+      AND p.FechaFin = fecha_limite;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_inventario_4('2026-07-12') LIMIT 10;
+
+
+
+-- Funcion Inventario 5: Tasa porcentual de devoluciones por emprendedor
+
+CREATE OR REPLACE FUNCTION f_inventario_5()
+RETURNS TABLE (
+    Emprendedor varchar,
+    Ventas bigint,
+    Devoluciones bigint,
+    PorcentajeDevoluciones numeric
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        u.Nombre AS Emprendedor,
+        COUNT(DISTINCT v.Id) AS Ventas,
+        COUNT(DISTINCT d.Id) AS Devoluciones,
+        ROUND(
+            COUNT(DISTINCT d.Id)::NUMERIC * 100 
+            / NULLIF(COUNT(DISTINCT v.Id), 0),
+            2
+        ) AS PorcentajeDevoluciones
+    FROM Usuario u
+    LEFT JOIN Venta v
+        ON u.Rut = v.Id_Vendedor
+    LEFT JOIN Generar1 g
+        ON v.Id = g.Id_Venta
+    LEFT JOIN Devolucion d
+        ON g.Id_Devolucion = d.Id
+       AND d.Estado = 'Entregado'
+    GROUP BY u.Nombre
+    ORDER BY PorcentajeDevoluciones DESC NULLS LAST;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_inventario_5() LIMIT 10;
+
+
+
+-- Funcion Inventario 6: Productos con stock y variedad de colores por encima de umbrales parametrizados
+CREATE OR REPLACE FUNCTION f_inventario_6(integer, bigint)
+RETURNS TABLE (
+    NombreProducto varchar,
+    VariantesColor bigint,
+    InventarioTotal numeric
+) AS $$
+DECLARE
+    min_colores ALIAS FOR $1;
+    min_stock ALIAS FOR $2;
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.Nombre AS NombreProducto,
+        COUNT(DISTINCT p.Caracteristicas->>'color') AS VariantesColor,
+        SUM(a.StockActual)::numeric AS InventarioTotal
+    FROM Producto p, Almacenar a
+    WHERE p.Id = a.Id_Producto
+    GROUP BY p.Nombre
+    HAVING COUNT(DISTINCT p.Caracteristicas->>'color') > min_colores
+       AND SUM(a.StockActual) > min_stock
+    ORDER BY VariantesColor DESC, InventarioTotal DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_inventario_6(1, 10) LIMIT 10;
+
+
+
+-- Funcion Inventario 7: Ventas anuladas según medio de pago
+CREATE OR REPLACE FUNCTION f_inventario_7(varchar)
+RETURNS TABLE (
+    IdVenta integer,
+    Fecha timestamp,
+    Estado varchar,
+    MedioPago varchar,
+    CodigoTransferencia varchar
+) AS $$
+DECLARE
+    medio_pago_param ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        v.Id AS IdVenta,
+        v.Fecha::timestamp AS Fecha,
+        v.Estado,
+        p.MedioPago,
+        p.CodigoTransferencia::varchar AS CodigoTransferencia
+    FROM Venta v, Generar3 g, Pago p
+    WHERE v.Id = g.id_Venta
+      AND g.id_Pago = p.Id
+      AND v.Estado = 'Anulado'
+      AND p.MedioPago = medio_pago_param
+    ORDER BY v.Fecha DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_inventario_7('Transferencia') LIMIT 10;
+
+
+
+-- Funcion Inventario 8: Tasa de conversión de productos guardados en listas de deseos vs ventas
+CREATE OR REPLACE FUNCTION f_inventario_8(integer)
+RETURNS TABLE (
+    IdProducto integer,
+    NombreProducto varchar,
+    VecesGuardado bigint,
+    VentasRealizadas bigint,
+    TasaConversion numeric
+) AS $$
+DECLARE
+    id_prod_param ALIAS FOR $1;
+BEGIN
+    RETURN QUERY
+    SELECT
+        p.Id AS IdProducto,
+        p.Nombre AS NombreProducto,
+        COUNT(DISTINCT c.Id_Usuario) AS VecesGuardado,
+        COUNT(DISTINCT g3.Id_Venta) AS VentasRealizadas,
+        ROUND(
+            COUNT(DISTINCT g3.Id_Venta)::NUMERIC * 100 / NULLIF(COUNT(DISTINCT c.Id_Usuario), 0),
+            2
+        ) AS TasaConversion
+    FROM Producto p
+    LEFT JOIN Crear1 c
+        ON p.Id = c.Id_Producto
+    LEFT JOIN Generar3 g3
+        ON p.Id = g3.Id_Producto
+    WHERE (id_prod_param IS NULL OR p.Id = id_prod_param)
+    GROUP BY p.Id, p.Nombre;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_inventario_8(NULL) LIMIT 10;
+
+
+
+-----------------------------------
+-- Validación Demográfica y Patrones Alfanuméricos
+
+-- Consulta 1: Calcular con precisión la edad cronológica de cada cliente basándose en su fecha de nacimiento 
+--registrada para presentar su edad al mostrar al usuario e identificar al segmento de usuarios menores de edad (Actualizada)
+
+CREATE OR REPLACE FUNCTION f_validacion_1(
+    p_edad_limite   INTEGER,
+    p_solo_menores  BOOLEAN
+)
+RETURNS TABLE (
+    rut_usuario      TEXT,
+    nombre_usuario   TEXT,
+    tipo_usuario     TEXT,
+    fecha_nacimiento DATE,
+    edad_anios       INTEGER
+)
+AS $$
+BEGIN
+    IF p_edad_limite IS NULL OR p_edad_limite <= 0 THEN
+        RAISE EXCEPTION 'p_edad_limite debe ser un entero mayor que 0 (recibido: %)', p_edad_limite;
+    END IF;
+
+    IF p_solo_menores IS NULL THEN
+        RAISE EXCEPTION 'p_solo_menores no puede ser NULL';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        u.Rut::TEXT,
+        u.Nombre::TEXT,
+        u.TipoUsuario::TEXT,
+        u.FechaNacimiento::DATE,
+        DATE_PART('year', AGE(CURRENT_DATE, u.FechaNacimiento))::INTEGER
+    FROM Usuario u
+    WHERE NOT p_solo_menores
+       OR DATE_PART('year', AGE(CURRENT_DATE, u.FechaNacimiento)) < p_edad_limite
+    ORDER BY u.Nombre;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Solo menores de 18
+--SELECT * FROM f_validacion_1(18, TRUE);
+
+-- Todos los usuarios con su edad
+--SELECT * FROM f_validacion_1(18, FALSE);
+
+--Consulta 3: Segmentar estadísticamente la base de clientes activos en grupos etarios decenales para 
+-- facilitar la construcción de una matriz de preferencias comerciales.
+
+CREATE OR REPLACE FUNCTION f_validacion_3(
+    p_ancho_grupo   INTEGER DEFAULT 10,
+    p_fecha_desde   DATE    DEFAULT NULL,
+    p_fecha_hasta   DATE    DEFAULT NULL
+)
+RETURNS TABLE (
+    grupo_etario      INTEGER,
+    cantidad_clientes BIGINT
+)
+AS $$
+BEGIN
+    IF p_ancho_grupo IS NULL OR p_ancho_grupo <= 0 THEN
+        RAISE EXCEPTION 'p_ancho_grupo debe ser un entero mayor que 0 (recibido: %)', p_ancho_grupo;
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        (FLOOR(DATE_PART('year', AGE(CURRENT_DATE, u.FechaNacimiento)) / p_ancho_grupo) * p_ancho_grupo)::INTEGER,
+        COUNT(DISTINCT u.Rut)
+    FROM Usuario u
+    JOIN Venta v ON v.Id_Cliente = u.Rut
+    WHERE u.TipoUsuario IN ('cliente', 'ambos')
+      AND (p_fecha_desde IS NULL OR v.Fecha >= p_fecha_desde)
+      AND (p_fecha_hasta IS NULL OR v.Fecha <= p_fecha_hasta)
+    GROUP BY 1
+    ORDER BY 1;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_validacion_3();
+--SELECT * FROM f_validacion_3(5);
+--SELECT * FROM f_validacion_3(10, '2026-01-01', '2026-12-31');
+
+-- Consulta 5: Buscar todos los emprendedores del ecosistema cuya empresa comercial asociada 
+-- carezca de una página web corporativa definida (condición nula estricta).
+
+CREATE OR REPLACE FUNCTION f_validacion_5()
+RETURNS TABLE (RutEmprendedor VARCHAR(11), NombreEmpendedor VARCHAR(100),
+RutEmpresa VARCHAR(11), NombreEmpresa VARCHAR(100), PaginaWeb VARCHAR(100)) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.Rut, u.Nombre, e.Rut, e.Nombre, e.PaginaWeb
+    FROM Usuario u JOIN Tener3 t ON t.Id_Usuario = u.Rut
+    JOIN Empresa e ON e.Rut = t.Id_Empresa
+    WHERE e.PaginaWeb IS NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+--  SELECT * FROM f_validacion_5() LIMIT 10;
+
+
+-- Consulta 6:  Identificar las direcciones de despacho donde el 
+-- identificador nominativo de la calle comience explícitamente con los términos urbanos “Avenida” o “Camino”.
+
+CREATE OR REPLACE FUNCTION f_validacion_6()
+RETURNS TABLE (Id INT, Numero INT, Calle VARCHAR(100), Descripcion VARCHAR(100),
+Pasaje VARCHAR(100), Sector VARCHAR(100), Id_Comuna INT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT d.Id, d.Numero, d.Calle, d.Descripcion, d.Pasaje, d.Sector, d.Id_Comuna
+    FROM Direccion d
+    WHERE d.Calle ILIKE 'Av%' OR d.Calle ILIKE 'Camino%';
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_validacion_6() LIMIT 10;
+
+
+-- Consulta 7:  Listar a los emprendedores que superan los 60 años de edad cronológica y que actualmente ofrecen servicios del tipo educativo presencial.
+
+CREATE OR REPLACE FUNCTION f_validacion_7()
+RETURNS TABLE (Rut VARCHAR(11), Nombre VARCHAR(100), EdadAnios NUMERIC, Servicio VARCHAR(50), Modalidad TEXT,
+Categoria VARCHAR(50)) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.Rut,u.Nombre,EXTRACT(YEAR FROM AGE(CURRENT_DATE, u.FechaNacimiento)) AS EdadAnios,
+    s.Nombre AS Servicio,s.Caracteristicas ->> 'modalidad' AS Modalidad,c.Nombre AS Categoria
+
+    FROM Usuario u JOIN Ofrecer2 o ON o.Id_Usuario = u.Rut JOIN Servicio s ON s.Id = o.Id_Servicio
+    JOIN Pertenecer2 p ON p.Id_Servicio = s.Id JOIN Categoria c ON c.Id = p.Id_Categoria
+	
+    WHERE AGE(CURRENT_DATE, u.FechaNacimiento) > INTERVAL '60 years' AND s.Caracteristicas->> 'modalidad' = 'Presencial'
+    AND c.Nombre ILIKE '%educativ%';
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_validacion_7() LIMIT 10;
+
+
+-- Consulta 8: Extraer los medios de pago transaccionales que han sido registrados bajo marcas operativas 
+-- específicas como “Visa” o “MasterCard”, empleando filtrado de cadenas.
+
+CREATE OR REPLACE FUNCTION f_validacion_8(medio_evaluado Varchar(20))
+RETURNS TABLE (Id INT, MedioPago VARCHAR(20), Ult4DiGitosTarjeta INT,CodigoTransferencia INT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT p.Id, p.MedioPago, p.Ult4DiGitosTarjeta, p.CodigoTransferencia
+    FROM Pago p
+    WHERE p.MedioPago LIKE '%' || medio_evaluado || '%';
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_validacion_8('Transferencia') LIMIT 10; --Visa / Mastercard / Transferencia
+
+
+------------------------------------------
+--- Vistas Lógicas e Indicadores de Negocio
+
+-- Consulta 1: Diseñar una vista integral que consolide la factura fiscal del cliente, desglosando formalmente 
+-- el valor neto, el impuesto IVA, los descuentos y el recargo por envío.
+CREATE OR REPLACE FUNCTION f_logicas_1(
+    p_id_venta INTEGER
+)
+RETURNS TABLE (
+    folio_factura   INTEGER,
+    fecha_emision   DATE,
+    rut_cliente     TEXT,
+    nombre_cliente  TEXT,
+    valor_neto      INTEGER,
+    tasa_iva        NUMERIC,
+    monto_iva       NUMERIC,
+    monto_descuento NUMERIC,
+    recargo_envio   NUMERIC,
+    total_a_pagar   NUMERIC
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH Detalle_Descuentos_Productos AS (
+        SELECT g3.Id_Venta,
+               COALESCE(SUM(
+                   CASE
+                       WHEN o.PrecioOferta IS NOT NULL AND o.PrecioOferta < 1.0 THEN
+                           (g3.TotalFinal / (1.0 - o.PrecioOferta)) * o.PrecioOferta
+                       ELSE 0
+                   END
+               ), 0) AS Descuento_Productos
+        FROM Generar3 g3
+        JOIN Producto p ON g3.Id_Producto = p.Id
+        LEFT JOIN Oferta o ON p.Id_Oferta = o.Id AND o.Estado = TRUE
+        GROUP BY g3.Id_Venta
+    ),
+    Detalle_Descuentos_Servicios AS (
+        SELECT g4.Id_Venta,
+               COALESCE(SUM(
+                   CASE
+                       WHEN o.PrecioOferta IS NOT NULL AND o.PrecioOferta < 1.0 THEN
+                           (g4.TotalFinal / (1.0 - o.PrecioOferta)) * o.PrecioOferta
+                       ELSE 0
+                   END
+               ), 0) AS Descuento_Servicios
+        FROM Generar4 g4
+        JOIN Servicio s ON g4.Id_Servicio = s.Id
+        LEFT JOIN Oferta o ON s.Id_Oferta = o.Id AND o.Estado = TRUE
+        GROUP BY g4.Id_Venta
+    ),
+    Detalle_Despacho AS (
+        SELECT g2.Id_Venta,
+               SUM(COALESCE(
+                   CAST(d.DatosLogisticos->>'costo_envio' AS DECIMAL),
+                   (CAST(d.DatosLogisticos->>'ancho_cm' AS DECIMAL) *
+                    CAST(d.DatosLogisticos->>'alto_cm' AS DECIMAL) *
+                    CAST(d.DatosLogisticos->>'fondo_cm' AS DECIMAL) * 1.5),
+                   0
+               )) AS Recargo
+        FROM Generar2 g2
+        JOIN Despacho d ON g2.Id_Despacho = d.Id
+        GROUP BY g2.Id_Venta
+    )
+    SELECT v.Id::INTEGER,
+           v.Fecha::DATE,
+           u.Rut::TEXT,
+           u.Nombre::TEXT,
+           v.Neto::INTEGER,
+           v.Iva::NUMERIC,
+           ROUND(v.Neto * v.Iva, 0)::NUMERIC,
+           ROUND(COALESCE(dp.Descuento_Productos, 0) + COALESCE(ds.Descuento_Servicios, 0), 0)::NUMERIC,
+           ROUND(COALESCE(dd.Recargo, 0), 0)::NUMERIC,
+           ROUND(v.Neto + (v.Neto * v.Iva) + COALESCE(dd.Recargo, 0), 0)::NUMERIC
+    FROM Venta v
+    JOIN Usuario u ON v.Id_Cliente = u.Rut
+    LEFT JOIN Detalle_Descuentos_Productos dp ON v.Id = dp.Id_Venta
+    LEFT JOIN Detalle_Descuentos_Servicios ds ON v.Id = ds.Id_Venta
+    LEFT JOIN Detalle_Despacho dd ON v.Id = dd.Id_Venta
+    WHERE p_id_venta IS NULL OR v.Id = p_id_venta
+    ORDER BY v.Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT * FROM f_logicas_1(NULL) LIMIT 10;
+
+
+-- Consulta 3: Formular una vista de rendimiento métrico que categorice a los 
+-- emprendedores en rangos consolidados según su facturación trimestral bruta acumulada.
+CREATE OR REPLACE FUNCTION f_logicas_3(p_anio INTEGER, id_vendedor_param VARCHAR)
+RETURNS TABLE (
+    Id_Vendedor VARCHAR,
+    Anio DOUBLE PRECISION,
+    Trimestre DOUBLE PRECISION,
+    Facturacion_Acumulada NUMERIC,
+    Categoria_Rendimiento VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        v.Id_Vendedor,
+        DATE_PART('year', v.Fecha) AS Anio,
+        DATE_PART('quarter', v.Fecha) AS Trimestre,
+        SUM(v.Neto)::NUMERIC AS Facturacion_Acumulada,
+        (CASE
+            WHEN SUM(v.Neto) < 100000 THEN '< 100.000'
+            WHEN SUM(v.Neto) >= 100000 AND SUM(v.Neto) < 500000 THEN '[100.000, 500.000['
+            WHEN SUM(v.Neto) >= 500000 AND SUM(v.Neto) < 2000000 THEN '[500.000, 2.000.000['
+            ELSE '>=2.000.000'
+        END)::VARCHAR AS Categoria_Rendimiento
+    FROM Venta v
+    WHERE (p_anio IS NULL OR DATE_PART('year', v.Fecha) = p_anio)
+      AND (id_vendedor_param IS NULL OR v.Id_Vendedor = id_vendedor_param)
+    GROUP BY
+        v.Id_Vendedor,
+        DATE_PART('year', v.Fecha),
+        DATE_PART('quarter', v.Fecha);
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_logicas_3(2024, '22821635-6') LIMIT 10;
+
+-- Consulta 4: Estructurar un modelo de consulta que reporte el valor histórico consolidado (Life-Time Value) 
+-- de cada cliente, integrando todo su volumen de transacciones en la plataforma.
+
+CREATE OR REPLACE FUNCTION f_logicas_4(
+    p_min_transacciones INTEGER
+)
+RETURNS TABLE (
+    rut_cliente         TEXT,
+    nombre_cliente      TEXT,
+    total_transacciones BIGINT,
+    ltv                 NUMERIC,
+    ticket_promedio     NUMERIC,
+    primera_compra      DATE,
+    ultima_compra       DATE,
+    antiguedad_dias     INTEGER
+)
+AS $$
+BEGIN
+    IF p_min_transacciones IS NULL OR p_min_transacciones < 1 THEN
+        RAISE EXCEPTION 'p_min_transacciones debe ser un entero mayor o igual a 1 (recibido: %)', p_min_transacciones;
+    END IF;
+
+    RETURN QUERY
+    WITH DetalleVentas AS (
+        SELECT
+            v.Id_Cliente,
+            v.Id AS IdVenta,
+            v.Fecha,
+            (SELECT COALESCE(SUM(g3.TotalFinal), 0) FROM Generar3 g3 WHERE g3.Id_Venta = v.Id) +
+            (SELECT COALESCE(SUM(g4.TotalFinal), 0) FROM Generar4 g4 WHERE g4.Id_Venta = v.Id) AS Monto
+        FROM Venta v
+    )
+    SELECT
+        u.Rut::TEXT,
+        u.Nombre::TEXT,
+        COUNT(d.IdVenta),
+        SUM(d.Monto)::NUMERIC,
+        ROUND(AVG(d.Monto)::NUMERIC, 2),
+        MIN(d.Fecha)::DATE,
+        MAX(d.Fecha)::DATE,
+        (MAX(d.Fecha)::DATE - MIN(d.Fecha)::DATE)::INTEGER
+    FROM Usuario u, DetalleVentas d
+    WHERE u.Rut = d.Id_Cliente
+    GROUP BY u.Rut, u.Nombre
+    HAVING COUNT(d.IdVenta) >= p_min_transacciones
+    ORDER BY SUM(d.Monto) DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM f_logicas_4(1) LIMIT 10;
+
+
+-- Consulta 5: Crear una vista jerárquica unificada que mapee la estructura completa y dependencias 
+-- de todas las categorías y subcategorías mediante lógica recursiva
+
+CREATE OR REPLACE FUNCTION f_logicas_5(
+    p_id_raiz INTEGER
+)
+RETURNS TABLE (
+    id_cat        INTEGER,
+    nombre_cat    TEXT,
+    id_cat_padre  INTEGER,
+    nivel         INTEGER
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH RECURSIVE Jerarquia (j_id, j_nombre, j_padre, j_nivel) AS (
+        SELECT
+            c.Id::INTEGER,
+            c.Nombre::TEXT,
+            c.Id_Categoria::INTEGER,
+            1
+        FROM Categoria c
+        WHERE (p_id_raiz IS NULL AND c.Id_Categoria IS NULL)
+           OR c.Id = p_id_raiz
+        UNION ALL
+        SELECT
+            hijo.Id::INTEGER,
+            hijo.Nombre::TEXT,
+            hijo.Id_Categoria::INTEGER,
+            padre.j_nivel + 1
+        FROM Categoria hijo
+        JOIN Jerarquia padre ON hijo.Id_Categoria = padre.j_id
+    )
+    SELECT j.j_id, j.j_nombre, j.j_padre, j.j_nivel
+    FROM Jerarquia j
+    ORDER BY j.j_nivel, j.j_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_logicas_5(NULL) LIMIT 10;
+
+
+-- Consulta 6: Consolidar el total de utilidades operativas proyectadas para la plataforma, 
+-- asumiendo un cargo por comisión equivalente al 5% sobre el valor bruto de cada venta.
+
+
+CREATE OR REPLACE FUNCTION f_logicas_6(
+    p_comision NUMERIC
+)
+RETURNS TABLE (UtilidadProyectada NUMERIC) AS $$
+BEGIN
+    IF p_comision IS NULL OR p_comision < 0 OR p_comision > 1 THEN
+        RAISE EXCEPTION 'p_comision debe estar entre 0 y 1 (recibido: %)', p_comision;
+    END IF;
+
+    RETURN QUERY
+    SELECT COALESCE(ROUND(SUM(v.Neto * (1 + v.Iva) * p_comision), 0), 0)
+    FROM Venta v
+    WHERE v.Estado = 'Pagado';
+END;
+$$ LANGUAGE plpgsql;
+--SELECT * FROM f_logicas_6(0.05);
+
+
+-- Consulta 7: Generar una vista geoespacial que agrupe a las empresas registradas según su 
+-- giro comercial y totalice la superficie demográfica de las comunas donde mantienen presencia.
+
+CREATE OR REPLACE FUNCTION f_logicas_7(
+    p_giro TEXT
+)
+RETURNS TABLE (
+    giro_empresa         TEXT,
+    cantidad_empresas    BIGINT,
+    cantidad_comunas     BIGINT,
+    superficie_total_km2 NUMERIC
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH presencia AS (
+        SELECT DISTINCT e.Giro AS giro, e.Rut AS rut, co.Id AS id_comuna, co.Superficie AS superficie
+        FROM Empresa e
+        JOIN Registrar5 reg ON reg.Id_Empresa = e.Rut
+        JOIN Direccion d ON d.Id = reg.Id_Direccion
+        JOIN Comuna co ON co.Id = d.Id_Comuna
+        WHERE p_giro IS NULL OR e.Giro ILIKE '%' || p_giro || '%'
+    ),
+    emp AS (
+        SELECT p.giro, COUNT(DISTINCT p.rut) AS n_empresas
+        FROM presencia p
+        GROUP BY p.giro
+    ),
+    com AS (
+        SELECT p.giro, p.id_comuna, MAX(p.superficie) AS sup
+        FROM presencia p
+        GROUP BY p.giro, p.id_comuna
+    ),
+    com_tot AS (
+        SELECT c.giro, COUNT(*) AS n_comunas, SUM(c.sup) AS sup_total
+        FROM com c
+        GROUP BY c.giro
+    )
+    SELECT emp.giro::TEXT,
+           emp.n_empresas,
+           ct.n_comunas,
+           ct.sup_total::NUMERIC
+    FROM emp
+    JOIN com_tot ct ON ct.giro IS NOT DISTINCT FROM emp.giro
+    ORDER BY ct.sup_total DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_logicas_7(NULL) LIMIT 10;
+
+
+-- Consulta 8: Diseñar un panel de monitoreo temporal que muestre el promedio aritmético diario de 
+-- nuevos registros de clientes en el sistema a lo largo del último mes calendario.
+
+CREATE OR REPLACE FUNCTION f_logicas_8(
+    p_fecha_desde DATE,
+    p_fecha_hasta DATE
+)
+RETURNS TABLE (promedio_diario_nuevos_clientes NUMERIC) AS $$
+BEGIN
+    IF p_fecha_desde IS NULL OR p_fecha_hasta IS NULL THEN
+        RAISE EXCEPTION 'p_fecha_desde y p_fecha_hasta no pueden ser NULL';
+    END IF;
+    IF p_fecha_desde > p_fecha_hasta THEN
+        RAISE EXCEPTION 'p_fecha_desde (%) no puede ser mayor que p_fecha_hasta (%)', p_fecha_desde, p_fecha_hasta;
+    END IF;
+
+    RETURN QUERY
+    SELECT ROUND(AVG(t.cantidad), 2)
+    FROM (
+        SELECT fechas.dia, COUNT(u.Rut) AS cantidad
+        FROM (SELECT CAST(generate_series(p_fecha_desde::TIMESTAMP, p_fecha_hasta::TIMESTAMP, '1 day') AS DATE) AS dia) fechas
+        LEFT JOIN Usuario u
+               ON u.FechaCreacion::DATE = fechas.dia
+              AND u.TipoUsuario IN ('cliente', 'ambos')
+        GROUP BY fechas.dia
+    ) t;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_logicas_8('2026-09-01', '2026-09-30');
+
+
+
+
+-- Consulta 10: Formular una vista general de catálogo unificado que integre la disponibilidad de productos físicos y 
+-- la oferta de servicios profesionales en una matriz única de búsqueda indexada.
+
+CREATE OR REPLACE FUNCTION f_logicas_10(
+    p_busqueda         TEXT,
+    p_solo_disponibles BOOLEAN
+)
+RETURNS TABLE (
+    tipo_bien           TEXT,
+    id_bien             INTEGER,
+    nombre_bien         TEXT,
+    restriccion_edad    INTEGER,
+    categorias_bien     TEXT,
+    id_oferta_bien      INTEGER,
+    fecha_inicio_bien   DATE,
+    fecha_fin_bien      DATE,
+    stock_disponible    BIGINT,
+    disponibilidad_bien TEXT
+)
+AS $$
+BEGIN
+    IF p_solo_disponibles IS NULL THEN
+        RAISE EXCEPTION 'p_solo_disponibles no puede ser NULL';
+    END IF;
+
+    RETURN QUERY
+    WITH catalogo AS (
+        SELECT 'Producto'::TEXT AS TipoBien,
+               p.Id AS IdBien,
+               p.Nombre AS Nombre,
+               p.RestriccionEdad AS RestriccionEdad,
+               (SELECT STRING_AGG(c.Nombre::TEXT, ', ')
+                FROM Pertenecer1 pe
+                JOIN Categoria c ON c.Id = pe.Id_Categoria
+                WHERE pe.Id_Producto = p.Id) AS Categorias,
+               p.Id_Oferta AS IdOferta,
+               p.FechaInicio AS FechaInicio,
+               p.FechaFin AS FechaFin,
+               st.Total AS Stock,
+               CASE WHEN COALESCE(st.Total, 0) > 0
+                    THEN 'Disponible' ELSE 'No disponible' END AS Disponibilidad
+        FROM Producto p
+        LEFT JOIN LATERAL (
+            SELECT SUM(a.StockActual) AS Total
+            FROM Almacenar a
+            WHERE a.Id_Producto = p.Id
+        ) st ON TRUE
+
+        UNION ALL
+
+        SELECT 'Servicio'::TEXT,
+               s.Id,
+               s.Nombre,
+               s.RestriccionEdad,
+               (SELECT STRING_AGG(c.Nombre::TEXT, ', ')
+                FROM Pertenecer2 pe
+                JOIN Categoria c ON c.Id = pe.Id_Categoria
+                WHERE pe.Id_Servicio = s.Id),
+               s.Id_Oferta,
+               s.FechaInicio,
+               s.FechaFin,
+               NULL::BIGINT,
+               CASE WHEN s.FechaFin IS NULL OR s.FechaFin >= CURRENT_DATE
+                    THEN 'Disponible' ELSE 'No disponible' END
+        FROM Servicio s
+    )
+    SELECT c.TipoBien,
+           c.IdBien::INTEGER,
+           c.Nombre::TEXT,
+           c.RestriccionEdad::INTEGER,
+           c.Categorias,
+           c.IdOferta::INTEGER,
+           c.FechaInicio::DATE,
+           c.FechaFin::DATE,
+           c.Stock::BIGINT,
+           c.Disponibilidad
+    FROM catalogo c
+    WHERE (p_busqueda IS NULL OR TRIM(p_busqueda) = ''
+           OR to_tsvector('spanish', c.Nombre || ' ' || COALESCE(c.Categorias, ''))
+              @@ plainto_tsquery('spanish', p_busqueda))
+      AND (NOT p_solo_disponibles OR c.Disponibilidad = 'Disponible')
+    ORDER BY c.TipoBien, c.Nombre;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT * FROM f_logicas_10(NULL, FALSE) LIMIT 10;
+
+---------------------------------------------
+---------------------------------------------
+-- Generar las funciones necesarias para realizar los Insert, Delete o Update en cada tabla.
+
+--
+-- 
+CREATE OR REPLACE FUNCTION insertar_carritocompra(
+    p_id INTEGER,
+    p_estado VARCHAR(20),
+    p_ultima_actualizacion TIMESTAMP
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO CarritoCompra (
+        Id,
+        Estado,
+        UltimaActualizacion
+    )
+    VALUES (
+        p_id,
+        p_estado,
+        p_ultima_actualizacion
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT insertar_carritocompra(1001, 'Activo', '2024-06-15 10:30:00'), insertar_carritocompra(1002, 'Pendiente', '2024-07-02 09:15:00');
+-- SELECT * FROM CarritoCompra WHERE Id IN (1001, 1002);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_calificacion(
+    p_id INTEGER,
+    p_comentario VARCHAR(200),
+    p_calificacion INTEGER,
+    p_fecha TIMESTAMP
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Calificacion (
+        Id,
+        Comentario,
+        Calificacion,
+        Fecha
+    )
+    VALUES (
+        p_id,
+        p_comentario,
+        p_calificacion,
+        p_fecha
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_calificacion(1010, 'Excelente producto, lo recomiendo.', 5, LOCALTIMESTAMP);
+-- SELECT * FROM calificacion WHERE Id IN (1010,1011);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_listadeseos(
+    p_id INTEGER,
+    p_nombre_lista VARCHAR(50),
+    p_descripcion VARCHAR(200),
+    p_visibilidad BOOLEAN
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO ListaDeseos (
+        Id,
+        NombreLista,
+        Descripcion,
+        Visibilidad
+    )
+    VALUES (
+        p_id,
+        p_nombre_lista,
+        p_descripcion,
+        p_visibilidad
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT insertar_listadeseos(1002, 'Lista de Verano', 'Artículos para las vacaciones', TRUE), insertar_listadeseos(1003, 'Lista de Verano', 'Artículos para las vacaciones', FALSE);
+-- SELECT * FROM ListaDeseos WHERE Id IN (1002,1003);
+
+--
+CREATE OR REPLACE FUNCTION insertar_preguntas(
+    p_id INTEGER,
+    p_pregunta VARCHAR(200),
+    p_fecha_creacion TIMESTAMP,
+    p_respuesta VARCHAR(200),
+    p_fecha_respuesta TIMESTAMP
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Preguntas (
+        Id,
+        Pregunta,
+        FechaCreacion,
+        Respuesta,
+        FechaRespuesta
+    )
+    VALUES (
+        p_id,
+        p_pregunta,
+        p_fecha_creacion,
+        p_respuesta,
+        p_fecha_respuesta
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT insertar_preguntas(1004, '¿Tiene envío internacional?', LOCALTIMESTAMP, NULL, NULL), insertar_preguntas(1005, '¿Tiene envío internacional?', LOCALTIMESTAMP, NULL, NULL);
+-- SELECT * FROM Preguntas WHERE Id IN (1004,1005);
+
+--
+CREATE OR REPLACE FUNCTION insertar_cotizacion(
+    p_id INTEGER,
+    p_fecha_creacion DATE,
+    p_estado VARCHAR(20),
+    p_fecha_ultima_actualizacion DATE DEFAULT NULL
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Cotizacion (
+        Id,
+        FechaCreacion,
+        Estado,
+        FechaUltimaActualizacion
+    )
+    VALUES (
+        p_id,
+        p_fecha_creacion,
+        p_estado,
+        p_fecha_ultima_actualizacion
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT insertar_cotizacion(1001, CURRENT_DATE, 'Pendiente'), insertar_cotizacion(1002, CURRENT_DATE, 'Pendiente');
+-- SELECT * FROM cotizacion WHERE Id IN (1001,1002);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_oferta(
+    p_id INTEGER,
+    p_precio_oferta DECIMAL(3,2),
+    p_estado BOOLEAN
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Oferta (
+        Id,
+        PrecioOferta,
+        Estado
+    )
+    VALUES (
+        p_id,
+        p_precio_oferta,
+        p_estado
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_oferta(1004, 0.50, TRUE), insertar_oferta(1005, 0.60, TRUE);
+-- SELECT * FROM oferta WHERE Id IN (1004,1005);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_usuario(
+    p_rut VARCHAR(11),
+    p_nombre VARCHAR(100),
+    p_clave VARCHAR(30),
+    p_fecha_nacimiento DATE,
+    p_fecha_creacion DATE,
+    p_tipo_usuario VARCHAR(20),
+    p_descuentos JSON DEFAULT NULL,
+    p_secion_iniciada BOOLEAN DEFAULT FALSE
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Usuario (
+        Rut,
+        Nombre,
+        Clave,
+        FechaNacimiento,
+        FechaCreacion,
+        TipoUsuario,
+        Descuentos,
+        SecionIniciada
+    )
+    VALUES (
+        p_rut,
+        p_nombre,
+        p_clave,
+        p_fecha_nacimiento,
+        p_fecha_creacion,
+        p_tipo_usuario,
+        p_descuentos,
+        p_secion_iniciada
+    );
+END;
+$$ LANGUAGE plpgsql;
+--SELECT insertar_usuario('21111222-0', 'Cliente De Prueba', 'claveSegura123', '1995-10-20', CURRENT_DATE, 'cliente') , insertar_usuario('21111223-9', 'Cliente De Prueba', 'claveSegura123', '1995-10-20', CURRENT_DATE, 'cliente', NULL, TRUE);
+--SELECT * FROM usuario WHERE rut IN ('21111222-0','21111223-9');
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_devolucion(
+    p_id INTEGER,
+    p_motivo VARCHAR(200),
+    p_fecha_solicitud DATE,
+    p_fecha_resolucion DATE,
+    p_estado VARCHAR(20),
+    p_tipo_devolucion VARCHAR(30),
+    p_monto_reintegrado INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Devolucion (
+        Id,
+        Motivo,
+        FechaSolicitud,
+        FechaResolucion,
+        Estado,
+        TipoDevolucion,
+        MontoReintegrado
+    )
+    VALUES (
+        p_id,
+        p_motivo,
+        p_fecha_solicitud,
+        p_fecha_resolucion,
+        p_estado,
+        p_tipo_devolucion,
+        p_monto_reintegrado
+    );
+END;
+$$ LANGUAGE plpgsql;
+--SELECT insertar_devolucion(1003, 'Producto no era lo esperado', CURRENT_DATE, (CURRENT_DATE + INTERVAL '5 days')::DATE, 'En Preparación', 'Reembolso', NULL) , 
+-- insertar_devolucion(1004, 'Producto no era lo esperado', CURRENT_DATE, (CURRENT_DATE + INTERVAL '5 days')::DATE, 'En Preparación', 'Reembolso', NULL);
+--SELECT * FROM devolucion WHERE ID IN (1003,1004);
+
+--
+CREATE OR REPLACE FUNCTION insertar_mensaje(
+    p_id INTEGER,
+    p_contenido VARCHAR(200),
+    p_fecha_envio DATE,
+    p_estado VARCHAR(20),
+    p_fecha_respuesta TIMESTAMP
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Mensaje (
+        Id,
+        Contenido,
+        FechaEnvio,
+        Estado,
+        FechaRespuesta
+    )
+    VALUES (
+        p_id,
+        p_contenido,
+        p_fecha_envio,
+        p_estado,
+        p_fecha_respuesta
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT insertar_mensaje(1001, 'Hola, tengo una duda sobre mi pedido.', CURRENT_DATE, 'Enviado', NULL), insertar_mensaje(1002, 'Hola, tengo una duda sobre mi pedido.', CURRENT_DATE, 'Enviado', NULL);
+-- SELECT * FROM mensaje WHERE ID IN (1001,1002);
+
+--
+CREATE OR REPLACE FUNCTION insertar_empresadespacho(
+    p_id INTEGER,
+    p_nombre VARCHAR(50),
+    p_estandares_volumetricos JSON
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO EmpresaDespacho (
+        Id,
+        Nombre,
+        EstandaresVolumetricos
+    )
+    VALUES (
+        p_id,
+        p_nombre,
+        p_estandares_volumetricos
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT insertar_empresadespacho(21, 'Nueva Empresa de Envíos', '{"alto_max_cm": 100, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 25000}') , 
+-- insertar_empresadespacho(22, 'Nueva Empresa de Envíos', '{"alto_max_cm": 100, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 25000}');
+--SELECT * FROM empresadespacho WHERE ID IN (21,22);
+
+--
+CREATE OR REPLACE FUNCTION insertar_empresa(
+    p_rut VARCHAR(11),
+    p_nombre VARCHAR(100),
+    p_pagina_web VARCHAR(100),
+    p_giro VARCHAR(100)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Empresa (
+        Rut,
+        Nombre,
+        PaginaWeb,
+        Giro
+    )
+    VALUES (
+        p_rut,
+        p_nombre,
+        p_pagina_web,
+        p_giro
+    );
+END;
+$$ LANGUAGE plpgsql;
+--SELECT insertar_empresa('99999997-6', 'Empresa Innovadora SpA', 'www.innovadora.cl', 'Tecnología'), 
+--insertar_empresa('99999997-7', 'Empresa Innovador SpA', 'www.innovadora.cl', 'Tecnología');
+--SELECT * FROM empresa WHERE rut IN ('99999997-6','99999997-7');
+
+--
+CREATE OR REPLACE FUNCTION insertar_pago(
+    p_id INTEGER,
+    p_medio_pago VARCHAR(20),
+    p_ult4_digitos_tarjeta INTEGER,
+    p_codigo_transferencia INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Pago (
+        Id,
+        MedioPago,
+        Ult4DiGitosTarjeta,
+        CodigoTransferencia
+    )
+    VALUES (
+        p_id,
+        p_medio_pago,
+        p_ult4_digitos_tarjeta,
+        p_codigo_transferencia
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_pago(1019, 'Transferencia', NULL, 123456), insertar_pago(1020, 'Transferencia', NULL, 123456);
+-- SELECT * FROM PAGO WHERE ID IN (1019,1020);
+
+--
+CREATE OR REPLACE FUNCTION insertar_region(
+    p_id INTEGER,
+    p_nombre VARCHAR(100),
+    p_superficie INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Region (
+        ID,
+        Nombre,
+        Superficie
+    )
+    VALUES (
+        p_id,
+        p_nombre,
+        p_superficie
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_region(17, 'Nueva Región', 12345), insertar_region(18, 'Nueva Región', 12345);
+--SELECT * FROM region WHERE ID IN (17,18);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_provincia(
+    p_id INTEGER,
+    p_nombre VARCHAR(100),
+    p_superficie INTEGER,
+    p_id_region INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Provincia (
+        ID,
+        Nombre,
+        Superficie,
+        ID_Region
+    )
+    VALUES (
+        p_id,
+        p_nombre,
+        p_superficie,
+        p_id_region
+    );
+END;
+$$ LANGUAGE plpgsql;
+--SELECT insertar_provincia(164, 'Nueva Provincia', 1234, 13), insertar_provincia(165, 'Nueva Provincia', 1234, 13);
+--SELECT * FROM provincia WHERE ID IN (164,165);
+
+--
+CREATE OR REPLACE FUNCTION insertar_comuna(
+    p_id INTEGER,
+    p_nombre VARCHAR(100),
+    p_superficie INTEGER,
+    p_id_provincia INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Comuna (
+        ID,
+        Nombre,
+        Superficie,
+        ID_Provincia
+    )
+    VALUES (
+        p_id,
+        p_nombre,
+        p_superficie,
+        p_id_provincia
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_comuna(13133, 'Nueva Comuna', 123, 131), insertar_comuna(13134, 'Nueva Comuna', 123, 131);
+--SELECT * FROM comuna WHERE ID IN (13133,13134);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_producto(
+    p_id INTEGER,
+    p_nombre VARCHAR(50),
+    p_restriccion_edad BOOLEAN,
+    p_caracteristicas JSON,
+    p_id_oferta INTEGER,
+    p_fecha_inicio DATE,
+    p_fecha_fin DATE
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Producto (
+        Id,
+        Nombre,
+        RestriccionEdad,
+        Caracteristicas,
+        Id_Oferta,
+        FechaInicio,
+        FechaFin
+    )
+    VALUES (
+        p_id,
+        p_nombre,
+        p_restriccion_edad,
+        p_caracteristicas,
+        p_id_oferta,
+        p_fecha_inicio,
+        p_fecha_fin
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT insertar_producto(1012, 'Producto de Prueba', FALSE, '{"color": "Blanco", "precio": 19990}', NULL, NULL, NULL), 
+-- insertar_producto(1013, 'Producto de Prueba', FALSE, '{"color": "Blanco", "precio": 19990}', NULL, NULL, NULL);
+--SELECT * FROM producto WHERE ID IN (1012,1013);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_servicio(
+    p_id INTEGER,
+    p_nombre VARCHAR(50),
+    p_restriccion_edad BOOLEAN,
+    p_duracion TIME,
+    p_caracteristicas JSON,
+    p_id_oferta INTEGER,
+    p_fecha_inicio DATE,
+    p_fecha_fin DATE
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Servicio (
+        Id,
+        Nombre,
+        RestriccionEdad,
+        Duracion,
+        Caracteristicas,
+        Id_Oferta,
+        FechaInicio,
+        FechaFin
+    )
+    VALUES (
+        p_id,
+        p_nombre,
+        p_restriccion_edad,
+        p_duracion,
+        p_caracteristicas,
+        p_id_oferta,
+        p_fecha_inicio,
+        p_fecha_fin
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_servicio(1003, 'Servicio de Prueba', FALSE, '01:00:00', '{"modalidad": "Remoto"}', NULL, NULL, NULL), 
+-- insertar_servicio(1004, 'Servicio de Prueba', FALSE, '01:00:00', '{"modalidad": "Remoto"}', NULL, NULL, NULL);
+--SELECT * FROM servicio WHERE ID IN (1003,1004);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_categoria(
+    p_id INTEGER,
+    p_nombre VARCHAR(50),
+    p_id_categoria INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Categoria (
+        Id,
+        Nombre,
+        Id_Categoria
+    )
+    VALUES (
+        p_id,
+        p_nombre,
+        p_id_categoria
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_categoria(51, 'Categoría de Prueba', 2), insertar_categoria(52, 'Categoría de Prueba', 1);
+--SELECT * FROM categoria WHERE ID IN (51,52);
+
+--
+CREATE OR REPLACE FUNCTION insertar_direccion(
+    p_id INTEGER,
+    p_numero INTEGER,
+    p_calle VARCHAR(100),
+    p_descripcion VARCHAR(100),
+    p_pasaje VARCHAR(100),
+    p_sector VARCHAR(100),
+    p_id_comuna INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Direccion (
+        Id,
+        Numero,
+        Calle,
+        Descripcion,
+        Pasaje,
+        Sector,
+        Id_Comuna
+    )
+    VALUES (
+        p_id,
+        p_numero,
+        p_calle,
+        p_descripcion,
+        p_pasaje,
+        p_sector,
+        p_id_comuna
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_direccion(1001, 123, 'Calle Falsa', 'Casa de prueba', 'Pasaje Prueba', 'Sector Prueba', 13101), 
+--insertar_direccion(1002, 123, 'Calle Falsa', 'Casa de prueba', 'Pasaje Prueba', 'Sector Prueba', 13101);
+--SELECT * FROM direccion WHERE ID IN (1001,1002);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_registrar5(
+    p_id_empresa VARCHAR(11),
+    p_id_direccion INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Registrar5 (
+        Id_Empresa,
+        Id_Direccion
+    )
+    VALUES (
+        p_id_empresa,
+        p_id_direccion
+    );
+END;
+$$ LANGUAGE plpgsql;
+--SELECT insertar_registrar5('20600674-9', 900), insertar_registrar5('22345948-K', 901);
+--SELECT * FROM registrar5 WHERE id_empresa IN ('20600674-9','22345948-K');
+
+--
+CREATE OR REPLACE FUNCTION insertar_despacho(
+    p_id INTEGER,
+    p_estado VARCHAR(20),
+    p_datos_logisticos JSON,
+    p_id_direccion INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Despacho (
+        Id,
+        Estado,
+        DatosLogisticos,
+        Id_Direccion
+    )
+    VALUES (
+        p_id,
+        p_estado,
+        p_datos_logisticos,
+        p_id_direccion
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_despacho(1001, 'En Preparación', '{"peso_kg": 1.5, "alto_cm": 10, "ancho_cm": 15, "fondo_cm": 5}', 999), 
+-- insertar_despacho(1002, 'En Preparación', '{"peso_kg": 1.5, "alto_cm": 10, "ancho_cm": 15, "fondo_cm": 5}', 1000);
+--SELECT * FROM despacho WHERE id IN (1001,1002);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_despachar2(
+    p_id_empresa_d INTEGER,
+    p_id_despacho INTEGER,
+    p_numero_seguimiento INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Despachar2 (
+        Id_EmpresaD,
+        Id_Despacho,
+        NumeroSeguimiento
+    )
+    VALUES (
+        p_id_empresa_d,
+        p_id_despacho,
+        p_numero_seguimiento
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_despachar2(18, 999, 123456789), insertar_despachar2(19, 1000, 123456789);
+-- SELECT * FROM Despachar2 WHERE (Id_EmpresaD = 18 AND Id_Despacho = 999) OR (Id_EmpresaD = 19 AND Id_Despacho = 1000);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_venta(
+    p_id INTEGER,
+    p_neto INTEGER,
+    p_iva DECIMAL(3,2),
+    p_fecha TIMESTAMP,
+    p_requiere_despacho BOOLEAN,
+    p_estado VARCHAR(20),
+    p_id_vendedor VARCHAR(11),
+    p_id_cliente VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Venta (
+        Id,
+        Neto,
+        Iva,
+        Fecha,
+        RequiereDespacho,
+        Estado,
+        Id_Vendedor,
+        Id_Cliente
+    )
+    VALUES (
+        p_id,
+        p_neto,
+        p_iva,
+        p_fecha,
+        p_requiere_despacho,
+        p_estado,
+        p_id_vendedor,
+        p_id_cliente
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT insertar_venta(1014, 25000, 0.19, LOCALTIMESTAMP, TRUE, 'Pagado', '10001431-9', '10006240-2') , insertar_venta(1015, 25000, 0.19, LOCALTIMESTAMP, TRUE, 'Pagado', '10001431-9', '10006240-2');
+-- SELECT * FROM venta WHERE id IN (1014,1015);
+
+
+--
+-- 
+CREATE OR REPLACE FUNCTION insertar_generar1(
+    p_id_usuario VARCHAR(11),
+    p_id_devolucion INTEGER,
+    p_id_venta INTEGER,
+    p_id_producto INTEGER,
+    p_cantidad INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Generar1 (
+        Id_Usuario,
+        Id_Devolucion,
+        Id_Venta,
+        Id_Producto,
+        Cantidad
+    )
+    VALUES (
+        p_id_usuario,
+        p_id_devolucion,
+        p_id_venta,
+        p_id_producto,
+        p_cantidad
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_generar1('18505944-8', 458, 486, 1, 1),insertar_generar1('5019189-3', 851, 963, 1, 2);
+-- SELECT * FROM Generar1 WHERE (id_usuario = '18505944-8' AND Id_Devolucion = 458 AND Id_Venta = 486) OR (id_usuario = '5019189-3' AND Id_Devolucion = 851 AND Id_Venta = 963);
+
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_enviar(
+    p_id_venta INTEGER,
+    p_id_mensaje INTEGER,
+    p_id_usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Enviar (
+        Id_Venta,
+        Id_Mensaje,
+        Id_Usuario
+    )
+    VALUES (
+        p_id_venta,
+        p_id_mensaje,
+        p_id_usuario
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_enviar(1001, 1, '10001431-9'), insertar_enviar(1002, 1, '10001431-9');
+--SELECT * FROM enviar WHERE (id_venta = 1001 or id_venta = 1002);
+
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_generar2(
+    p_id_usuario VARCHAR(11),
+    p_id_despacho INTEGER,
+    p_id_venta INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Generar2 (
+        Id_Usuario,
+        Id_Despacho,
+        Id_Venta
+    )
+    VALUES (
+        p_id_usuario,
+        p_id_despacho,
+        p_id_venta
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_generar2('10001431-9', 1, 1), insertar_generar2('10001431-9', 2, 2);
+-- SELECT * FROM Generar2 WHERE (id_usuario = '10001431-9' AND Id_Despacho = 1 AND Id_Venta = 1) OR (id_usuario = '10001431-9' AND Id_Despacho = 2 AND Id_Venta = 2);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_correo(
+    p_correo VARCHAR(100),
+    p_id_usuario VARCHAR(11),
+    p_id_empresa VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Correo (
+        Correo,
+        Id_Usuario,
+        Id_Empresa
+    )
+    VALUES (
+        p_correo,
+        p_id_usuario,
+        p_id_empresa
+    );
+END;
+$$ LANGUAGE plpgsql;
+--SELECT insertar_correo('cliente.prueba@example.com', '10001431-9', NULL), insertar_correo('cliente.prueba@example2.com', '10001431-9', NULL);
+--SELECT * FROM correo WHERE (correo = 'cliente.prueba@example.com' or correo = 'cliente.prueba@example2.com');
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_telefono(
+    p_numero INTEGER,
+    p_id_usuario VARCHAR(11),
+    p_id_empresa VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Telefono (
+        Numero,
+        Id_Usuario,
+        Id_Empresa
+    )
+    VALUES (
+        p_numero,
+        p_id_usuario,
+        p_id_empresa
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_telefono(999981982, '10001431-9', NULL), insertar_telefono(999981980, '10001431-9', NULL);
+-- SELECT * FROM telefono WHERE (Numero = 999981982 or Numero =999981980 );
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_tener3(
+    p_id_usuario VARCHAR(11),
+    p_id_empresa VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Tener3 (
+        Id_Usuario,
+        Id_Empresa
+    )
+    VALUES (
+        p_id_usuario,
+        p_id_empresa
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_tener3('10001431-9', '10006905-9'), insertar_tener3('10001431-9', '20600674-9');
+-- SELECT * FROM Tener3 WHERE (Id_Usuario = '10001431-9' AND Id_Empresa = '10006905-9') OR (Id_Usuario = '10001431-9' AND Id_Empresa = '20600674-9');
+
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_registrar2(
+    p_id_usuario VARCHAR(11),
+    p_id_direccion INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Registrar2 (
+        Id_Usuario,
+        Id_Direccion
+    )
+    VALUES (
+        p_id_usuario,
+        p_id_direccion
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_registrar2('10001431-9', 1), insertar_registrar2('10001431-9', 2);
+-- SELECT * FROM Registrar2 WHERE (Id_Usuario = '10001431-9' AND Id_Direccion = 1) OR (Id_Usuario = '10001431-9' AND Id_Direccion = 2);
+
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_inventario(
+    p_id INTEGER,
+    p_stock_minimo INTEGER,
+    p_stock_maximo INTEGER,
+    p_id_usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Inventario (
+        Id,
+        StockMinimo,
+        StockMaximo,
+        Id_Usuario
+    )
+    VALUES (
+        p_id,
+        p_stock_minimo,
+        p_stock_maximo,
+        p_id_usuario
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_inventario(1001, 5, 100, '8735650-7'), insertar_inventario(1002, 10, 200, '10001431-9');
+-- SELECT * FROM Inventario WHERE Id IN (1001, 1002);
+
+
+--
+-- 
+CREATE OR REPLACE FUNCTION insertar_generar3(
+    p_id_venta INTEGER,
+    p_id_producto INTEGER,
+    p_cantidad INTEGER,
+    p_total_final INTEGER,
+    p_id_pago INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Generar3 (
+        Id_Venta,
+        Id_Producto,
+        Cantidad,
+        TotalFinal,
+        Id_Pago
+    )
+    VALUES (
+        p_id_venta,
+        p_id_producto,
+        p_cantidad,
+        p_total_final,
+        p_id_pago
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_generar3(1, 1, 1, 0, 1), insertar_generar3(2, 1, 2, 0, 1);
+-- SELECT * FROM Generar3 WHERE (Id_Venta = 1 AND Id_Producto = 1) OR (Id_Venta = 2 AND Id_Producto = 1);
+
+
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_generar4(
+    p_id_venta INTEGER,
+    p_id_servicio INTEGER,
+    p_total_final INTEGER,
+    p_id_pago INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Generar4 (
+        Id_Venta,
+        Id_Servicio,
+        TotalFinal,
+        Id_Pago
+    )
+    VALUES (
+        p_id_venta,
+        p_id_servicio,
+        p_total_final,
+        p_id_pago
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_generar4(1, 1, 15000, 1), insertar_generar4(2, 1, 22000, 1);
+-- SELECT * FROM Generar4 WHERE (Id_Venta = 1 AND Id_Servicio = 1) OR (Id_Venta = 2 AND Id_Servicio = 1);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_valorar(
+    p_id_servicio INTEGER,
+    p_id_usuario VARCHAR(11),
+    p_precio INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Valorar (
+        Id_Servicio,
+        Id_Usuario,
+        Precio
+    )
+    VALUES (
+        p_id_servicio,
+        p_id_usuario,
+        p_precio
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_valorar(1, '10001431-9', 15000), insertar_valorar(1, '8735650-7', 18000);
+-- SELECT * FROM Valorar WHERE (Id_Servicio = 1 AND Id_Usuario = '10001431-9') OR (Id_Servicio = 1 AND Id_Usuario = '8735650-7');
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_ofrecer1(
+    p_id_usuario VARCHAR(11),
+    p_id_producto INTEGER,
+    p_tipo_bien VARCHAR(30)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Ofrecer1 (
+        Id_Usuario,
+        Id_Producto,
+        TipoBien
+    )
+    VALUES (
+        p_id_usuario,
+        p_id_producto,
+        p_tipo_bien
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_ofrecer1('10001431-9', 1, 'Producto Nuevo'), insertar_ofrecer1('10001431-9', 2, 'Producto Usado');
+-- SELECT * FROM Ofrecer1 WHERE (Id_Usuario = '10001431-9' AND Id_Producto = 1) OR (Id_Usuario = '10001431-9' AND Id_Producto = 2);
+
+--
+CREATE OR REPLACE FUNCTION insertar_ofrecer2(
+    p_id_usuario VARCHAR(11),
+    p_id_servicio INTEGER,
+    p_tipo_bien VARCHAR(30)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Ofrecer2 (
+        Id_Usuario,
+        Id_Servicio,
+        TipoBien
+    )
+    VALUES (
+        p_id_usuario,
+        p_id_servicio,
+        p_tipo_bien
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_ofrecer2('10001431-9', 1, 'Servicio Nuevo'), insertar_ofrecer2('10001431-9', 2, 'Servicio Premium');
+-- SELECT * FROM Ofrecer2 WHERE (Id_Usuario = '10001431-9' AND Id_Servicio = 1) OR (Id_Usuario = '10001431-9' AND Id_Servicio = 2);
+
+--
+CREATE OR REPLACE FUNCTION insertar_almacenar(
+    p_id_inventario INTEGER,
+    p_id_producto INTEGER,
+    p_stock_actual INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Almacenar (
+        Id_Inventario,
+        Id_Producto,
+        StockActual
+    )
+    VALUES (
+        p_id_inventario,
+        p_id_producto,
+        p_stock_actual
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_almacenar(1, 1, 50), insertar_almacenar(1, 2, 30);
+-- SELECT * FROM Almacenar WHERE (Id_Inventario = 1 AND Id_Producto = 1) OR (Id_Inventario = 1 AND Id_Producto = 2);
+
+--
+-- 
+CREATE OR REPLACE FUNCTION insertar_crear3(
+    p_id_producto INTEGER,
+    p_id_carrito INTEGER,
+    p_id_usuario VARCHAR(11),
+    p_cantidad INTEGER,
+    p_total INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Crear3 (
+        Id_Producto,
+        Id_Carrito,
+        Id_Usuario,
+        Cantidad,
+        Total
+    )
+    VALUES (
+        p_id_producto,
+        p_id_carrito,
+        p_id_usuario,
+        p_cantidad,
+        p_total
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_crear3(1001, 1, '10001431-9', 1, 29990), insertar_crear3(1002, 1, '10001431-9', 2, 15000);
+-- SELECT * FROM Crear3 WHERE Id_Producto IN (1001, 1002);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_crear4(
+    p_id_servicio INTEGER,
+    p_id_carrito INTEGER,
+    p_id_usuario VARCHAR(11),
+    p_total INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Crear4 (
+        Id_Servicio,
+        Id_Carrito,
+        Id_Usuario,
+        Total
+    )
+    VALUES (
+        p_id_servicio,
+        p_id_carrito,
+        p_id_usuario,
+        p_total
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_crear4(1001, 1, '10001431-9', 15000), insertar_crear4(1002, 1, '10001431-9', 22000);
+-- SELECT * FROM Crear4 WHERE Id_Servicio IN (1001, 1002);
+
+--
+CREATE OR REPLACE FUNCTION insertar_escribir1(
+    p_id_calificacion INTEGER,
+    p_id_producto INTEGER,
+    p_id_usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Escribir1 (
+        Id_Calificacion,
+        Id_Producto,
+        Id_Usuario
+    )
+    VALUES (
+        p_id_calificacion,
+        p_id_producto,
+        p_id_usuario
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_escribir1(1, 1, '10001431-9'), insertar_escribir1(1, 2, '10001431-9');
+-- SELECT * FROM Escribir1 WHERE (Id_Calificacion = 1 AND Id_Producto = 1) OR (Id_Calificacion = 1 AND Id_Producto = 2);
+
+--
+CREATE OR REPLACE FUNCTION insertar_escribir2(
+    p_id_calificacion INTEGER,
+    p_id_servicio INTEGER,
+    p_id_usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Escribir2 (
+        Id_Calificacion,
+        Id_Servicio,
+        Id_Usuario
+    )
+    VALUES (
+        p_id_calificacion,
+        p_id_servicio,
+        p_id_usuario
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_escribir2(1, 1, '10001431-9'), insertar_escribir2(1, 2, '10001431-9');
+-- SELECT * FROM Escribir2 WHERE (Id_Calificacion = 1 AND Id_Servicio = 1) OR (Id_Calificacion = 1 AND Id_Servicio = 2);
+
+--
+CREATE OR REPLACE FUNCTION insertar_crear1(
+    p_id_producto INTEGER,
+    p_id_lista INTEGER,
+    p_id_usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Crear1 (
+        Id_Producto,
+        Id_Lista,
+        Id_Usuario
+    )
+    VALUES (
+        p_id_producto,
+        p_id_lista,
+        p_id_usuario
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_crear1(1, 1, '10001431-9'), insertar_crear1(1, 2, '10001431-9');
+-- SELECT * FROM Crear1 WHERE (Id_Producto = 1 AND Id_Lista = 1) OR (Id_Producto = 1 AND Id_Lista = 2);
+
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_crear2(
+    p_id_servicio INTEGER,
+    p_id_lista INTEGER,
+    p_id_usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Crear2 (
+        Id_Servicio,
+        Id_Lista,
+        Id_Usuario
+    )
+    VALUES (
+        p_id_servicio,
+        p_id_lista,
+        p_id_usuario
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_crear2(1, 1, '10001431-9'), insertar_crear2(1, 2, '10001431-9');
+-- SELECT * FROM Crear2 WHERE (Id_Servicio = 1 AND Id_Lista = 1) OR (Id_Servicio = 1 AND Id_Lista = 2);
+
+--
+CREATE OR REPLACE FUNCTION insertar_hacer1(
+    p_id_producto INTEGER,
+    p_id_pregunta INTEGER,
+    p_id_usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Hacer1 (
+        Id_Producto,
+        Id_Pregunta,
+        Id_Usuario
+    )
+    VALUES (
+        p_id_producto,
+        p_id_pregunta,
+        p_id_usuario
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_hacer1(1, 1, '10001431-9'), insertar_hacer1(1, 2, '10001431-9');
+-- SELECT * FROM Hacer1 WHERE (Id_Producto = 1 AND Id_Pregunta = 1 AND Id_Usuario = '10001431-9') OR (Id_Producto = 1 AND Id_Pregunta = 2 AND Id_Usuario = '10001431-9');
+
+--
+CREATE OR REPLACE FUNCTION insertar_hacer2(
+    p_id_servicio INTEGER,
+    p_id_pregunta INTEGER,
+    p_id_usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Hacer2 (
+        Id_Servicio,
+        Id_Pregunta,
+        Id_Usuario
+    )
+    VALUES (
+        p_id_servicio,
+        p_id_pregunta,
+        p_id_usuario
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_hacer2(1, 1, '10001431-9'), insertar_hacer2(2, 1, '10001431-9');
+-- SELECT * FROM Hacer2 WHERE (Id_Servicio = 1 AND Id_Pregunta = 1 AND Id_Usuario = '10001431-9') OR (Id_Servicio = 2 AND Id_Pregunta = 1 AND Id_Usuario = '10001431-9');
+
+--
+-- 
+CREATE OR REPLACE FUNCTION insertar_solicitar1(
+    p_id_usuario VARCHAR(11),
+    p_id_producto INTEGER,
+    p_id_cotizacion INTEGER,
+    p_precio INTEGER,
+    p_cantidad INTEGER DEFAULT 1
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Solicitar1 (
+        Id_Usuario,
+        Id_Producto,
+        Id_Cotizacion,
+        Precio,
+        Cantidad
+    )
+    VALUES (
+        p_id_usuario,
+        p_id_producto,
+        p_id_cotizacion,
+        p_precio,
+        p_cantidad
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_solicitar1('10001431-9', 1, 1, 25000, 2), insertar_solicitar1('10001431-9', 1, 2, 30000);
+-- SELECT * FROM Solicitar1 WHERE (Id_Usuario = '10001431-9' AND Id_Producto = 1 AND Id_Cotizacion = 1) OR (Id_Usuario = '10001431-9' AND Id_Producto = 1 AND Id_Cotizacion = 2);
+
+--
+-- 
+CREATE OR REPLACE FUNCTION insertar_solicitar2(
+    p_id_usuario VARCHAR(11),
+    p_id_servicio INTEGER,
+    p_id_cotizacion INTEGER,
+    p_id_oferente VARCHAR(11),
+    p_precio INTEGER,
+    p_cantidad INTEGER DEFAULT 1
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Solicitar2 (
+        Id_Usuario,
+        Id_Servicio,
+        Id_Cotizacion,
+        Id_Oferente,
+        Precio,
+        Cantidad
+    )
+    VALUES (
+        p_id_usuario,
+        p_id_servicio,
+        p_id_cotizacion,
+        p_id_oferente,
+        p_precio,
+        p_cantidad
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- (el oferente debe haber valorado el servicio: el servicio 1 lo valoraron '13372828-7' y '21264229-0')
+-- SELECT insertar_solicitar2('10001431-9', 1, 1, '13372828-7', 14000, 2), insertar_solicitar2('10001431-9', 1, 2, '21264229-0', 18000);
+-- SELECT * FROM Solicitar2 WHERE Id_Usuario = '10001431-9' AND Id_Servicio = 1 AND Id_Cotizacion IN (1, 2);
+
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_pertenecer1(
+    p_id_producto INTEGER,
+    p_id_categoria INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Pertenecer1 (
+        Id_Producto,
+        Id_Categoria
+    )
+    VALUES (
+        p_id_producto,
+        p_id_categoria
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_pertenecer1(1, 1), insertar_pertenecer1(1, 2);
+-- SELECT * FROM Pertenecer1 WHERE (Id_Producto = 1 AND Id_Categoria = 1) OR (Id_Producto = 1 AND Id_Categoria = 2);
+
+
+--
+CREATE OR REPLACE FUNCTION insertar_pertenecer2(
+    p_id_servicio INTEGER,
+    p_id_categoria INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    INSERT INTO Pertenecer2 (
+        Id_Servicio,
+        Id_Categoria
+    )
+    VALUES (
+        p_id_servicio,
+        p_id_categoria
+    );
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT insertar_pertenecer2(1, 1), insertar_pertenecer2(1, 2);
+-- SELECT * FROM Pertenecer2 WHERE (Id_Servicio = 1 AND Id_Categoria = 1) OR (Id_Servicio = 1 AND Id_Categoria = 2);
+
+--
+--
+CREATE OR REPLACE FUNCTION eliminar_carritocompra(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM CarritoCompra
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT eliminar_carritocompra(1001), eliminar_carritocompra(1002);
+-- SELECT * FROM CarritoCompra WHERE Id IN (1001,1002);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_calificacion(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Calificacion
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT eliminar_calificacion(1010), eliminar_calificacion(1011);
+-- SELECT * FROM calificacion WHERE Id IN (1010,1011);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_listadeseos(p_Id INTEGER)
+RETURNS VOID
+
+AS $$
+BEGIN
+    DELETE FROM ListaDeseos
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_listadeseos(1002), eliminar_listadeseos(1003);
+-- SELECT * FROM ListaDeseos WHERE Id IN (1002,1003);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_preguntas(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Preguntas
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_preguntas(1004), eliminar_preguntas(1005);
+-- SELECT * FROM Preguntas WHERE Id IN (1004,1005);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_cotizacion(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Cotizacion
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_cotizacion(1001), eliminar_cotizacion(1002);
+-- SELECT * FROM cotizacion WHERE Id IN (1001,1002);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_oferta(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Oferta
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_oferta(1004) , eliminar_oferta(1005);
+-- SELECT * FROM oferta WHERE Id IN (1004,1005);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_usuario(p_Rut VARCHAR(11))
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Usuario
+    WHERE Rut = p_Rut;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_usuario('21111222-3'), eliminar_usuario('21111222-4');
+--SELECT * FROM usuario WHERE rut IN ('21111222-3','21111222-4');
+
+--
+CREATE OR REPLACE FUNCTION eliminar_devolucion(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Devolucion
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT eliminar_devolucion(1003), eliminar_devolucion(1004);
+--SELECT * FROM devolucion WHERE ID IN (1003,1004);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_mensaje(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Mensaje
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_mensaje(1001), eliminar_mensaje(1002);
+--SELECT * FROM mensaje WHERE ID IN (1001,1002);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_empresadespacho(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM EmpresaDespacho
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT eliminar_empresadespacho(21), eliminar_empresadespacho(22);
+--SELECT * FROM empresadespacho WHERE ID IN (21,22);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_empresa(p_Rut VARCHAR(11))
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Empresa
+    WHERE Rut = p_Rut;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT eliminar_empresa('99999997-6'), eliminar_empresa('99999997-7');
+--SELECT * FROM empresa WHERE rut IN ('99999997-6','99999997-7');
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_pago(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Pago
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT eliminar_pago(1019), eliminar_pago(1020);
+--SELECT * FROM PAGO WHERE ID IN (1019,1020);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_region(p_ID INT)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Region
+    WHERE ID = p_ID;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_region(17), eliminar_region(18);
+--SELECT * FROM region WHERE ID IN (17,18);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_provincia(p_ID INT)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Provincia
+    WHERE ID = p_ID;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT eliminar_provincia(164), eliminar_provincia(165);
+--SELECT * FROM provincia WHERE ID IN (164,165);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_comuna(p_ID INT)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Comuna
+    WHERE ID = p_ID;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_comuna(13133), eliminar_comuna(13134);
+--SELECT * FROM comuna WHERE ID IN (13133,13134);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_producto(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Producto
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_producto(1012), eliminar_producto(1013);
+--SELECT * FROM producto WHERE ID IN (1012,1013);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_servicio(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Servicio
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT eliminar_servicio(1003), eliminar_servicio(1004);
+--SELECT * FROM servicio WHERE ID IN (1003,1004);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_categoria(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Categoria
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_categoria(51), eliminar_categoria(52);
+--SELECT * FROM categoria WHERE ID IN (51,52);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_direccion(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Direccion
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_direccion(1001), eliminar_direccion(1002);
+--SELECT * FROM direccion WHERE ID IN (1001,1002);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_registrar5(p_Id_Empresa VARCHAR(11), p_Id_Direccion INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Registrar5
+    WHERE Id_Empresa = p_Id_Empresa AND Id_Direccion = p_Id_Direccion;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_registrar5('20600674-9', 900), eliminar_registrar5('22345948-K', 901);
+--SELECT * FROM registrar5 WHERE id_empresa IN ('20600674-9','22345948-K');
+
+--
+CREATE OR REPLACE FUNCTION eliminar_despacho(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Despacho
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_despacho(1001), eliminar_despacho(1002);
+--SELECT * FROM despacho WHERE id IN (1001,1002);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_despachar2(p_Id_EmpresaD INTEGER, p_Id_Despacho INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Despachar2
+    WHERE Id_EmpresaD = p_Id_EmpresaD AND Id_Despacho = p_Id_Despacho;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT eliminar_despachar2(18, 999), eliminar_despachar2(19, 1000);
+-- SELECT * FROM Despachar2 WHERE (Id_EmpresaD = 18 AND Id_Despacho = 999) OR (Id_EmpresaD = 19 AND Id_Despacho = 1000);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_venta(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Venta
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT eliminar_venta(1014), eliminar_venta(1015);
+--SELECT * FROM venta WHERE id IN (1014,1015);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_generar1(p_Id_Usuario VARCHAR(11), p_Id_Devolucion INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Generar1
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Devolucion = p_Id_Devolucion;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_generar1('18505944-8', 458), eliminar_generar1('5019189-3', 851);
+-- SELECT * FROM Generar1 WHERE (id_usuario = '18505944-8' AND Id_Devolucion = 458 AND Id_Venta = 486) OR (id_usuario = '5019189-3' AND Id_Devolucion = 851 AND Id_Venta = 963);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_enviar(p_Id_Venta INTEGER, p_Id_Mensaje INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Enviar
+    WHERE Id_Venta = p_Id_Venta AND Id_Mensaje = p_Id_Mensaje;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_enviar(1001, 1), eliminar_enviar(1002, 1);
+--SELECT * FROM enviar WHERE (id_venta = 1001 or id_venta = 1002);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_generar2(p_Id_Usuario VARCHAR(11), p_Id_Despacho INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Generar2
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Despacho = p_Id_Despacho;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT eliminar_generar2('10001431-9', 1), eliminar_generar2('10001431-9', 2);
+-- SELECT * FROM Generar2 WHERE (id_usuario = '10001431-9' AND Id_Despacho = 1 AND Id_Venta = 1) OR (id_usuario = '10001431-9' AND Id_Despacho = 2 AND Id_Venta = 2);
+
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_correo(p_Correo VARCHAR(100))
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Correo
+    WHERE Correo = p_Correo;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_correo('cliente.prueba@example.com'), eliminar_correo('cliente.prueba@example2.com');
+-- SELECT * FROM correo WHERE (correo = 'cliente.prueba@example.com' or correo = 'cliente.prueba@example2.com');
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_telefono(p_Numero INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Telefono
+    WHERE Numero = p_Numero;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_telefono(999981982), eliminar_telefono(999981980);
+--SELECT * FROM telefono WHERE (Numero = 999981982 or Numero =999981980 );
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_tener3(p_Id_Usuario VARCHAR(11), p_Id_Empresa VARCHAR(11))
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Tener3
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Empresa = p_Id_Empresa;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_tener3('10001431-9', '10006905-9'), eliminar_tener3('10001431-9', '20600674-9');
+-- SELECT * FROM Tener3 WHERE (Id_Usuario = '10001431-9' AND Id_Empresa = '10006905-9') OR (Id_Usuario = '10001431-9' AND Id_Empresa = '20600674-9');
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_registrar2(p_Id_Usuario VARCHAR(11), p_Id_Direccion INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Registrar2
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Direccion = p_Id_Direccion;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_registrar2('10001431-9', 1), eliminar_registrar2('10001431-9', 2);
+-- SELECT * FROM Registrar2 WHERE (Id_Usuario = '10001431-9' AND Id_Direccion = 1) OR (Id_Usuario = '10001431-9' AND Id_Direccion = 2);
+
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_inventario(p_Id INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Inventario
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_inventario(1001), eliminar_inventario(1002);
+-- SELECT * FROM Inventario WHERE Id IN (1001, 1002);
+
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_generar3(p_Id_Venta INTEGER, p_Id_Producto INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Generar3
+    WHERE Id_Venta = p_Id_Venta AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_generar3(1, 1), eliminar_generar3(2, 1);
+-- SELECT * FROM Generar3 WHERE (Id_Venta = 1 AND Id_Producto = 1) OR (Id_Venta = 2 AND Id_Producto = 1);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_generar4(p_Id_Venta INTEGER, p_Id_Servicio INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Generar4
+    WHERE Id_Venta = p_Id_Venta AND Id_Servicio = p_Id_Servicio;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_generar4(1, 1),eliminar_generar4(2,1);
+-- SELECT * FROM Generar4 WHERE (Id_Venta = 1 AND Id_Servicio = 1) OR (Id_Venta = 2 AND Id_Servicio = 1);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_valorar(p_Id_Servicio INTEGER, p_Id_Usuario VARCHAR(11))
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Valorar
+    WHERE Id_Servicio = p_Id_Servicio AND Id_Usuario = p_Id_Usuario;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_valorar(1, '10001431-9'), eliminar_valorar(1, '8735650-7');
+-- SELECT * FROM Valorar WHERE (Id_Servicio = 1 AND Id_Usuario = '10001431-9') OR (Id_Servicio = 1 AND Id_Usuario = '8735650-7');
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_ofrecer1(p_Id_Usuario VARCHAR(11), p_Id_Producto INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Ofrecer1
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_ofrecer1('10001431-9', 1), eliminar_ofrecer1('10001431-9', 2);
+-- SELECT * FROM Ofrecer1 WHERE (Id_Usuario = '10001431-9' AND Id_Producto = 1) OR (Id_Usuario = '10001431-9' AND Id_Producto = 2);
+
+
+-- 
+CREATE OR REPLACE FUNCTION eliminar_ofrecer2(p_Id_Usuario VARCHAR(11), p_Id_Servicio INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Ofrecer2
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Servicio = p_Id_Servicio;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_ofrecer2('10001431-9', 1), eliminar_ofrecer2('10001431-9', 2);
+-- SELECT * FROM Ofrecer2 WHERE (Id_Usuario = '10001431-9' AND Id_Servicio = 1) OR (Id_Usuario = '10001431-9' AND Id_Servicio = 2);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_almacenar(p_Id_Inventario INTEGER, p_Id_Producto INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Almacenar
+    WHERE Id_Inventario = p_Id_Inventario AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_almacenar(1, 1), eliminar_almacenar(1, 2);
+-- SELECT * FROM Almacenar WHERE (Id_Inventario = 1 AND Id_Producto = 1) OR (Id_Inventario = 1 AND Id_Producto = 2);
+
+
+-- 
+-- 
+CREATE OR REPLACE FUNCTION eliminar_crear3(p_Id_Carrito INTEGER, p_Id_Producto INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Crear3
+    WHERE Id_Carrito = p_Id_Carrito AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_crear3(1, 1001), eliminar_crear3(1, 1002);
+-- SELECT * FROM Crear3 WHERE Id_Carrito = 1 AND Id_Producto IN (1001, 1002);
+
+--
+CREATE OR REPLACE FUNCTION eliminar_crear4(p_Id_Carrito INTEGER, p_Id_Servicio INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Crear4
+    WHERE Id_Carrito = p_Id_Carrito AND Id_Servicio = p_Id_Servicio;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_crear4(1, 1001), eliminar_crear4(1, 1002);
+-- SELECT * FROM Crear4 WHERE Id_Carrito = 1 AND Id_Servicio IN (1001, 1002);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_escribir1(p_Id_Calificacion INTEGER, p_Id_Producto INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Escribir1
+    WHERE Id_Calificacion = p_Id_Calificacion AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_escribir1(1, 1), eliminar_escribir1(1, 2);
+-- SELECT * FROM Escribir1 WHERE (Id_Calificacion = 1 AND Id_Producto = 1) OR (Id_Calificacion = 1 AND Id_Producto = 2);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_escribir2(p_Id_Calificacion INTEGER, p_Id_Servicio INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Escribir2
+    WHERE Id_Calificacion = p_Id_Calificacion AND Id_Servicio = p_Id_Servicio;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_escribir2(1, 1), eliminar_escribir2(1, 2);
+-- SELECT * FROM Escribir2 WHERE (Id_Calificacion = 1 AND Id_Servicio = 1) OR (Id_Calificacion = 1 AND Id_Servicio = 2);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_crear1(p_Id_Producto INTEGER, p_Id_Lista INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Crear1
+    WHERE Id_Producto = p_Id_Producto AND Id_Lista = p_Id_Lista;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_crear1(1, 1),eliminar_crear1(1, 2);
+-- SELECT * FROM Crear1 WHERE (Id_Producto = 1 AND Id_Lista = 1) OR (Id_Producto = 1 AND Id_Lista = 2);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_crear2(p_Id_Servicio INTEGER, p_Id_Lista INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Crear2
+    WHERE Id_Servicio = p_Id_Servicio AND Id_Lista = p_Id_Lista;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_crear2(1, 1), eliminar_crear2(1, 2);
+-- SELECT * FROM Crear2 WHERE (Id_Servicio = 1 AND Id_Lista = 1) OR (Id_Servicio = 1 AND Id_Lista = 2);
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_hacer1(p_Id_Producto INTEGER, p_Id_Pregunta INTEGER, p_Id_Usuario VARCHAR(11))
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Hacer1
+    WHERE Id_Producto = p_Id_Producto AND Id_Pregunta = p_Id_Pregunta AND Id_Usuario = p_Id_Usuario;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_hacer1(1, 1, '10001431-9'), eliminar_hacer1(1, 2, '10001431-9');
+-- SELECT * FROM Hacer1 WHERE (Id_Producto = 1 AND Id_Pregunta = 1 AND Id_Usuario = '10001431-9') OR (Id_Producto = 1 AND Id_Pregunta = 2 AND Id_Usuario = '10001431-9');
+
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_hacer2(p_Id_Servicio INTEGER, p_Id_Pregunta INTEGER, p_Id_Usuario VARCHAR(11))
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Hacer2
+    WHERE Id_Servicio = p_Id_Servicio AND Id_Pregunta = p_Id_Pregunta AND Id_Usuario = p_Id_Usuario;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_hacer2(1, 1, '10001431-9'),eliminar_hacer2(2, 1, '10001431-9') ;
+-- SELECT * FROM Hacer2 WHERE (Id_Servicio = 1 AND Id_Pregunta = 1 AND Id_Usuario = '10001431-9') OR (Id_Servicio = 2 AND Id_Pregunta = 1 AND Id_Usuario = '10001431-9');
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_solicitar1(p_Id_Usuario VARCHAR(11), p_Id_Producto INTEGER, p_Id_Cotizacion INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Solicitar1
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Producto = p_Id_Producto AND Id_Cotizacion = p_Id_Cotizacion;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_solicitar1('10001431-9', 1, 1), eliminar_solicitar1('10001431-9', 1, 2);
+-- SELECT * FROM Solicitar1 WHERE (Id_Usuario = '10001431-9' AND Id_Producto = 1 AND Id_Cotizacion = 1) OR (Id_Usuario = '10001431-9' AND Id_Producto = 1 AND Id_Cotizacion = 2);
+
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_solicitar2(p_Id_Usuario VARCHAR(11), p_Id_Servicio INTEGER, p_Id_Cotizacion INTEGER, p_Id_Oferente VARCHAR(11))
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Solicitar2
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Servicio = p_Id_Servicio AND Id_Cotizacion = p_Id_Cotizacion AND Id_Oferente = p_Id_Oferente;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_solicitar2('10001431-9', 1, 1, '13372828-7'), eliminar_solicitar2('10001431-9', 1, 2, '21264229-0');
+-- SELECT * FROM Solicitar2 WHERE Id_Usuario = '10001431-9' AND Id_Servicio = 1 AND Id_Cotizacion IN (1, 2);
+
+
+
+--
+CREATE OR REPLACE FUNCTION eliminar_pertenecer1(p_Id_Producto INTEGER, p_Id_Categoria INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Pertenecer1
+    WHERE Id_Producto = p_Id_Producto AND Id_Categoria = p_Id_Categoria;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_pertenecer1(1, 1), eliminar_pertenecer1(1, 2);
+-- SELECT * FROM Pertenecer1 WHERE (Id_Producto = 1 AND Id_Categoria = 1) OR (Id_Producto = 1 AND Id_Categoria = 2);
+
+
+-- 
+CREATE OR REPLACE FUNCTION eliminar_pertenecer2(p_Id_Servicio INTEGER, p_Id_Categoria INTEGER)
+RETURNS VOID
+AS $$
+BEGIN
+    DELETE FROM Pertenecer2
+    WHERE Id_Servicio = p_Id_Servicio AND Id_Categoria = p_Id_Categoria;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT eliminar_pertenecer2(1, 1), eliminar_pertenecer2(1, 2);
+-- SELECT * FROM Pertenecer2 WHERE (Id_Servicio = 1 AND Id_Categoria = 1) OR (Id_Servicio = 1 AND Id_Categoria = 2);
+
+
+---------------------------------------------------------------------------
+-- Funciones UPDATE
+---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION actualizar_carritocompra(
+    p_estado VARCHAR(20),
+    p_ultima_actualizacion TIMESTAMP,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE CarritoCompra
+    SET
+        Estado = p_estado,
+        UltimaActualizacion = p_ultima_actualizacion
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_carritocompra('Procesando Pago', '2024-06-15 10:30:00', 1), actualizar_carritocompra('Procesando Pago', '2024-06-15 10:30:00', 2);
+-- SELECT * FROM CarritoCompra WHERE Id IN (1, 2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_calificacion(
+    p_comentario VARCHAR(200),
+    p_calificacion INTEGER,
+    p_fecha TIMESTAMP,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Calificacion
+    SET
+        Comentario = p_comentario,
+        Calificacion = p_calificacion,
+        Fecha = p_fecha
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_calificacion('Comentario actualizado', 4, LOCALTIMESTAMP, 1), actualizar_calificacion('Comentario actualizado', 4, LOCALTIMESTAMP, 2);
+-- SELECT * FROM calificacion WHERE Id IN (1,2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_listadeseos(
+    p_nombre_lista VARCHAR(50),
+    p_descripcion VARCHAR(200),
+    p_visibilidad BOOLEAN,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE ListaDeseos
+    SET
+        NombreLista = p_nombre_lista,
+        Descripcion = p_descripcion,
+        Visibilidad = p_visibilidad
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT actualizar_listadeseos('Lista Actualizada', 'Nueva descripción', FALSE, 1), actualizar_listadeseos('Lista Actualizada', 'Nueva descripción', FALSE, 2);
+--SELECT * FROM ListaDeseos WHERE Id IN (1,2);
+
+CREATE OR REPLACE FUNCTION actualizar_preguntas(
+    p_pregunta VARCHAR(200),
+    p_fecha_creacion TIMESTAMP,
+    p_respuesta VARCHAR(200),
+    p_fecha_respuesta TIMESTAMP,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Preguntas
+    SET
+        Pregunta = p_pregunta,
+        FechaCreacion = p_fecha_creacion,
+        Respuesta = p_respuesta,
+        FechaRespuesta = p_fecha_respuesta
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_preguntas('¿Pregunta actualizada?', LOCALTIMESTAMP, 'Sí, respuesta actualizada', LOCALTIMESTAMP, 1), actualizar_preguntas('¿Pregunta actualizada?', LOCALTIMESTAMP, 'Sí, respuesta actualizada', LOCALTIMESTAMP, 2);
+-- SELECT * FROM Preguntas WHERE Id IN (1,2);
+
+
+-- 
+CREATE OR REPLACE FUNCTION actualizar_cotizacion(
+    p_fecha_creacion DATE,
+    p_estado VARCHAR(20),
+    p_fecha_ultima_actualizacion DATE,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Cotizacion
+    SET
+        FechaCreacion = p_fecha_creacion,
+        Estado = p_estado,
+        FechaUltimaActualizacion = p_fecha_ultima_actualizacion
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT actualizar_cotizacion(CURRENT_DATE, 'Aprobada', CURRENT_DATE, 1), actualizar_cotizacion(CURRENT_DATE, 'Aprobada', CURRENT_DATE, 2);
+--SELECT * FROM cotizacion WHERE Id IN (1,2);
+
+CREATE OR REPLACE FUNCTION actualizar_oferta(
+    p_precio_oferta DECIMAL(3,2),
+    p_estado BOOLEAN,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Oferta
+    SET
+        PrecioOferta = p_precio_oferta,
+        Estado = p_estado
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_oferta(0.25, FALSE, 1), actualizar_oferta(0.25, FALSE, 2);
+-- SELECT * FROM oferta WHERE Id IN (1,2);
+
+
+ 
+-- 
+CREATE OR REPLACE FUNCTION actualizar_usuario(
+    p_nombre VARCHAR(100),
+    p_clave VARCHAR(30),
+    p_fecha_nacimiento DATE,
+    p_fecha_creacion DATE,
+    p_tipo_usuario VARCHAR(20),
+    p_descuentos JSON,
+    p_secion_iniciada BOOLEAN,
+    p_Rut VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Usuario
+    SET
+        Nombre = p_nombre,
+        Clave = p_clave,
+        FechaNacimiento = p_fecha_nacimiento,
+        FechaCreacion = p_fecha_creacion,
+        TipoUsuario = p_tipo_usuario,
+        Descuentos = p_descuentos,
+        SecionIniciada = p_secion_iniciada
+    WHERE Rut = p_Rut;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_usuario('Nombre Actualizado', 'nuevaClave', '1980-01-01', '2020-01-01', 'vendedor', '{"descuento5%": "2026-10-01"}', TRUE, '8735650-7'),actualizar_usuario('Nombre Actualizado', 'nuevaClave', '1980-01-01', '2020-01-01', 'vendedor', '{"descuento5%": "2026-10-01"}', TRUE, '21111222-0')
+-- SELECT * FROM usuario WHERE rut IN ('21111222-0','8735650-7');
+
+
+CREATE OR REPLACE FUNCTION actualizar_devolucion(
+    p_motivo VARCHAR(200),
+    p_fecha_solicitud DATE,
+    p_fecha_resolucion DATE,
+    p_estado VARCHAR(20),
+    p_tipo_devolucion VARCHAR(30),
+    p_monto_reintegrado INTEGER,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Devolucion
+    SET
+        Motivo = p_motivo,
+        FechaSolicitud = p_fecha_solicitud,
+        FechaResolucion = p_fecha_resolucion,
+        Estado = p_estado,
+        TipoDevolucion = p_tipo_devolucion,
+        MontoReintegrado = p_monto_reintegrado
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_devolucion('Motivo actualizado', CURRENT_DATE, NULL, 'En Preparación', 'Cambio de producto', NULL, 1), actualizar_devolucion('Motivo actualizado', CURRENT_DATE, NULL, 'En Preparación', 'Cambio de producto', NULL, 2);
+-- SELECT * FROM devolucion WHERE ID IN (1,2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_mensaje(
+    p_contenido VARCHAR(200),
+    p_fecha_envio DATE,
+    p_estado VARCHAR(20),
+    p_fecha_respuesta TIMESTAMP,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Mensaje
+    SET
+        Contenido = p_contenido,
+        FechaEnvio = p_fecha_envio,
+        Estado = p_estado,
+        FechaRespuesta = p_fecha_respuesta
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_mensaje('Contenido actualizado', CURRENT_DATE, 'Leído', NULL, 1), actualizar_mensaje('Contenido actualizado', CURRENT_DATE, 'Leído', NULL, 2);
+-- SELECT * FROM mensaje WHERE ID IN (1,2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_empresadespacho(
+    p_nombre VARCHAR(50),
+    p_estandares_volumetricos JSON,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE EmpresaDespacho
+    SET
+        Nombre = p_nombre,
+        EstandaresVolumetricos = p_estandares_volumetricos
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT actualizar_empresadespacho('Nombre Despacho Actualizado', '{"alto_max_cm": 110}', 1), actualizar_empresadespacho('Nombre Despacho Actualizado', '{"alto_max_cm": 110}', 2);
+--SELECT * FROM empresadespacho WHERE ID IN (1,2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_empresa(
+    p_nombre VARCHAR(100),
+    p_pagina_web VARCHAR(100),
+    p_giro VARCHAR(100),
+    p_Rut VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Empresa
+    SET
+        Nombre = p_nombre,
+        PaginaWeb = p_pagina_web,
+        Giro = p_giro
+    WHERE Rut = p_Rut;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_empresa('Nombre Empresa Actualizado', 'www.nuevoweb.cl', 'Nuevo Giro', '20600674-9'), actualizar_empresa('Nombre Empresa Actualizado', 'www.nuevoweb.cl', 'Nuevo Giro', '99999997-7');
+-- SELECT * FROM empresa WHERE rut IN ('20600674-9', '99999997-7');
+
+
+CREATE OR REPLACE FUNCTION actualizar_pago(
+    p_medio_pago VARCHAR(20),
+    p_ult4_digitos_tarjeta INTEGER,
+    p_codigo_transferencia INTEGER,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Pago
+    SET
+        MedioPago = p_medio_pago,
+        Ult4DiGitosTarjeta = p_ult4_digitos_tarjeta,
+        CodigoTransferencia = p_codigo_transferencia
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT actualizar_pago('Visa', 1234, NULL, 1), actualizar_pago('Visa', 1234, NULL, 2);
+--SELECT * FROM PAGO WHERE ID IN (1,2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_region(
+    p_nombre VARCHAR(100),
+    p_superficie INTEGER,
+    p_ID INT
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Region
+    SET
+        Nombre = p_nombre,
+        Superficie = p_superficie
+    WHERE ID = p_ID;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_region('Nombre Región Actualizado', 99999, 4), actualizar_region('Nombre Región Actualizado', 99999, 5);
+-- SELECT * FROM region WHERE ID IN (4,5);
+
+
+CREATE OR REPLACE FUNCTION actualizar_provincia(
+    p_nombre VARCHAR(100),
+    p_superficie INTEGER,
+    p_id_region INTEGER,
+    p_ID INT
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Provincia
+    SET
+        Nombre = p_nombre,
+        Superficie = p_superficie,
+        ID_Region = p_id_region
+    WHERE ID = p_ID;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_provincia('Nombre Provincia Actualizado', 9999, 4, 43), actualizar_provincia('Nombre Provincia Actualizado', 9999, 4, 42);
+-- SELECT * FROM provincia WHERE ID IN (42,43);
+
+
+CREATE OR REPLACE FUNCTION actualizar_comuna(
+    p_nombre VARCHAR(100),
+    p_superficie INTEGER,
+    p_id_provincia INTEGER,
+    p_ID INT
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Comuna
+    SET
+        Nombre = p_nombre,
+        Superficie = p_superficie,
+        ID_Provincia = p_id_provincia
+    WHERE ID = p_ID;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_comuna('Nombre Comuna Actualizado', 999, 43, 4301), actualizar_comuna('Nombre Comuna Actualizado 2', 888, 43, 4302);
+-- SELECT * FROM Comuna WHERE ID IN (4301, 4302);
+
+
+CREATE OR REPLACE FUNCTION actualizar_producto(
+    p_nombre VARCHAR(50),
+    p_restriccion_edad BOOLEAN,
+    p_caracteristicas JSON,
+    p_id_oferta INTEGER,
+    p_fecha_inicio DATE,
+    p_fecha_fin DATE,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Producto
+    SET
+        Nombre = p_nombre,
+        RestriccionEdad = p_restriccion_edad,
+        Caracteristicas = p_caracteristicas,
+        Id_Oferta = p_id_oferta,
+        FechaInicio = p_fecha_inicio,
+        FechaFin = p_fecha_fin
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_producto('Producto Actualizado', FALSE, '{"color": "Negro"}', NULL, NULL, NULL, 1), actualizar_producto('Producto Actualizado', FALSE, '{"color": "Negro"}', NULL, NULL, NULL, 2);
+-- SELECT * FROM producto WHERE ID IN (1,2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_servicio(
+    p_nombre VARCHAR(50),
+    p_restriccion_edad BOOLEAN,
+    p_duracion TIME,
+    p_caracteristicas JSON,
+    p_id_oferta INTEGER,
+    p_fecha_inicio DATE,
+    p_fecha_fin DATE,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Servicio
+    SET
+        Nombre = p_nombre,
+        RestriccionEdad = p_restriccion_edad,
+        Duracion = p_duracion,
+        Caracteristicas = p_caracteristicas,
+        Id_Oferta = p_id_oferta,
+        FechaInicio = p_fecha_inicio,
+        FechaFin = p_fecha_fin
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- 
+--SELECT actualizar_servicio('Servicio Actualizado', FALSE, '02:00:00', '{"modalidad": "Presencial"}', NULL, NULL, NULL, 1), actualizar_servicio('Servicio Actualizado', FALSE, '02:00:00', '{"modalidad": "Presencial"}', NULL, NULL, NULL, 2);
+--SELECT * FROM servicio WHERE ID IN (1,2);
+
+
+
+CREATE OR REPLACE FUNCTION actualizar_categoria(
+    p_nombre VARCHAR(50),
+    p_id_categoria INTEGER,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Categoria
+    SET
+        Nombre = p_nombre,
+        Id_Categoria = p_id_categoria
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_categoria('Categoría Actualizada', 2, 3), actualizar_categoria('Categoría Actualizada', 2, 4);
+-- SELECT * FROM categoria WHERE ID IN (3,4);
+
+
+CREATE OR REPLACE FUNCTION actualizar_direccion(
+    p_numero INTEGER,
+    p_calle VARCHAR(100),
+    p_descripcion VARCHAR(100),
+    p_pasaje VARCHAR(100),
+    p_sector VARCHAR(100),
+    p_id_comuna INTEGER,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Direccion
+    SET
+        Numero = p_numero,
+        Calle = p_calle,
+        Descripcion = p_descripcion,
+        Pasaje = p_pasaje,
+        Sector = p_sector,
+        Id_Comuna = p_id_comuna
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_direccion(456, 'Calle Nueva', 'Depto 2', NULL, NULL, 5706, 1), actualizar_direccion(456, 'Calle Nueva', 'Depto 2', NULL, NULL, 5706, 2);
+-- SELECT * FROM direccion WHERE ID IN (1,2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_despacho(
+    p_estado VARCHAR(20),
+    p_datos_logisticos JSON,
+    p_id_direccion INTEGER,
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Despacho
+    SET
+        Estado = p_estado,
+        DatosLogisticos = p_datos_logisticos,
+        Id_Direccion = p_id_direccion
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_despacho('En reparto', '{"peso_kg": 2.0}', 1, 1), actualizar_despacho('En reparto', '{"peso_kg": 2.0}', 1, 2);
+-- SELECT * FROM despacho WHERE id IN (1,2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_despachar2(
+    p_numero_seguimiento INTEGER,
+    p_Id_EmpresaD INTEGER,
+    p_Id_Despacho INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Despachar2
+    SET
+        NumeroSeguimiento = p_numero_seguimiento
+    WHERE Id_EmpresaD = p_Id_EmpresaD AND Id_Despacho = p_Id_Despacho;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_despachar2(987654321, 10, 1000), actualizar_despachar2(111222333, 2, 962);;
+-- SELECT * FROM Despachar2 WHERE (Id_EmpresaD = 10 AND Id_Despacho = 1000) OR (Id_EmpresaD = 2 AND Id_Despacho = 962);
+
+
+-- 
+CREATE OR REPLACE FUNCTION actualizar_venta(
+    p_neto INTEGER,
+    p_iva DECIMAL(3,2),
+    p_fecha TIMESTAMP,
+    p_requiere_despacho BOOLEAN,
+    p_estado VARCHAR(20),
+    p_id_vendedor VARCHAR(11),
+    p_id_cliente VARCHAR(11),
+    p_nota VARCHAR(200),
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Venta
+    SET
+        Neto = p_neto,
+        Iva = p_iva,
+        Fecha = p_fecha,
+        RequiereDespacho = p_requiere_despacho,
+        Estado = p_estado,
+        Id_Vendedor = p_id_vendedor,
+        Id_Cliente = p_id_cliente,
+        Nota = p_nota
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT actualizar_venta(300000, 0.19, LOCALTIMESTAMP, TRUE, 'Anulado', '8735650-7', '9061933-0', 'Venta anulada por reclamo', 1), actualizar_venta(300000, 0.19, LOCALTIMESTAMP, TRUE, 'Anulado', '8735650-7', '9061933-0', 'Venta anulada por reclamo', 2);
+--SELECT * FROM venta WHERE id IN (1,2);
+
+
+-- 
+CREATE OR REPLACE FUNCTION actualizar_generar1(
+    p_id_venta INTEGER,
+    p_id_producto INTEGER,
+    p_cantidad INTEGER,
+    p_Id_Usuario VARCHAR(11),
+    p_Id_Devolucion INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Generar1
+    SET
+        Id_Venta = p_id_venta,
+        Id_Producto = p_id_producto,
+        Cantidad = p_cantidad
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Devolucion = p_Id_Devolucion;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_generar1(2, 1, 1, '9793975-6', 25), actualizar_generar1(3, 2, 2, '14057945-9', 106);
+--SELECT * FROM Generar1
+--WHERE (Id_Usuario = '9793975-6' AND Id_Devolucion = 25) OR (Id_Usuario = '14057945-9' AND Id_Devolucion = 106);
+
+
+CREATE OR REPLACE FUNCTION actualizar_enviar(
+    p_id_usuario VARCHAR(11),
+    p_Id_Venta INTEGER,
+    p_Id_Mensaje INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Enviar
+    SET
+        Id_Usuario = p_id_usuario
+    WHERE Id_Venta = p_Id_Venta AND Id_Mensaje = p_Id_Mensaje;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT actualizar_enviar('9061933-0', 95, 636), actualizar_enviar('8735650-7', 379, 357);
+--SELECT * FROM Enviar
+--WHERE (Id_Venta = 95 AND Id_Mensaje = 636)
+--   OR (Id_Venta = 379 AND Id_Mensaje = 357);
+
+
+CREATE OR REPLACE FUNCTION actualizar_generar2(
+    p_id_venta INTEGER,
+    p_Id_Usuario VARCHAR(11),
+    p_Id_Despacho INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Generar2
+    SET
+        Id_Venta = p_id_venta
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Despacho = p_Id_Despacho;
+END;
+$$ LANGUAGE plpgsql;
+
+--SELECT actualizar_generar2(2, '18505944-8', 458), actualizar_generar2(3, '5019189-3', 851);
+--SELECT * FROM Generar2
+--WHERE (Id_Usuario = '18505944-8' AND Id_Despacho = 458)
+--   OR (Id_Usuario = '5019189-3' AND Id_Despacho = 851);
+--ROLLBACK;
+
+
+CREATE OR REPLACE FUNCTION actualizar_correo(
+    p_id_usuario VARCHAR(11),
+    p_id_empresa VARCHAR(11),
+    p_Correo VARCHAR(100)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Correo
+    SET
+        Id_Usuario = p_id_usuario,
+        Id_Empresa = p_id_empresa
+    WHERE Correo = p_Correo;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_correo('8735650-7', NULL, 'nicole.fuentes389@outlook.com'), actualizar_correo('9061933-0', NULL, 'camila.fuentes746@outlook.com');
+-- SELECT * FROM Correo WHERE Correo IN ('nicole.fuentes389@outlook.com', 'camila.fuentes746@outlook.com');
+
+
+CREATE OR REPLACE FUNCTION actualizar_telefono(
+    p_id_usuario VARCHAR(11),
+    p_id_empresa VARCHAR(11),
+    p_Numero INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Telefono
+    SET
+        Id_Usuario = p_id_usuario,
+        Id_Empresa = p_id_empresa
+    WHERE Numero = p_Numero;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT actualizar_telefono('8735650-7', NULL, 942338668), actualizar_telefono('9061933-0', NULL, 941599287);
+-- SELECT * FROM Telefono WHERE Numero IN (942338668, 941599287);
+
+
+CREATE OR REPLACE FUNCTION actualizar_inventario(
+    p_stock_minimo INTEGER,
+    p_stock_maximo INTEGER,
+    p_id_usuario VARCHAR(11),
+    p_Id INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Inventario
+    SET
+        StockMinimo = p_stock_minimo,
+        StockMaximo = p_stock_maximo,
+        Id_Usuario = p_id_usuario
+    WHERE Id = p_Id;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_inventario(5, 50, '18794303-5', 1), actualizar_inventario(5, 50, '18794303-5', 2);
+-- SELECT * FROM Inventario WHERE Id IN (1, 2);
+
+
+-- 
+CREATE OR REPLACE FUNCTION actualizar_generar3(
+    p_cantidad INTEGER,
+    p_total_final INTEGER,
+    p_id_pago INTEGER,
+    p_Id_Venta INTEGER,
+    p_Id_Producto INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Generar3
+    SET
+        Cantidad = p_cantidad,
+        TotalFinal = p_total_final,
+        Id_Pago = p_id_pago
+    WHERE Id_Venta = p_Id_Venta AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_generar3(2, 400000, 2, 41, 965), actualizar_generar3(2, 400000, 2, 826, 965) ;
+-- SELECT * FROM Generar3 WHERE (Id_Venta = 41 AND Id_Producto = 965) OR (Id_Venta = 826 AND Id_Producto = 965);
+
+
+-- 
+CREATE OR REPLACE FUNCTION actualizar_generar4(
+    p_cantidad INTEGER,
+    p_total_final INTEGER,
+    p_id_pago INTEGER,
+    p_Id_Venta INTEGER,
+    p_Id_Servicio INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Generar4
+    SET
+        Cantidad = p_cantidad,
+        TotalFinal = p_total_final,
+        Id_Pago = p_id_pago
+    WHERE Id_Venta = p_Id_Venta AND Id_Servicio = p_Id_Servicio;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_generar4(1, 350000, 2, 530, 964), actualizar_generar4(1, 350000, 2, 677, 965);
+-- SELECT * FROM Generar4 WHERE (Id_Venta = 530 AND Id_Servicio = 964) OR (Id_Venta = 677 AND Id_Servicio = 965);
+
+
+
+CREATE OR REPLACE FUNCTION actualizar_valorar(
+    p_precio INTEGER,
+    p_Id_Servicio INTEGER,
+    p_Id_Usuario VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Valorar
+    SET
+        Precio = p_precio
+    WHERE Id_Servicio = p_Id_Servicio AND Id_Usuario = p_Id_Usuario;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_valorar(200000, 903, '20492029-K');
+
+
+CREATE OR REPLACE FUNCTION actualizar_ofrecer1(
+    p_tipo_bien VARCHAR(30),
+    p_Id_Usuario VARCHAR(11),
+    p_Id_Producto INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Ofrecer1
+    SET
+        TipoBien = p_tipo_bien
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+--SELECT actualizar_ofrecer1('Producto Usado', '24037339-4', 524), actualizar_ofrecer1('Producto Usado', '24037339-4', 525);
+--SELECT * FROM Ofrecer1 WHERE (Id_Usuario = '24037339-4' AND Id_Producto = 524) OR (Id_Usuario = '24037339-4' AND Id_Producto = 525);
+
+
+
+
+CREATE OR REPLACE FUNCTION actualizar_ofrecer2(
+    p_tipo_bien VARCHAR(30),
+    p_Id_Usuario VARCHAR(11),
+    p_Id_Servicio INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Ofrecer2
+    SET
+        TipoBien = p_tipo_bien
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Servicio = p_Id_Servicio;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_ofrecer2('Servicio Premium', '7529497-2', 962), actualizar_ofrecer2('Servicio Premium', '7529497-2', 964);
+-- SELECT * FROM Ofrecer2 WHERE (Id_Usuario = '7529497-2' AND Id_Servicio = 962) OR (Id_Usuario = '7529497-2' AND Id_Servicio = 964);
+
+
+
+CREATE OR REPLACE FUNCTION actualizar_almacenar(
+    p_stock_actual INTEGER,
+    p_Id_Inventario INTEGER,
+    p_Id_Producto INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Almacenar
+    SET
+        StockActual = p_stock_actual
+    WHERE Id_Inventario = p_Id_Inventario AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_almacenar(20, 681, 964), actualizar_almacenar(20, 1, 1000);
+-- SELECT * FROM Almacenar WHERE (Id_Inventario = 681 AND Id_Producto = 964) OR (Id_Inventario = 1000 AND Id_Producto = 1000);
+
+
+
+-- 
+-- 
+CREATE OR REPLACE FUNCTION actualizar_crear3(
+    p_id_usuario VARCHAR(11),
+    p_cantidad INTEGER,
+    p_total INTEGER,
+    p_Id_Carrito INTEGER,
+    p_Id_Producto INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Crear3
+    SET
+        Id_Usuario = p_id_usuario,
+        Cantidad = p_cantidad,
+        Total = p_total
+    WHERE Id_Carrito = p_Id_Carrito AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_crear3('10001431-9', 1, 25000, 1, 1001), actualizar_crear3('10001431-9', 1, 25000, 2, 1002);
+-- SELECT * FROM Crear3 WHERE Id_Producto IN (1001, 1002);
+
+
+-- 
+CREATE OR REPLACE FUNCTION actualizar_crear4(
+    p_id_usuario VARCHAR(11),
+    p_cantidad INTEGER,
+    p_total INTEGER,
+    p_Id_Carrito INTEGER,
+    p_Id_Servicio INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Crear4
+    SET
+        Id_Usuario = p_id_usuario,
+        Cantidad = p_cantidad,
+        Total = p_total
+    WHERE Id_Carrito = p_Id_Carrito AND Id_Servicio = p_Id_Servicio;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_crear4('12435541-9', 2, 30000, 1, 896), actualizar_crear4('10001431-9', 2, 30000, 1, 1002);
+-- SELECT * FROM Crear4 WHERE Id_Servicio IN (896, 1002);
+
+
+CREATE OR REPLACE FUNCTION actualizar_escribir1(
+    p_id_usuario VARCHAR(11),
+    p_Id_Calificacion INTEGER,
+    p_Id_Producto INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Escribir1
+    SET
+        Id_Usuario = p_id_usuario
+    WHERE Id_Calificacion = p_Id_Calificacion AND Id_Producto = p_Id_Producto;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_escribir1('10001431-9', 1, 1), actualizar_escribir1('10001431-9',1, 1);
+-- SELECT * FROM Escribir1 WHERE (Id_Calificacion = 1 AND Id_Producto = 1) OR (Id_Calificacion = 1 AND Id_Producto = 2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_escribir2(
+    p_id_usuario VARCHAR(11),
+    p_Id_Calificacion INTEGER,
+    p_Id_Servicio INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Escribir2
+    SET
+        Id_Usuario = p_id_usuario
+    WHERE Id_Calificacion = p_Id_Calificacion AND Id_Servicio = p_Id_Servicio;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_escribir2('9061933-0', 1, 1), actualizar_escribir2('10001431-9', 1, 2);
+-- SELECT * FROM Escribir2 WHERE (Id_Calificacion = 1 AND Id_Servicio = 1) OR (Id_Calificacion = 1 AND Id_Servicio = 2);
+
+
+CREATE OR REPLACE FUNCTION actualizar_crear1(
+    p_id_usuario VARCHAR(11),
+    p_Id_Producto INTEGER,
+    p_Id_Lista INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Crear1
+    SET
+        Id_Usuario = p_id_usuario
+    WHERE Id_Producto = p_Id_Producto AND Id_Lista = p_Id_Lista;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_crear1('22875964-3', 612, 671), actualizar_crear1('22875964-3', 670, 680);
+-- SELECT * FROM Crear1 WHERE (Id_Producto = 612 AND Id_Lista = 671) OR (Id_Producto = 670 AND Id_Lista = 680);
+
+
+CREATE OR REPLACE FUNCTION actualizar_crear2(
+    p_id_usuario VARCHAR(11),
+    p_Id_Servicio INTEGER,
+    p_Id_Lista INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Crear2
+    SET
+        Id_Usuario = p_id_usuario
+    WHERE Id_Servicio = p_Id_Servicio AND Id_Lista = p_Id_Lista;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_crear2('15558837-3', 401, 477);
+-- SELECT * FROM Crear2 WHERE (Id_Servicio = 401 AND Id_Lista = 477);
+
+
+-- 
+CREATE OR REPLACE FUNCTION actualizar_solicitar1(
+    p_precio INTEGER,
+    p_cantidad INTEGER,
+    p_Id_Usuario VARCHAR(11),
+    p_Id_Producto INTEGER,
+    p_Id_Cotizacion INTEGER
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Solicitar1
+    SET
+        Precio = p_precio,
+        Cantidad = p_cantidad
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Producto = p_Id_Producto AND Id_Cotizacion = p_Id_Cotizacion;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_solicitar1(800000, 3, '10269961-0', 36, 582), actualizar_solicitar1(800000, 1, '10001431-9', 1, 2);
+-- SELECT * FROM Solicitar1 WHERE (Id_Usuario = '10269961-0' AND Id_Producto = 36 AND Id_Cotizacion = 582) OR (Id_Usuario = '10001431-9' AND Id_Producto = 1 AND Id_Cotizacion = 2);
+
+
+-- 
+CREATE OR REPLACE FUNCTION actualizar_solicitar2(
+    p_precio INTEGER,
+    p_cantidad INTEGER,
+    p_Id_Usuario VARCHAR(11),
+    p_Id_Servicio INTEGER,
+    p_Id_Cotizacion INTEGER,
+    p_Id_Oferente VARCHAR(11)
+)
+RETURNS VOID
+AS $$
+BEGIN
+    UPDATE Solicitar2
+    SET
+        Precio = p_precio,
+        Cantidad = p_cantidad
+    WHERE Id_Usuario = p_Id_Usuario AND Id_Servicio = p_Id_Servicio AND Id_Cotizacion = p_Id_Cotizacion AND Id_Oferente = p_Id_Oferente;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT actualizar_solicitar2(400000, 2, '9439648-4', 752, 650, '18920656-9');
+-- SELECT * FROM Solicitar2 WHERE Id_Usuario = '9439648-4' AND Id_Servicio = 752 AND Id_Cotizacion IN (650);
