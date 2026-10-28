@@ -7,7 +7,7 @@ namespace TiendaOnline.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // Aquí deberías validar que el usuario tenga rol de administrador
+[Authorize(Roles = "Administrador")] // Aquí deberías validar que el usuario tenga rol de administrador
 public class AdminController : ControllerBase
 {
     private readonly AppDbContext _context;

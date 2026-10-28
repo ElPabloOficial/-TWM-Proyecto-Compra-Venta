@@ -63,7 +63,7 @@ public class CategoriasController : ControllerBase
 
     // POST: api/categorias (Requiere Auth - Para el panel de administrador)
     [HttpPost]
-    [Authorize]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> CrearCategoria([FromBody] CategoriaCreateDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.nombre))
@@ -91,7 +91,7 @@ public class CategoriasController : ControllerBase
 
     // PUT: api/categorias/{id} (Requiere Auth - Editar)
     [HttpPut("{id}")]
-    [Authorize]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> ActualizarCategoria(int id, [FromBody] CategoriaCreateDto dto)
     {
         var categoria = await _context.categoria.FindAsync(id);
@@ -108,7 +108,7 @@ public class CategoriasController : ControllerBase
 
     // DELETE: api/categorias/{id} (Requiere Auth - Eliminar)
     [HttpDelete("{id}")]
-    [Authorize]
+    [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> EliminarCategoria(int id)
     {
         var categoria = await _context.categoria.FindAsync(id);

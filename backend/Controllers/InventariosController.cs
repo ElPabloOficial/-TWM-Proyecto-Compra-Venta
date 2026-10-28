@@ -9,7 +9,7 @@ namespace TiendaOnline.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Vendedor,Administrador")]
 public class InventariosController : ControllerBase
 {
     private readonly AppDbContext _context;

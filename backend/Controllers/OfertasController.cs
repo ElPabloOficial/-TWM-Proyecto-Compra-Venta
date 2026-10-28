@@ -38,7 +38,7 @@ public class OfertasController : ControllerBase
 
     // POST: api/ofertas (Requiere Auth)
     [HttpPost]
-    [Authorize]
+    [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> CrearOferta([FromBody] OfertaCreateDto dto)
     {
         var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -101,7 +101,7 @@ public class OfertasController : ControllerBase
 
     // DELETE: api/ofertas/{id} (Desactivar oferta)
     [HttpDelete("{id}")]
-    [Authorize]
+    [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> DesactivarOferta(int id)
     {
         var ofertaDb = await _context.oferta.FindAsync(id);

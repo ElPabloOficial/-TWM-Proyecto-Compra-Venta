@@ -133,9 +133,9 @@ public class PreguntasController : ControllerBase
         }
     }
 
-    // PUT: api/preguntas/responder (Requiere Auth - Solo el vendedor debería poder responder, pero por simplicidad cualquier usuario autenticado puede)
+    // PUT: api/preguntas/responder (Requiere Auth - Solo el vendedor debería poder responder)
     [HttpPut("responder")]
-    [Authorize]
+    [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> ResponderPregunta([FromBody] RespuestaCreateDto dto)
     {
         var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

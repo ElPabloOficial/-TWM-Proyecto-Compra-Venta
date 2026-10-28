@@ -86,7 +86,7 @@ public class ProductosController : ControllerBase
 
     // GET: api/productos/mis-productos (Requiere Auth - Panel Vendedor)
     [HttpGet("mis-productos")]
-    [Authorize]
+    [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> GetMisProductos()
     {
         var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -111,7 +111,7 @@ public class ProductosController : ControllerBase
 
     // POST: api/productos (Requiere Autenticación Básica)
     [HttpPost]
-    [Authorize] 
+    [Authorize(Roles = "Vendedor,Administrador")] 
     public async Task<IActionResult> CreateProducto([FromBody] ProductoCreateDto dto)
     {
         var rutVendedor = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -161,7 +161,7 @@ public class ProductosController : ControllerBase
 
     // PUT: api/productos/{id} (Requiere Auth - Solo el dueño)
     [HttpPut("{id}")]
-    [Authorize]
+    [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> UpdateProducto(int id, [FromBody] ProductoCreateDto dto)
     {
         var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -190,7 +190,7 @@ public class ProductosController : ControllerBase
 
     // DELETE: api/productos/{id} (Requiere Auth - Solo el dueño)
     [HttpDelete("{id}")]
-    [Authorize]
+    [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> DeleteProducto(int id)
     {
         var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
