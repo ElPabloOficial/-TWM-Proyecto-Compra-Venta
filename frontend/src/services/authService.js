@@ -1,59 +1,84 @@
-// src/services/authService.js
-
-// BD Local
-import mockUsers from './users.json';
+const API_URL = import.meta.env.VITE_API_URL;
 
 export const authService = {
-    async login(rut, password) {
-        console.log(`[authService] login() "${rut}"`);
-        console.log('[authService] Simulando espera (800ms)...');
 
-        await new Promise((resolve) => setTimeout(resolve, 800));
+  // Iniciar sesión
+  login: async (rut, password) => {
 
-        console.log('[authService] Autenticando usuario...');
-        const foundUser = mockUsers.find(
-            (u) => u.rut === rut && u.password === password
-        );
+    // Limpiar RUT
+    const rutLimpio = rut
+      .replace(/\./g, '')
+      .trim();
 
-        if (!foundUser) {
-            console.warn(`[authService] Inicio fallido: RUT o contraseña inválida para "${rut}"`);
-            throw new Error('RUT o contraseña inválida');
-        }
+    // Enviar credenciales al backend
+    const respuesta = await fetch(
+      `${API_URL}/usuarios/login`,
+      {
+        method: 'POST',
 
-        console.log('[authService] Usuario autenticado exitosamente:', foundUser);
+        headers: {
+          'Content-Type': 'application/json',
+        },
 
-        const mockResponse = {
-            user: { id: foundUser.id, name: foundUser.name, rut: foundUser.rut, role: foundUser.role },
-            token: 'mock-jwt-token-xyz123'
-        };
+        body: JSON.stringify({
+          rut: rutLimpio,
+          clave: password,
+        }),
+      }
+    );
 
-        localStorage.setItem('authToken', mockResponse.token);
-        localStorage.setItem('user', JSON.stringify(mockResponse.user));
-        console.log('[authService] Tokens de sesión guardados localmente.');
+    const data = await respuesta.json();
 
-        return mockResponse;
-    },
-
-    async logout() {
-        console.log('[authService] logout()');
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        console.log('[authService] Session cerrada.');
-    },
-
-    getCurrentUser() {
-        console.log('[authService] getCurrentUser()');
-        const userStr = localStorage.getItem('user');
-        const user = userStr ? JSON.parse(userStr) : null;
-        console.log('[authService] Usuario retornado:', user);
-        return user;
+    // Si el backend rechazó las credenciales
+    if (!respuesta.ok) {
+      throw new Error(
+        data.message ||
+        'Credenciales incorrectas'
+      );
     }
+
+    // Obtener información enviada por el backend
+    const token = data.data.token;
+    const usuario = data.data.usuario;
+
+    // Guardar JWT
+    localStorage.setItem('authToken',token);
+
+    // Guardar usuario
+    localStorage.setItem('usuario',JSON.stringify(usuario));
+
+    // Devolver usuario
+    return usuario;
+  },
+
+  // Cerrar sesión
+  logout: () => {
+
+    localStorage.removeItem(
+      'authToken'
+    );
+
+    localStorage.removeItem(
+      'usuario'
+    );
+  },
+
+  // Obtener usuario actualmente almacenado
+  getCurrentUser: () => {
+
+    const usuario =
+      localStorage.getItem('usuario');
+
+    return usuario
+      ? JSON.parse(usuario)
+      : null;
+  },
+
+  // Obtener JWT
+  getToken: () => {
+
+    return localStorage.getItem(
+      'authToken'
+    );
+  },
 };
-
-
-if (import.meta.env.DEV) {
-    window.authService = authService;
-    console.log('[Dev Mode] authService is now globally available on window.authService');
-}
