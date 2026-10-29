@@ -199,6 +199,7 @@ CREATE TABLE Producto (
     Id_Oferta INTEGER NULL,
     FechaInicio DATE NULL,
     FechaFin DATE NULL,
+    RutaImagen TEXT DEFAULT NULL,
     CONSTRAINT chk_fechas CHECK (FechaInicio < FechaFin),
     CONSTRAINT chk_oferta_fechas CHECK (
         (Id_Oferta IS NULL AND FechaInicio IS NULL AND FechaFin IS NULL) OR
@@ -221,6 +222,7 @@ CREATE TABLE Servicio (
     Id_Oferta INTEGER,
     FechaInicio DATE,
     FechaFin DATE,
+    RutaImagen TEXT DEFAULT NULL,
     CONSTRAINT chk_fechas_servicio CHECK (FechaInicio < FechaFin),
     CONSTRAINT chk_oferta_fechas_servicio CHECK (
         (Id_Oferta IS NULL AND FechaInicio IS NULL AND FechaFin IS NULL) OR
