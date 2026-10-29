@@ -1,30 +1,63 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication;
 using TiendaOnline.API.Models;
-using TiendaOnline.API.Auth;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Configurar la Base de Datos
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+var connectionString =
+    builder.Configuration.GetConnectionString("DefaultConnection");
 
-// 2. Configurar Basic Auth
-builder.Services.AddAuthentication("BasicAuthentication")
-    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
+builder.Services.AddDbContext<AppDbContext>(
+    options => options.UseNpgsql(connectionString)
+);
 
+// 2. Configurar JWT
+var jwtKey = builder.Configuration["Jwt:Key"];
+
+builder.Services.AddAuthentication(
+    JwtBearerDefaults.AuthenticationScheme
+)
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtKey!)
+        ),
+
+        ValidateIssuer = false,
+        ValidateAudience = false,
+
+        ValidateLifetime = true,
+
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+// 3. Configurar autorización
+builder.Services.AddAuthorization();
+
+// 4. Configurar Controllers
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// 3. Configurar Swagger
+// 5. Configurar Swagger
 builder.Services.AddSwaggerGen();
 
-// 4. Configurar CORS para React
+// 6. Configurar CORS para React
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("PermitirReact", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "http://localhost:3000"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -32,14 +65,23 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// 7. Configurar Swagger
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// 8. CORS
 app.UseCors("PermitirReact");
+
+// 9. Autenticación JWT
 app.UseAuthentication();
+
+// 10. Autorización
 app.UseAuthorization();
+
+// 11. Controllers
 app.MapControllers();
+
 app.Run();
