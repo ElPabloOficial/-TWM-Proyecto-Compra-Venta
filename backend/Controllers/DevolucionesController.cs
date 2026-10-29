@@ -118,7 +118,7 @@ public class DevolucionesController : ControllerBase
         }
     }
 
-    // PUT: api/devoluciones/{id}/estado (Actualizar estado - solo vendedor/admin)
+    // PUT: api/devoluciones/{id}/estado (Actualizar estado - solo admin)
     [HttpPut("{id}/estado")]
     public async Task<IActionResult> ActualizarEstado(int id, [FromBody] DevolucionEstadoDto dto)
     {
