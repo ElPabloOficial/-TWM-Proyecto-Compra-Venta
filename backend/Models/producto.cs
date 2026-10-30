@@ -19,6 +19,8 @@ public partial class producto
 
     public DateOnly? fechafin { get; set; }
 
+    public string? imagen { get; set; }
+
     public virtual ICollection<almacenar> almacenars { get; set; } = new List<almacenar>();
 
     public virtual ICollection<crear1> crear1s { get; set; } = new List<crear1>();

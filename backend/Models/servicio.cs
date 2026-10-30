@@ -21,6 +21,8 @@ public partial class servicio
 
     public DateOnly? fechafin { get; set; }
 
+    public string? imagen { get; set; }
+
     public virtual ICollection<crear2> crear2s { get; set; } = new List<crear2>();
 
     public virtual ICollection<crear4> crear4s { get; set; } = new List<crear4>();
