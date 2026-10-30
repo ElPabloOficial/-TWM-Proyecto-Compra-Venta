@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TiendaOnline.API.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -43,7 +44,25 @@ builder.Services.AddAuthentication(
 builder.Services.AddAuthorization();
 
 // 4. Configurar Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = contexto =>
+        {
+            var errores = contexto.ModelState
+                .Where(e => e.Value != null && e.Value.Errors.Count > 0)
+                .SelectMany(e => e.Value!.Errors.Select(x => x.ErrorMessage))
+                .ToList();
+
+            return new BadRequestObjectResult(new
+            {
+                success = false,
+                message = "Datos inválidos.",
+                data = (object?)null,
+                errors = errores
+            });
+        };
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 // 5. Configurar Swagger

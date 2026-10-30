@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -11,101 +11,11 @@ import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemp
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import { listarMisPedidos, actualizarEstadoPedido } from "../../services/pedidoService";
 import "../../styles/Inventory.css";
 import "../../styles/Orders.css";
 
 const POR_PAGINA = 6;
-
-// TEMPORAL: estos pedidos son de ejemplo. Los clientes los generan al comprar en la tienda;
-// cuando se conecte el backend se cargan desde la API (solo los de los productos del vendedor).
-const pedidosIniciales = [
-  {
-    id: 8,
-    numero: "PED-1008",
-    cliente: "Camila Rojas",
-    direccion: "Mackenna 850, Osorno",
-    fecha: "2026-10-12",
-    estado: "pendiente",
-    seguimiento: "",
-    items: [{ nombre: "Notebook Lenovo", cantidad: 1, precio: 549990 }],
-  },
-  {
-    id: 7,
-    numero: "PED-1007",
-    cliente: "Matías Pérez",
-    direccion: "Av. Buschmann 1450, Osorno",
-    fecha: "2026-10-11",
-    estado: "preparacion",
-    seguimiento: "",
-    items: [
-      { nombre: "Audífonos Bluetooth", cantidad: 2, precio: 24990 },
-      { nombre: "Hervidor eléctrico", cantidad: 1, precio: 19990 },
-    ],
-  },
-  {
-    id: 6,
-    numero: "PED-1006",
-    cliente: "Francisca Soto",
-    direccion: "Bilbao 320, Puerto Montt",
-    fecha: "2026-10-10",
-    estado: "enviado",
-    seguimiento: "CH-4821763",
-    items: [{ nombre: "Hervidor eléctrico", cantidad: 1, precio: 19990 }],
-  },
-  {
-    id: 5,
-    numero: "PED-1005",
-    cliente: "Diego Álvarez",
-    direccion: "Los Leones 1200, Providencia",
-    fecha: "2026-10-08",
-    estado: "entregado",
-    seguimiento: "CH-4790021",
-    items: [{ nombre: "Notebook Lenovo", cantidad: 1, precio: 549990 }],
-  },
-  {
-    id: 4,
-    numero: "PED-1004",
-    cliente: "Valentina Muñoz",
-    direccion: "Ramírez 215, Osorno",
-    fecha: "2026-10-07",
-    estado: "entregado",
-    seguimiento: "CH-4768834",
-    items: [{ nombre: "Audífonos Bluetooth", cantidad: 1, precio: 24990 }],
-  },
-  {
-    id: 3,
-    numero: "PED-1003",
-    cliente: "Joaquín Vera",
-    direccion: "Av. Providencia 2300, Santiago",
-    fecha: "2026-10-05",
-    estado: "cancelado",
-    seguimiento: "",
-    items: [{ nombre: "Hervidor eléctrico", cantidad: 2, precio: 19990 }],
-  },
-  {
-    id: 2,
-    numero: "PED-1002",
-    cliente: "Sofía Contreras",
-    direccion: "Errázuriz 640, Valdivia",
-    fecha: "2026-10-03",
-    estado: "enviado",
-    seguimiento: "CH-3390412",
-    items: [
-      { nombre: "Audífonos Bluetooth", cantidad: 1, precio: 24990 },
-      { nombre: "Hervidor eléctrico", cantidad: 1, precio: 19990 },
-    ],
-  },
-  {
-    id: 1,
-    numero: "PED-1001",
-    cliente: "Tomás Herrera",
-    direccion: "Arturo Prat 77, Osorno",
-    fecha: "2026-10-02",
-    estado: "entregado",
-    seguimiento: "CH-3301177",
-    items: [{ nombre: "Notebook Lenovo", cantidad: 1, precio: 549990 }],
-  },
-];
 
 const estados = {
   pendiente: { texto: "Pendiente" },
@@ -125,11 +35,8 @@ const comparadores = {
   totalAsc: (a, b) => totalPedido(a) - totalPedido(b),
 };
 
-// TEMPORAL: el total se calcula en el frontend. Con la base de datos
-// será SUM(cantidad * precio) sobre el detalle del pedido.
-function totalPedido(pedido) {
-  return pedido.items.reduce((acc, i) => acc + i.cantidad * i.precio, 0);
-}
+// El total (neto + IVA) lo calcula la API a partir de la venta
+const totalPedido = (pedido) => pedido.total;
 
 const formatoPrecio = (n) => `$${Number(n).toLocaleString("es-CL")}`;
 
@@ -142,7 +49,7 @@ const formatoFecha = (iso) => {
 
 // Pastilla de color con el estado del pedido (colores en Orders.css)
 const EstadoPedido = ({ estado }) => (
-  <span className={`ord-estado ord-estado-${estado}`}>{estados[estado].texto}</span>
+  <span className={`ord-estado ord-estado-${estado}`}>{estados[estado]?.texto ?? estado}</span>
 );
 
 // ---------- Diálogo: detalle del pedido y cambio de estado ----------
@@ -150,17 +57,24 @@ const OrderDialog = ({ open, pedido, onClose, onGuardar }) => {
   const [estado, setEstado] = useState("pendiente");
   const [seguimiento, setSeguimiento] = useState("");
   const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
   // Cada vez que se abre: carga el estado y el seguimiento actuales del pedido
   useEffect(() => {
     setEstado(pedido?.estado ?? "pendiente");
     setSeguimiento(pedido?.seguimiento ?? "");
     setError("");
+    setGuardando(false);
   }, [pedido, open]);
 
   const muestraSeguimiento = estado === "enviado" || estado === "entregado";
 
-  const handleGuardar = () => {
+  // Un pedido sin despacho (servicios, retiro) no pasa por "en preparación" ni "enviado"
+  const opciones = pedido?.requiereDespacho === false ? ["pendiente", "entregado"] : estadosEditables;
+
+  const handleGuardar = async () => {
+    if (guardando) return;
+
     if (estado === "enviado" && !seguimiento.trim()) {
       setError("Indica el código de seguimiento para marcar el pedido como enviado.");
       return;
@@ -172,11 +86,15 @@ const OrderDialog = ({ open, pedido, onClose, onGuardar }) => {
       seguimiento: muestraSeguimiento ? seguimiento.trim() : "",
     };
 
-    // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados.
-    // Con el backend esto se reemplaza por la llamada a la API (PUT del pedido).
-    console.log("[Pedidos] Actualizar pedido:", datos);
-
-    onGuardar(datos);
+    setGuardando(true);
+    try {
+      await onGuardar(datos);
+    } catch (e) {
+      // Si la API rechaza el cambio, el mensaje se muestra dentro del diálogo
+      setError(e.message);
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
@@ -190,14 +108,19 @@ const OrderDialog = ({ open, pedido, onClose, onGuardar }) => {
               {pedido.direccion} · {formatoFecha(pedido.fecha)}
             </div>
 
-            {pedido.items.map((i) => (
-              <div key={i.nombre} className="ord-item">
+            {pedido.items.map((i, n) => (
+              <div key={`${i.nombre}-${n}`} className="ord-item">
                 <span>
                   {i.cantidad} × {i.nombre}
                 </span>
-                <span>{formatoPrecio(i.cantidad * i.precio)}</span>
+                <span>{formatoPrecio(i.subtotal)}</span>
               </div>
             ))}
+
+            <div className="ord-item">
+              <span>IVA</span>
+              <span>{formatoPrecio(pedido.total - pedido.neto)}</span>
+            </div>
 
             <div className="ord-total">
               <span>Total</span>
@@ -213,7 +136,7 @@ const OrderDialog = ({ open, pedido, onClose, onGuardar }) => {
           value={estado}
           onChange={(e) => setEstado(e.target.value)}
         >
-          {estadosEditables.map((e) => (
+          {opciones.map((e) => (
             <MenuItem key={e} value={e}>
               {estados[e].texto}
             </MenuItem>
@@ -238,6 +161,7 @@ const OrderDialog = ({ open, pedido, onClose, onGuardar }) => {
         <CustomButton
           variant="primary"
           size="small"
+          disabled={guardando}
           onClick={handleGuardar}
           sx={{ border: "2px solid #EC3333" }}
         >
@@ -250,34 +174,53 @@ const OrderDialog = ({ open, pedido, onClose, onGuardar }) => {
 
 // ---------- Pantalla ----------
 const OrdersScreen = () => {
-  // TEMPORAL: los pedidos viven solo en memoria (se pierden al recargar la página).
-  const [pedidos, setPedidos] = useState(pedidosIniciales);
+  const [pedidos, setPedidos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
   const [pedidoEditando, setPedidoEditando] = useState(null);
   const [pedidoACancelar, setPedidoACancelar] = useState(null);
   const [orden, setOrden] = useState("recientes");
   const [filtro, setFiltro] = useState("");
   const [pagina, setPagina] = useState(1);
 
+  // ---------- Datos (API) ----------
+  // Con { silencioso: true } no muestra "cargando" (se usa después de guardar un cambio)
+  const recargar = useCallback(async ({ silencioso = false } = {}) => {
+    if (!silencioso) setCargando(true);
+    setError("");
+    try {
+      setPedidos(await listarMisPedidos());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    recargar();
+  }, [recargar]);
+
   // ---------- Acciones ----------
-  // TEMPORAL: actualizar y cancelar solo modifican el estado local.
-  // Con el backend pasan a ser llamadas a la API (PUT del pedido).
-  const guardarCambios = ({ id, estado, seguimiento }) => {
-    setPedidos(pedidos.map((p) => (p.id === id ? { ...p, estado, seguimiento } : p)));
+  // Si la API rechaza el cambio lanza un Error: el diálogo lo muestra y queda abierto.
+  const guardarCambios = async ({ id, estado, seguimiento }) => {
+    await actualizarEstadoPedido({ id, estado, seguimiento });
     setPedidoEditando(null);
+    await recargar({ silencioso: true });
   };
 
-  const confirmarCancelar = () => {
-    // SIMULACIÓN (solo frontend): con el backend pasa a ser una llamada a la API
-    console.log("[Pedidos] Cancelar pedido:", pedidoACancelar);
-    setPedidos(
-      pedidos.map((p) => (p.id === pedidoACancelar.id ? { ...p, estado: "cancelado" } : p))
-    );
+  const confirmarCancelar = async () => {
+    try {
+      await actualizarEstadoPedido({ id: pedidoACancelar.id, estado: "cancelado" });
+      await recargar({ silencioso: true });
+    } catch (e) {
+      alert(e.message);
+    }
     setPedidoACancelar(null);
   };
 
   // ---------- Filtro, orden y paginación ----------
-  // TEMPORAL: se hacen aquí sobre todos los pedidos en memoria.
-  // Con el backend pasan a ser WHERE, ORDER BY y LIMIT/OFFSET en la consulta.
+  // Se hacen aquí sobre todos los pedidos del vendedor que entrega la API.
   const cambiarOrden = (valor) => {
     setOrden(valor);
     setPagina(1);
@@ -307,8 +250,7 @@ const OrdersScreen = () => {
   const hasta = inicio + visibles.length;
 
   // ---------- Tarjetas de totales (sobre todos los pedidos) ----------
-  // TEMPORAL: se calculan en el frontend. Con la base de datos pasan a ser
-  // consultas agregadas: COUNT(*), COUNT por estado y SUM del total (sin cancelados).
+  // Se calculan aquí con los pedidos cargados; "Ventas totales" no cuenta los cancelados.
   const pendientes = pedidos.filter(
     (p) => p.estado === "pendiente" || p.estado === "preparacion"
   ).length;
@@ -327,6 +269,9 @@ const OrdersScreen = () => {
           </div>
         </div>
       </div>
+
+      {error && <div style={{ color: "#EF4444", fontSize: 13, marginTop: 12 }}>{error}</div>}
+      {cargando && <div style={{ fontSize: 13, marginTop: 12 }}>Cargando pedidos...</div>}
 
       <div className="inv-stats">
         <StatCard titulo="Total de Pedidos" valor={pedidos.length} />

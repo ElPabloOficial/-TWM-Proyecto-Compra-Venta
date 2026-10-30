@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import StatCard from "../../components/molecules/StatCard/StatCard";
@@ -21,12 +21,17 @@ const comparadores = {
 
 const InventoryScreen = () => {
   const navigate = useNavigate();
-  const { productos, categorias, eliminarProducto } = useProductos();
+  const { productos, categorias, cargando, error, recargar, eliminarProducto } = useProductos();
 
   const [productoEliminar, setProductoEliminar] = useState(null);
   const [orden, setOrden] = useState("");
   const [filtro, setFiltro] = useState("");
   const [pagina, setPagina] = useState(1);
+
+  // Al entrar a la pantalla se piden a la API los productos del vendedor
+  useEffect(() => {
+    recargar();
+  }, [recargar]);
 
   // CRUD 
   const abrirEditar = (producto) => {
@@ -37,9 +42,13 @@ const InventoryScreen = () => {
   const confirmarEliminar = (producto) => setProductoEliminar(producto);
 
   // Al presionar "Eliminar" en el diálogo se borra el producto
-  const eliminar = () => {
+  const eliminar = async () => {
     console.log("[InventoryScreen] confirmarEliminar() - ELIMINAR producto:", productoEliminar);
-    eliminarProducto(productoEliminar.id);
+    try {
+      await eliminarProducto(productoEliminar.id);
+    } catch (e) {
+      alert(e.message);
+    }
     setProductoEliminar(null);
   };
 
@@ -101,6 +110,9 @@ const InventoryScreen = () => {
           + Nuevo Producto
         </CustomButton>
       </div>
+
+      {error && <div style={{ color: "#EF4444", fontSize: 13, marginTop: 12 }}>{error}</div>}
+      {cargando && <div style={{ fontSize: 13, marginTop: 12 }}>Cargando productos...</div>}
 
       <div className="inv-stats">
         <StatCard titulo="Total de Productos" valor={productos.length} />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -32,24 +32,20 @@ const formatoFecha = (iso) => {
 
 const textosOferta = { vigente: "Vigente", programada: "Programada", vencida: "Vencida" };
 
-// Calcula si la oferta está vigente, programada o vencida según la fecha de hoy
-const estadoOferta = (s) => {
-  if (!(s.oferta > 0)) return "";
-  const hoy = new Date().toISOString().slice(0, 10);
-  if (hoy < s.ofertaInicio) return "programada";
-  if (hoy > s.ofertaFin) return "vencida";
-  return "vigente";
-};
-
 const ServicesScreen = () => {
   const navigate = useNavigate();
   const { categorias } = useProductos();
-  const { servicios, eliminarServicio } = useServicios();
+  const { servicios, cargando, error, recargar, eliminarServicio } = useServicios();
 
   const [servicioEliminar, setServicioEliminar] = useState(null);
   const [orden, setOrden] = useState("");
   const [filtro, setFiltro] = useState("");
   const [pagina, setPagina] = useState(1);
+
+  // Recarga al entrar
+  useEffect(() => {
+    recargar();
+  }, [recargar]);
 
   const nombreCategoria = (id) => categorias.find((c) => c.id === id)?.nombre ?? "-";
 
@@ -57,9 +53,13 @@ const ServicesScreen = () => {
   const confirmarEliminar = (servicio) => setServicioEliminar(servicio);
 
   // Al presionar "Eliminar" en el diálogo se borra el servicio
-  const eliminar = () => {
+  const eliminar = async () => {
     console.log("[ServicesScreen] confirmarEliminar() - ELIMINAR servicio:", servicioEliminar);
-    eliminarServicio(servicioEliminar.id);
+    try {
+      await eliminarServicio(servicioEliminar.id);
+    } catch (e) {
+      alert(e.message);
+    }
     setServicioEliminar(null);
   };
 
@@ -68,7 +68,7 @@ const ServicesScreen = () => {
   const verTodos = () => { setOrden(""); setFiltro(""); setPagina(1); };
 
   const filtrados = servicios.filter((s) => {
-    if (filtro === "oferta") return estadoOferta(s) === "vigente";
+    if (filtro === "oferta") return s.estadoOferta === "vigente";
     if (filtro === "mayores") return s.restriccionEdad;
     if (filtro === "todos") return !s.restriccionEdad;
     if (filtro === "online") return s.modalidad === "Online";
@@ -88,7 +88,7 @@ const ServicesScreen = () => {
   const precioPromedio = servicios.length
     ? Math.round(servicios.reduce((acc, s) => acc + s.precio, 0) / servicios.length)
     : 0;
-  const enOferta = servicios.filter((s) => estadoOferta(s) === "vigente").length;
+  const enOferta = servicios.filter((s) => s.estadoOferta === "vigente").length;
 
   return (
     <SellerTemplate>
@@ -108,6 +108,9 @@ const ServicesScreen = () => {
           + Nuevo Servicio
         </CustomButton>
       </div>
+
+      {error && <div style={{ color: "#EF4444", fontSize: 13, marginTop: 12 }}>{error}</div>}
+      {cargando && <div style={{ fontSize: 13, marginTop: 12 }}>Cargando servicios...</div>}
 
       <div className="inv-stats">
         <StatCard titulo="Total de Servicios" valor={servicios.length} />
@@ -174,12 +177,12 @@ const ServicesScreen = () => {
                       "-"
                     ) : (
                       <>
-                        <div className={`inv-oferta-pct inv-oferta-${estadoOferta(s)}`}>-{s.oferta}%</div>
+                        <div className={`inv-oferta-pct inv-oferta-${s.estadoOferta}`}>-{s.oferta}%</div>
                         <div className="inv-oferta-fechas">
                           {formatoFecha(s.ofertaInicio)} al {formatoFecha(s.ofertaFin)}
                         </div>
-                        <div className={`inv-oferta-estado inv-oferta-${estadoOferta(s)}`}>
-                          {textosOferta[estadoOferta(s)]}
+                        <div className={`inv-oferta-estado inv-oferta-${s.estadoOferta}`}>
+                          {textosOferta[s.estadoOferta]}
                         </div>
                       </>
                     )}

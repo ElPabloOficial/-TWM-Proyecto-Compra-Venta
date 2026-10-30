@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CustomButton from "../../atoms/Button/CustomButton";
 import ImageUpload from "../../molecules/ImageUpload/ImageUpload";
+import DateField from "../../atoms/DateField/DateField";
 
 const inicial = {
   nombre: "",
@@ -21,6 +22,7 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
   const editando = Boolean(producto);
   const [form, setForm] = useState(producto ? { ...inicial, ...producto } : inicial);
   const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
   const cambiar = (campo) => (e) => {
     setForm({ ...form, [campo]: e.target.value });
@@ -31,7 +33,7 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
     setForm({ ...form, categoriaId: valor === "" ? "" : Number(valor) });
   };
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     const precio = Number(form.precio);
     const stock = Number(form.stock);
 
@@ -55,7 +57,7 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
     }
     if (oferta > 0) {
       if (!form.ofertaInicio || !form.ofertaFin) {
-        setError("Si hay oferta, indica la fecha de inicio y la de término.");
+        setError("Si hay oferta, indica una fecha de inicio y una de término válidas (dd/mm/aaaa).");
         return;
       }
       if (form.ofertaFin < form.ofertaInicio) {
@@ -80,7 +82,16 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
       `[ProductForm] handleGuardar() - ${editando ? "ACTUALIZAR" : "CREAR"} producto:`,
       datos
     );
-    onGuardar(datos);
+    if (guardando) return;
+    setGuardando(true);
+    try {
+      await onGuardar(datos);
+    } catch (e) {
+      // Si la API rechaza el guardado, el mensaje se muestra bajo el formulario
+      setError(e.message);
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
@@ -140,7 +151,7 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
           >
             <option value="" disabled>Selecciona las categorías</option>
             {categorias.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
+              <option key={c.id} value={c.id}>{c.etiqueta ?? c.nombre}</option>
             ))}
           </select>
         </div>
@@ -231,22 +242,20 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
             <div className="addp-row">
               <div className="addp-field">
                 <label className="addp-label" htmlFor="ofertaInicio">Inicio de la oferta</label>
-                <input
+                <DateField
                   id="ofertaInicio"
                   className="addp-input"
-                  type="date"
                   value={form.ofertaInicio}
-                  onChange={cambiar("ofertaInicio")}
+                  onChange={(iso) => setForm((f) => ({ ...f, ofertaInicio: iso }))}
                 />
               </div>
               <div className="addp-field">
                 <label className="addp-label" htmlFor="ofertaFin">Término de la oferta</label>
-                <input
+                <DateField
                   id="ofertaFin"
                   className="addp-input"
-                  type="date"
                   value={form.ofertaFin}
-                  onChange={cambiar("ofertaFin")}
+                  onChange={(iso) => setForm((f) => ({ ...f, ofertaFin: iso }))}
                 />
               </div>
             </div>

@@ -6464,9 +6464,9 @@ INSERT INTO Usuario (Rut, Nombre, Clave, FechaNacimiento, FechaCreacion, TipoUsu
 --usuario 11111111-1 contraseña miClave123
 --usuario 22222222-2 contraseña comprador123
 --usuario 33333333-3 contraseña miClave123
-('11111111-1', 'Prueba', '$2a$11$CTisnvkGAgXkuB8z77jm/u1HKfMd5oboNODLoB7VV0uXWPoiR/i7y', '2000-01-01', '2026-10-20', 'vendedor'), 
-('22222222-2', 'Prueba', '$2a$11$xNH.RbEaDpdJ3puttQ/FWO6zhoggOOmt3Y0Sl/ksXhIX.W.anI7gW', '1995-03-15', '2026-10-20', 'cliente'),
-('33333333-3', 'Prueba', '$2a$11$CTisnvkGAgXkuB8z77jm/u1HKfMd5oboNODLoB7VV0uXWPoiR/i7y', '2000-01-01', '2026-10-20', 'administrador'),
+('11111111-1', 'Prueba', '$2a$11$CTisnvkGAgXkuB8z77jm/u1HKfMd5oboNODLoB7VV0uXWPoiR/i7y', '2000-01-01', '2026-10-20', 'vendedor', NULL), 
+('22222222-2', 'Prueba', '$2a$11$xNH.RbEaDpdJ3puttQ/FWO6zhoggOOmt3Y0Sl/ksXhIX.W.anI7gW', '1995-03-15', '2026-10-20', 'cliente', NULL),
+('33333333-3', 'Prueba', '$2a$11$CTisnvkGAgXkuB8z77jm/u1HKfMd5oboNODLoB7VV0uXWPoiR/i7y', '2000-01-01', '2026-10-20', 'administrador', NULL),
 ('8735650-7', 'Javiera Navarro', 'clave3529', '1973-05-10', '2022-08-19', 'vendedor', NULL),
 ('5839221-9', 'Alejandro Aguilera', 'clave7512', '1999-02-24', '2020-06-13', 'vendedor', NULL),
 ('14228452-9', 'Patricia Flores', 'clave6188', '1998-02-12', '2024-01-11', 'vendedor', NULL),

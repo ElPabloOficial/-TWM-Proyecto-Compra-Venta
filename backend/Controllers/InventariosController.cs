@@ -81,10 +81,22 @@ public class InventariosController : ControllerBase
         if (inventario == null || inventario.id_usuario != rut)
             return Forbid();
 
-        // Validar que el producto exista y sea del usuario
-        var producto = await _context.productos.FindAsync(dto.id_producto);
+        // Evita el 500 del CHECK stockactual >= 0
+        if (dto.stockactual < 0)
+            return BadRequest(new { success = false, message = "El stock no puede ser negativo.", data = (object?)null, errors = (object?)null });
+
+        if (inventario.stockmaximo > 0 && dto.stockactual > inventario.stockmaximo)
+            return BadRequest(new { success = false, message = $"El stock supera el máximo del inventario ({inventario.stockmaximo}).", data = (object?)null, errors = (object?)null });
+
+        // El producto debe ser del usuario (o admin)
+        var producto = await _context.productos
+            .Include(p => p.ofrecer1s)
+            .FirstOrDefaultAsync(p => p.id == dto.id_producto);
         if (producto == null)
             return NotFound(new { success = false, message = "Producto no encontrado." });
+
+        if (!User.IsInRole("Administrador") && !producto.ofrecer1s.Any(o => o.id_usuario == rut))
+            return Forbid();
 
         var almacenar = await _context.almacenars
             .FirstOrDefaultAsync(a => a.id_inventario == dto.id_inventario && a.id_producto == dto.id_producto);

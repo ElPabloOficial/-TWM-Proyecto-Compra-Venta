@@ -1,34 +1,70 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { authService } from "../services/authService";
+import * as api from "../services/servicioService";
 
 export const modalidades = ["Presencial", "Online", "A domicilio"];
-
-// TEMPORAL: datos de ejemplo hasta que se conecte el backend
-const serviciosIniciales = [
-  { id: 1, codigo: "SRV-001", nombre: "Instalación de redes", descripcion: "Cableado y configuración de red", categoriaId: 1, modalidad: "A domicilio", duracion: 120, precio: 45000, restriccionEdad: false, oferta: 0, ofertaInicio: "", ofertaFin: "" },
-  { id: 2, codigo: "SRV-002", nombre: "Soporte técnico remoto", descripcion: "Asistencia por videollamada", categoriaId: 2, modalidad: "Online", duracion: 60, precio: 15000, restriccionEdad: false, oferta: 20, ofertaInicio: "2026-10-01", ofertaFin: "2026-10-31" },
-  { id: 3, codigo: "SRV-003", nombre: "Mantención de equipos", descripcion: "Limpieza y revisión general", categoriaId: 1, modalidad: "Presencial", duracion: 90, precio: 25000, restriccionEdad: true, oferta: 0, ofertaInicio: "", ofertaFin: "" },
-];
 
 const ServiceContext = createContext(null);
 
 export const ServiciosProvider = ({ children }) => {
-  const [servicios, setServicios] = useState(serviciosIniciales);
+  const [serviciosApi, setServiciosApi] = useState([]);
+  const [cargando, setCargando] = useState(() => Boolean(authService.getCurrentUser()));
+  const [error, setError] = useState("");
+  const recargar = useCallback(async ({ silencioso = false } = {}) => {
+    if (!authService.getCurrentUser()) {
+      setServiciosApi([]);
+      setCargando(false);
+      return;
+    }
 
-  const agregarServicio = (servicio) => {
-    setServicios((prev) => [...prev, { ...servicio, id: Date.now() }]);
+    if (!silencioso) setCargando(true);
+    setError("");
+    try {
+      setServiciosApi(await api.listarMisServicios());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    recargar();
+  }, [recargar]);
+  const servicios = serviciosApi.map((s) => ({ ...s, estadoOferta: api.calcularEstadoOferta(s) }));
+  const agregarServicio = async (datos) => {
+    try {
+      await api.crearServicio(datos);
+    } finally {
+      await recargar({ silencioso: true });
+    }
   };
 
-  const actualizarServicio = (servicio) => {
-    setServicios((prev) => prev.map((s) => (s.id === servicio.id ? servicio : s)));
+  const actualizarServicio = async (datos) => {
+    const original = serviciosApi.find((s) => s.id === datos.id);
+    try {
+      await api.actualizarServicio(datos, original);
+    } finally {
+      await recargar({ silencioso: true });
+    }
   };
 
-  const eliminarServicio = (id) => {
-    setServicios((prev) => prev.filter((s) => s.id !== id));
+  const eliminarServicio = async (id) => {
+    await api.eliminarServicio(id);
+    await recargar({ silencioso: true });
   };
 
   return (
     <ServiceContext.Provider
-      value={{ servicios, agregarServicio, actualizarServicio, eliminarServicio }}
+      value={{
+        servicios,
+        cargando,
+        error,
+        recargar,
+        agregarServicio,
+        actualizarServicio,
+        eliminarServicio,
+      }}
     >
       {children}
     </ServiceContext.Provider>

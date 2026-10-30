@@ -7,21 +7,28 @@ import "../../styles/AddProduct.css";
 const AddProductScreen = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { productos, categorias, agregarProducto, actualizarProducto } = useProductos();
+  const { productos, categoriasProducto, cargando, agregarProducto, actualizarProducto } = useProductos();
 
   // Si la ruta trae un id (/inventario/editar/:id) la pantalla funciona en modo edición
   const producto = id ? productos.find((p) => p.id === Number(id)) : null;
   const editando = Boolean(id);
 
+  // Si se abre directo la dirección de edición, hay que esperar a que lleguen los productos
+  if (editando && cargando) {
+    return <div style={{ padding: 40 }}>Cargando producto...</div>;
+  }
+
   if (editando && !producto) {
     return <Navigate to="/inventario" replace />;
   }
 
-  const guardar = (datos) => {
+  // Si la API rechaza el guardado, el error llega hasta ProductForm, que lo muestra
+  // bajo el formulario, y no se navega.
+  const guardar = async (datos) => {
     if (editando) {
-      actualizarProducto({ ...datos, id: producto.id });
+      await actualizarProducto({ ...datos, id: producto.id });
     } else {
-      agregarProducto(datos);
+      await agregarProducto(datos);
     }
     navigate("/inventario");
   };
@@ -45,7 +52,7 @@ const AddProductScreen = () => {
 
         <ProductForm
           producto={producto}
-          categorias={categorias}
+          categorias={categoriasProducto}
           onGuardar={guardar}
           onCancelar={() => navigate("/inventario")}
         />

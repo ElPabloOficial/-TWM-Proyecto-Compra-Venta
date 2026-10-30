@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/organisms/Header/Header";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import DateField from "../../components/atoms/DateField/DateField";
 import { useProductos } from "../../context/ProductContext";
 import { useServicios, modalidades } from "../../context/ServiceContext";
 import "../../styles/AddProduct.css";
@@ -20,26 +21,40 @@ const inicial = {
   ofertaFin: "",
 };
 
-// Misma plantilla para agregar (/servicios/nuevo) y editar (/servicios/editar/:id)
+// Agregar (/servicios/nuevo) y editar (/servicios/editar/:id)
 const ServiceFormScreen = () => {
-  const navigate = useNavigate();
   const { id } = useParams();
-  const { categorias } = useProductos();
-  const { servicios, agregarServicio, actualizarServicio } = useServicios();
+  const { servicios, cargando } = useServicios();
 
   const editando = Boolean(id);
   const servicio = editando ? servicios.find((s) => s.id === Number(id)) : null;
 
-  const [form, setForm] = useState(servicio ? { ...inicial, ...servicio } : inicial);
-  const [error, setError] = useState("");
+  // Espera a que lleguen los servicios
+  if (editando && cargando) {
+    return <div style={{ padding: 40 }}>Cargando servicio...</div>;
+  }
 
   if (editando && !servicio) {
     return <Navigate to="/servicios" replace />;
   }
 
+  return <ServiceForm servicio={servicio} />;
+};
+
+const ServiceForm = ({ servicio }) => {
+  const navigate = useNavigate();
+  const { categoriasServicio: categorias } = useProductos();
+  const { agregarServicio, actualizarServicio } = useServicios();
+
+  const editando = Boolean(servicio);
+
+  const [form, setForm] = useState(servicio ? { ...inicial, ...servicio } : inicial);
+  const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
   const cambiar = (campo) => (e) => setForm({ ...form, [campo]: e.target.value });
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     const precio = Number(form.precio);
     const duracion = Number(form.duracion);
 
@@ -59,11 +74,11 @@ const ServiceFormScreen = () => {
     }
     if (oferta > 0) {
       if (!form.ofertaInicio || !form.ofertaFin) {
-        setError("Si hay oferta, indica la fecha de inicio y la de término.");
+        setError("Si hay oferta, indica una fecha de inicio y una de término válidas (dd/mm/aaaa).");
         return;
       }
-      if (form.ofertaFin < form.ofertaInicio) {
-        setError("La fecha de término no puede ser anterior a la de inicio.");
+      if (form.ofertaFin <= form.ofertaInicio) {
+        setError("La fecha de término debe ser posterior a la de inicio.");
         return;
       }
     }
@@ -86,12 +101,21 @@ const ServiceFormScreen = () => {
       datos
     );
 
-    if (editando) {
-      actualizarServicio({ ...datos, id: servicio.id });
-    } else {
-      agregarServicio(datos);
+    if (guardando) return;
+    setGuardando(true);
+    try {
+      if (editando) {
+        await actualizarServicio({ ...datos, id: servicio.id });
+      } else {
+        await agregarServicio(datos);
+      }
+      navigate("/servicios");
+    } catch (e) {
+      // Error de la API bajo el formulario
+      setError(e.message);
+    } finally {
+      setGuardando(false);
     }
-    navigate("/servicios");
   };
 
   const titulo = editando ? "Editar Servicio" : "Agregar Servicio";
@@ -145,7 +169,7 @@ const ServiceFormScreen = () => {
               >
                 <option value="" disabled>Selecciona la categoría</option>
                 {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
+                  <option key={c.id} value={c.id}>{c.etiqueta ?? c.nombre}</option>
                 ))}
               </select>
             </div>
@@ -198,11 +222,11 @@ const ServiceFormScreen = () => {
             <div className="addp-row">
               <div className="addp-field">
                 <label className="addp-label" htmlFor="ofertaInicio">Inicio de la oferta</label>
-                <input id="ofertaInicio" className="addp-input" type="date" value={form.ofertaInicio} onChange={cambiar("ofertaInicio")} />
+                <DateField id="ofertaInicio" className="addp-input" value={form.ofertaInicio} onChange={(iso) => setForm((f) => ({ ...f, ofertaInicio: iso }))} />
               </div>
               <div className="addp-field">
                 <label className="addp-label" htmlFor="ofertaFin">Término de la oferta</label>
-                <input id="ofertaFin" className="addp-input" type="date" value={form.ofertaFin} onChange={cambiar("ofertaFin")} />
+                <DateField id="ofertaFin" className="addp-input" value={form.ofertaFin} onChange={(iso) => setForm((f) => ({ ...f, ofertaFin: iso }))} />
               </div>
             </div>
           )}

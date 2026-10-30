@@ -87,6 +87,7 @@ public class ProductosController : ControllerBase
     }
 
     // GET: api/productos/mis-productos (Requiere Auth - Panel Vendedor)
+    // Devuelve también el stock y la oferta (con sus fechas) para la gestión de inventario.
     [HttpGet("mis-productos")]
     [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> GetMisProductos()
@@ -96,8 +97,6 @@ public class ProductosController : ControllerBase
 
         var productos = await _context.ofrecer1s
             .Where(o => o.id_usuario == rut)
-            .Include(o => o.id_productoNavigation)
-                .ThenInclude(p => p.id_categoria)
             .Select(o => new
             {
                 id = o.id_producto,
@@ -105,9 +104,21 @@ public class ProductosController : ControllerBase
                 restriccionedad = o.id_productoNavigation.restriccionedad,
                 caracteristicas = o.id_productoNavigation.caracteristicas,
                 imagen = o.id_productoNavigation.imagen,
-                categorias = o.id_productoNavigation.id_categoria
-                    .Select(c => c.id)
-                    .ToList()
+                categorias = o.id_productoNavigation.id_categoria.Select(c => c.id).ToList(),
+
+                stockactual = o.id_productoNavigation.almacenars
+                    .Where(a => a.id_inventarioNavigation.id_usuario == rut)
+                    .Sum(a => a.stockactual),
+
+                id_oferta = o.id_productoNavigation.id_oferta,
+                preciooferta = o.id_productoNavigation.id_ofertaNavigation != null
+                    ? (decimal?)o.id_productoNavigation.id_ofertaNavigation.preciooferta
+                    : null,
+                ofertaactiva = o.id_productoNavigation.id_ofertaNavigation != null
+                    ? o.id_productoNavigation.id_ofertaNavigation.estado
+                    : null,
+                fechainicio = o.id_productoNavigation.fechainicio,
+                fechafin = o.id_productoNavigation.fechafin
             })
             .ToListAsync();
 
@@ -116,7 +127,7 @@ public class ProductosController : ControllerBase
 
     // POST: api/productos (Requiere Autenticación Básica)
     [HttpPost]
-    [Authorize(Roles = "Vendedor,Administrador")] 
+    [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> CreateProducto([FromBody] ProductoCreateDto dto)
     {
         var rutVendedor = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -156,7 +167,7 @@ public class ProductosController : ControllerBase
             await _context.SaveChangesAsync(); 
             await transaction.CommitAsync(); 
 
-            return Ok(new { success = true, message = "Producto creado exitosamente.", data = new { id = nuevoProducto.id }, errors = (object?)null });
+            return StatusCode(201, new { success = true, message = "Producto creado exitosamente.", data = new { id = nuevoProducto.id }, errors = (object?)null });
         }
         catch (Exception ex)
         {
@@ -178,7 +189,7 @@ public class ProductosController : ControllerBase
             .FirstOrDefaultAsync(p => p.id == id);
 
         if (producto == null) return NotFound(new { success = false, message = "Producto no encontrado." });
-        if (producto.ofrecer1s.FirstOrDefault()?.id_usuario != rut) return Forbid();
+        if (!producto.ofrecer1s.Any(o => o.id_usuario == rut)) return Forbid(); // un producto puede tener varios vendedores
 
         // Actualizar campos
         producto.nombre = dto.nombre;
@@ -208,7 +219,7 @@ public class ProductosController : ControllerBase
             .FirstOrDefaultAsync(p => p.id == id);
 
         if (producto == null) return NotFound(new { success = false, message = "Producto no encontrado." });
-        if (producto.ofrecer1s.FirstOrDefault()?.id_usuario != rut) return Forbid();
+        if (!producto.ofrecer1s.Any(o => o.id_usuario == rut)) return Forbid(); // un producto puede tener varios vendedores
 
         // Si la BD tiene ON DELETE CASCADE, esto borrará también las relaciones
         _context.productos.Remove(producto);

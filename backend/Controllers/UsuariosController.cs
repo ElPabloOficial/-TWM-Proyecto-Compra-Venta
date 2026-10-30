@@ -163,11 +163,17 @@ public class UsuariosController : ControllerBase
         }
 
         // 2. Verificar contraseña
-        bool contraseñaCorrecta =
-            BCrypt.Net.BCrypt.Verify(
-                dto.clave,
-                usuario.clave
-            );
+        //    Si la clave guardada no es un hash BCrypt (p. ej. los usuarios antiguos del seed tienen
+        //    la clave en texto plano), Verify lanza una excepción: se responde 401 y no 500.
+        bool contraseñaCorrecta;
+        try
+        {
+            contraseñaCorrecta = BCrypt.Net.BCrypt.Verify(dto.clave, usuario.clave);
+        }
+        catch (BCrypt.Net.SaltParseException)
+        {
+            contraseñaCorrecta = false;
+        }
 
         if (!contraseñaCorrecta)
         {
@@ -196,23 +202,32 @@ public class UsuariosController : ControllerBase
         }
 
         // 5. Crear claims
-        var claims = new[]
+        //    La BD guarda el tipo en minúsculas ('admin', 'administrador', 'vendedor', 'cliente', 'ambos'),
+        //    pero los controladores piden "Administrador", "Vendedor"... y la comparación de roles
+        //    distingue mayúsculas. Por eso se traduce aquí, al armar el token.
+        var claims = new List<Claim>
         {
-            new Claim(
-                ClaimTypes.NameIdentifier,
-                usuario.rut
-            ),
-
-            new Claim(
-                ClaimTypes.Name,
-                usuario.nombre
-            ),
-
-            new Claim(
-                ClaimTypes.Role,
-                usuario.tipousuario
-            )
+            new Claim(ClaimTypes.NameIdentifier, usuario.rut),
+            new Claim(ClaimTypes.Name, usuario.nombre)
         };
+
+        switch (usuario.tipousuario.Trim().ToLowerInvariant())
+        {
+            case "admin":
+            case "administrador":
+                claims.Add(new Claim(ClaimTypes.Role, "Administrador"));
+                break;
+            case "vendedor":
+                claims.Add(new Claim(ClaimTypes.Role, "Vendedor"));
+                break;
+            case "ambos":
+                claims.Add(new Claim(ClaimTypes.Role, "Vendedor"));
+                claims.Add(new Claim(ClaimTypes.Role, "Cliente"));
+                break;
+            default:
+                claims.Add(new Claim(ClaimTypes.Role, "Cliente"));
+                break;
+        }
 
         // 6. Crear clave de firma
         var key = new SymmetricSecurityKey(
