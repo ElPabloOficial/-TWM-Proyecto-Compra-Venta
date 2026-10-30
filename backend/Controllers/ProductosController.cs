@@ -42,6 +42,7 @@ public class ProductosController : ControllerBase
                 nombre = p.nombre,
                 restriccionedad = p.restriccionedad,
                 caracteristicas = caracteristicasJson,
+                imagen = p.imagen,
                 rut_vendedor = oferta != null ? oferta.id_usuario : null,
                 categorias = p.id_categoria.Select(c => c.id).ToList()
             };
@@ -76,6 +77,7 @@ public class ProductosController : ControllerBase
             nombre = producto.nombre,
             restriccionedad = producto.restriccionedad,
             caracteristicas = caracteristicasJson,
+            imagen = producto.imagen,
             precio_oferta = producto.id_ofertaNavigation != null ? producto.id_ofertaNavigation.preciooferta : (decimal?)null,
             categorias = producto.id_categoria.Select(c => new { c.id, c.nombre }),
             vendedor = vendedor != null ? new { rut = vendedor.id_usuario, nombre = vendedor.id_usuarioNavigation.nombre } : null
@@ -102,7 +104,10 @@ public class ProductosController : ControllerBase
                 nombre = o.id_productoNavigation.nombre,
                 restriccionedad = o.id_productoNavigation.restriccionedad,
                 caracteristicas = o.id_productoNavigation.caracteristicas,
-                categorias = o.id_productoNavigation.id_categoria.Select(c => c.id).ToList()
+                imagen = o.id_productoNavigation.imagen,
+                categorias = o.id_productoNavigation.id_categoria
+                    .Select(c => c.id)
+                    .ToList()
             })
             .ToListAsync();
 
@@ -130,7 +135,8 @@ public class ProductosController : ControllerBase
             {
                 nombre = dto.nombre,
                 restriccionedad = dto.restriccionedad,
-                caracteristicas = dto.caracteristicas.GetRawText()
+                caracteristicas = dto.caracteristicas.GetRawText(),
+                imagen = dto.imagen
             };
 
             // EF Core insertará automáticamente en 'pertenecer1'
@@ -178,6 +184,7 @@ public class ProductosController : ControllerBase
         producto.nombre = dto.nombre;
         producto.restriccionedad = dto.restriccionedad;
         producto.caracteristicas = dto.caracteristicas.GetRawText();
+        producto.imagen = dto.imagen;
 
         // Actualizar categoría (SQL directo, ya que no hay DbSet para 'pertenecer1')
         await _context.Database.ExecuteSqlRawAsync("DELETE FROM pertenecer1 WHERE id_producto = {0}", id);
