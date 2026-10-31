@@ -42,7 +42,7 @@ public class ProductosController : ControllerBase
                 nombre = p.nombre,
                 restriccionedad = p.restriccionedad,
                 caracteristicas = caracteristicasJson,
-                imagen = p.imagen,
+                imagen = p.rutaimagen,
                 rut_vendedor = oferta != null ? oferta.id_usuario : null,
                 categorias = p.id_categoria.Select(c => c.id).ToList()
             };
@@ -77,7 +77,7 @@ public class ProductosController : ControllerBase
             nombre = producto.nombre,
             restriccionedad = producto.restriccionedad,
             caracteristicas = caracteristicasJson,
-            imagen = producto.imagen,
+            imagen = producto.rutaimagen,
             precio_oferta = producto.id_ofertaNavigation != null ? producto.id_ofertaNavigation.preciooferta : (decimal?)null,
             categorias = producto.id_categoria.Select(c => new { c.id, c.nombre }),
             vendedor = vendedor != null ? new { rut = vendedor.id_usuario, nombre = vendedor.id_usuarioNavigation.nombre } : null
@@ -87,14 +87,13 @@ public class ProductosController : ControllerBase
     }
 
     // GET: api/productos/mis-productos (Requiere Auth - Panel Vendedor)
-    // Devuelve también el stock y la oferta (con sus fechas) para la gestión de inventario.
     [HttpGet("mis-productos")]
     [Authorize(Roles = "Vendedor,Administrador")]
     public async Task<IActionResult> GetMisProductos()
     {
         var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(rut)) return Unauthorized(new { success = false, message = "Usuario no autenticado." });
-
+    
         var productos = await _context.ofrecer1s
             .Where(o => o.id_usuario == rut)
             .Select(o => new
@@ -103,7 +102,7 @@ public class ProductosController : ControllerBase
                 nombre = o.id_productoNavigation.nombre,
                 restriccionedad = o.id_productoNavigation.restriccionedad,
                 caracteristicas = o.id_productoNavigation.caracteristicas,
-                imagen = o.id_productoNavigation.imagen,
+                imagen = o.id_productoNavigation.rutaimagen,
                 categorias = o.id_productoNavigation.id_categoria.Select(c => c.id).ToList(),
 
                 stockactual = o.id_productoNavigation.almacenars
@@ -127,7 +126,7 @@ public class ProductosController : ControllerBase
 
     // POST: api/productos (Requiere Autenticación Básica)
     [HttpPost]
-    [Authorize(Roles = "Vendedor,Administrador")]
+    [Authorize(Roles = "Vendedor,Administrador")] 
     public async Task<IActionResult> CreateProducto([FromBody] ProductoCreateDto dto)
     {
         var rutVendedor = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -147,7 +146,7 @@ public class ProductosController : ControllerBase
                 nombre = dto.nombre,
                 restriccionedad = dto.restriccionedad,
                 caracteristicas = dto.caracteristicas.GetRawText(),
-                imagen = dto.imagen
+                rutaimagen = dto.imagen
             };
 
             // EF Core insertará automáticamente en 'pertenecer1'
@@ -195,7 +194,7 @@ public class ProductosController : ControllerBase
         producto.nombre = dto.nombre;
         producto.restriccionedad = dto.restriccionedad;
         producto.caracteristicas = dto.caracteristicas.GetRawText();
-        producto.imagen = dto.imagen;
+        producto.rutaimagen = dto.imagen;
 
         // Actualizar categoría (SQL directo, ya que no hay DbSet para 'pertenecer1')
         await _context.Database.ExecuteSqlRawAsync("DELETE FROM pertenecer1 WHERE id_producto = {0}", id);

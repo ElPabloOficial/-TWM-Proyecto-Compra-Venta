@@ -18,75 +18,203 @@ public class ReseniasController : ControllerBase
         _context = context;
     }
 
-    // POST: api/resenias (Requiere Auth)
     [HttpPost]
-    [Authorize]
-    public async Task<IActionResult> CrearResenia([FromBody] ReseniaCreateDto dto)
-    {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut))
-            return Unauthorized(new { success = false, message = "Usuario no autenticado." });
+[Authorize]
+public async Task<IActionResult> CrearResenia([FromBody] ReseniaCreateDto dto)
+{
+    var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (dto.calificacion < 1 || dto.calificacion > 5)
-            return BadRequest(new { success = false, message = "La calificación debe estar entre 1 y 5." });
-
-        using var transaction = await _context.Database.BeginTransactionAsync();
-
-        try
+    if (string.IsNullOrEmpty(rut))
+        return Unauthorized(new
         {
-            // 1. Crear la Calificación base
+            success = false,
+            message = "Usuario no autenticado."
+        });
+
+    if (dto.calificacion < 1 || dto.calificacion > 5)
+        return BadRequest(new
+        {
+            success = false,
+            message = "La calificación debe estar entre 1 y 5."
+        });
+
+    if (string.IsNullOrWhiteSpace(dto.tipo))
+        return BadRequest(new
+        {
+            success = false,
+            message = "Debe indicar el tipo de reseña."
+        });
+
+    var tipo = dto.tipo.ToLower();
+
+    using var transaction = await _context.Database.BeginTransactionAsync();
+
+    try
+    {
+        // ==========================================
+        // RESEÑA DE PRODUCTO
+        // ==========================================
+        if (tipo == "producto")
+        {
+            // 1. Verificar que el producto exista
+            var productoExiste = await _context.productos
+                .AnyAsync(p => p.id == dto.id_item);
+
+            if (!productoExiste)
+            {
+                await transaction.RollbackAsync();
+
+                return NotFound(new
+                {
+                    success = false,
+                    message = "Producto no encontrado."
+                });
+            }
+
+            // 2. Verificar que el usuario haya comprado el producto
+            var comproProducto = await _context.generar3s
+                .AnyAsync(g =>
+                    g.id_producto == dto.id_item &&
+                    g.id_ventaNavigation.id_cliente == rut
+                );
+
+            if (!comproProducto)
+            {
+                await transaction.RollbackAsync();
+
+                return Forbid();
+            }
+
+            // 3. Crear la calificación
             var nuevaCalificacion = new calificacion
             {
                 calificacion1 = dto.calificacion,
                 comentario = dto.comentario,
                 fecha = DateTime.Today
             };
+
             _context.calificacions.Add(nuevaCalificacion);
-            await _context.SaveChangesAsync();
-
-            // 2. Vincular al producto o servicio
-            if (dto.tipo.ToLower() == "producto")
-            {
-                var productoExiste = await _context.productos.AnyAsync(p => p.id == dto.id_item);
-                if (!productoExiste) return NotFound(new { success = false, message = "Producto no encontrado." });
-
-                var escribir1 = new escribir1
-                {
-                    id_calificacion = nuevaCalificacion.id,
-                    id_producto = dto.id_item,
-                    id_usuario = rut
-                };
-                _context.escribir1s.Add(escribir1);
-            }
-            else if (dto.tipo.ToLower() == "servicio")
-            {
-                var servicioExiste = await _context.servicios.AnyAsync(s => s.id == dto.id_item);
-                if (!servicioExiste) return NotFound(new { success = false, message = "Servicio no encontrado." });
-
-                var escribir2 = new escribir2
-                {
-                    id_calificacion = nuevaCalificacion.id,
-                    id_servicio = dto.id_item,
-                    id_usuario = rut
-                };
-                _context.escribir2s.Add(escribir2);
-            }
-            else
-            {
-                return BadRequest(new { success = false, message = "Tipo inválido. Use 'producto' o 'servicio'." });
-            }
 
             await _context.SaveChangesAsync();
+
+            // 4. Vincular calificación con producto y usuario
+            var escribir1 = new escribir1
+            {
+                id_calificacion = nuevaCalificacion.id,
+                id_producto = dto.id_item,
+                id_usuario = rut
+            };
+
+            _context.escribir1s.Add(escribir1);
+
+            await _context.SaveChangesAsync();
+
             await transaction.CommitAsync();
 
-            return Ok(new { success = true, message = "Reseña creada exitosamente.", data = new { id = nuevaCalificacion.id }, errors = (object?)null });
+            return Ok(new
+            {
+                success = true,
+                message = "Reseña creada exitosamente.",
+                data = new
+                {
+                    id = nuevaCalificacion.id
+                },
+                errors = (object?)null
+            });
         }
-        catch (Exception ex)
+
+        // ==========================================
+        // RESEÑA DE SERVICIO
+        // ==========================================
+        if (tipo == "servicio")
         {
-            await transaction.RollbackAsync();
-            return StatusCode(500, new { success = false, message = "Error al crear la reseña.", errors = new[] { ex.Message } });
+            // 1. Verificar que el servicio exista
+            var servicioExiste = await _context.servicios
+                .AnyAsync(s => s.id == dto.id_item);
+
+            if (!servicioExiste)
+            {
+                await transaction.RollbackAsync();
+
+                return NotFound(new
+                {
+                    success = false,
+                    message = "Servicio no encontrado."
+                });
+            }
+
+            // 2. Verificar que el usuario haya comprado el servicio
+            var comproServicio = await _context.generar4s
+                .AnyAsync(g =>
+                    g.id_servicio == dto.id_item &&
+                    g.id_ventaNavigation.id_cliente == rut
+                );
+
+            if (!comproServicio)
+            {
+                await transaction.RollbackAsync();
+
+                return Forbid();
+            }
+
+            // 3. Crear la calificación
+            var nuevaCalificacion = new calificacion
+            {
+                calificacion1 = dto.calificacion,
+                comentario = dto.comentario,
+                fecha = DateTime.Today
+            };
+
+            _context.calificacions.Add(nuevaCalificacion);
+
+            await _context.SaveChangesAsync();
+
+            // 4. Vincular calificación con servicio y usuario
+            var escribir2 = new escribir2
+            {
+                id_calificacion = nuevaCalificacion.id,
+                id_servicio = dto.id_item,
+                id_usuario = rut
+            };
+
+            _context.escribir2s.Add(escribir2);
+
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Reseña creada exitosamente.",
+                data = new
+                {
+                    id = nuevaCalificacion.id
+                },
+                errors = (object?)null
+            });
         }
+
+        await transaction.RollbackAsync();
+
+        return BadRequest(new
+        {
+            success = false,
+            message = "Tipo inválido. Use 'producto' o 'servicio'."
+        });
     }
+    catch (Exception ex)
+    {
+        await transaction.RollbackAsync();
+
+        return StatusCode(500, new
+        {
+            success = false,
+            message = "Error al crear la reseña.",
+            errors = new[] { ex.Message }
+        });
+    }
+}
 
     // GET: api/resenias/producto/1 (Público)
     [HttpGet("producto/{idProducto}")]

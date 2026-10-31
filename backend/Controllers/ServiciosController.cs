@@ -57,7 +57,7 @@ public class ServiciosController : ControllerBase
                 restriccionedad = s.restriccionedad,
                 duracion = s.duracion,
                 caracteristicas = caracteristicasJson,
-                imagen = s.imagen,
+                imagen = s.rutaimagen,
                 rut_vendedor = oferta != null ? oferta.id_usuario : null,
                 categorias = s.id_categoria.Select(c => c.id).ToList()
             };
@@ -119,7 +119,7 @@ public class ServiciosController : ControllerBase
             restriccionedad = servicio.restriccionedad,
             duracion = servicio.duracion,
             caracteristicas = caracteristicasJson,
-            imagen = servicio.imagen,
+            imagen = servicio.rutaimagen,
             categorias = servicio.id_categoria.Select(c => new
             {
                 c.id,
@@ -161,7 +161,7 @@ public class ServiciosController : ControllerBase
                 restriccionedad = o.id_servicioNavigation.restriccionedad,
                 duracion = o.id_servicioNavigation.duracion,
                 caracteristicas = o.id_servicioNavigation.caracteristicas,
-                imagen = o.id_servicioNavigation.imagen,
+                imagen = o.id_servicioNavigation.rutaimagen,
                 categorias = o.id_servicioNavigation.id_categoria.Select(c => c.id).ToList(),
 
                 precio = o.id_servicioNavigation.valorars
@@ -187,10 +187,12 @@ public class ServiciosController : ControllerBase
     private static string CaracteristicasComoTexto(JsonElement caracteristicas) =>
         caracteristicas.ValueKind == JsonValueKind.Undefined ? "{}" : caracteristicas.GetRawText();
 
-    // POST: api/servicios (Requiere Autenticación Básica)
+
+    // POST: api/servicios (Requiere autenticación)
     [HttpPost]
-    [Authorize(Roles = "Vendedor,Administrador")]
-    public async Task<IActionResult> CreateServicio([FromBody] ServicioCreateDto dto)
+    [Authorize]
+    public async Task<IActionResult> CreateServicio(
+        [FromBody] ServicioCreateDto dto)
     {
         var rutVendedor = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(rutVendedor))
@@ -212,8 +214,8 @@ public class ServiciosController : ControllerBase
                 nombre = dto.nombre,
                 restriccionedad = dto.restriccionedad,
                 duracion = dto.duracion,
-                caracteristicas = CaracteristicasComoTexto(dto.caracteristicas),
-                imagen = dto.imagen
+                caracteristicas = dto.caracteristicas.GetRawText(),
+                rutaimagen = dto.imagen
             };
 
             nuevoServicio.id_categoria.Add(categoriaExiste);
@@ -240,14 +242,18 @@ public class ServiciosController : ControllerBase
             await transaction.CommitAsync();
 
             return StatusCode(201, new { success = true, message = "Servicio creado exitosamente.", data = new { id = nuevoServicio.id }, errors = (object?)null });
+
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { success = false, message = "Error interno al crear el servicio.", errors = new[] { ex.Message } });
+
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { success = false, message = "Error interno al crear el servicio.", errors = new[] { ex.Message } });
+            }
         }
     }
-
     // PUT: api/servicios/{id}
     [HttpPut("{id}")]
     [Authorize(Roles = "Vendedor,Administrador")]
@@ -280,7 +286,7 @@ public class ServiciosController : ControllerBase
             servicio.restriccionedad = dto.restriccionedad;
             servicio.duracion = dto.duracion;
             servicio.caracteristicas = CaracteristicasComoTexto(dto.caracteristicas);
-            servicio.imagen = dto.imagen;
+            servicio.rutaimagen = dto.imagen;
 
             var valoracion = await _context.valorars
                 .FirstOrDefaultAsync(v => v.id_servicio == id && v.id_usuario == rut);
@@ -337,3 +343,4 @@ public class ServiciosController : ControllerBase
         return Ok(new { success = true, message = "Servicio eliminado.", data = (object?)null, errors = (object?)null });
     }
 }
+ 

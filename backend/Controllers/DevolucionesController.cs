@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TiendaOnline.API.DTOs;
 using TiendaOnline.API.Models;
+using System.IO;
 
 namespace TiendaOnline.API.Controllers;
 
@@ -13,11 +14,16 @@ namespace TiendaOnline.API.Controllers;
 public class DevolucionesController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IWebHostEnvironment _environment;
 
-    public DevolucionesController(AppDbContext context)
+    public DevolucionesController(
+        AppDbContext context,
+        IWebHostEnvironment environment)
     {
         _context = context;
+        _environment = environment;
     }
+
 
     // GET: api/devoluciones (Ver mis devoluciones como cliente o vendedor)
     [HttpGet]
@@ -52,50 +58,97 @@ public class DevolucionesController : ControllerBase
 
     // POST: api/devoluciones (Solicitar devolución)
     [HttpPost]
-    public async Task<IActionResult> CrearDevolucion([FromBody] DevolucionCreateDto dto)
+    public async Task<IActionResult> CrearDevolucion(
+        [FromForm] DevolucionCreateDto dto)
     {
         var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    
         if (string.IsNullOrEmpty(rut))
             return Unauthorized(new { success = false, message = "Usuario no autenticado." });
-
+    
         if (dto.cantidad <= 0)
             return BadRequest(new { success = false, message = "La cantidad debe ser mayor a 0." });
-
-        // Validar que la venta exista, sea del cliente y tenga este producto
+    
+        // Validar venta
         var venta = await _context.venta.FindAsync(dto.id_venta);
+    
         if (venta == null)
             return NotFound(new { success = false, message = "Venta no encontrada." });
-
+    
         if (venta.id_cliente != rut)
             return Forbid();
-
-        // Validar que el producto esté en la venta y que no se haya devuelto ya
+    
+        // Validar producto
         var detalleVenta = await _context.generar3s
-            .FirstOrDefaultAsync(g => g.id_venta == dto.id_venta && g.id_producto == dto.id_producto);
-
+            .FirstOrDefaultAsync(g =>
+                g.id_venta == dto.id_venta &&
+                g.id_producto == dto.id_producto);
+    
         if (detalleVenta == null)
             return BadRequest(new { success = false, message = "El producto no pertenece a esta venta." });
-
+    
         if (dto.cantidad > detalleVenta.cantidad)
             return BadRequest(new { success = false, message = $"Solo compraste {detalleVenta.cantidad} unidades." });
-
-        using var transaction = await _context.Database.BeginTransactionAsync();
-
+    
+        string? rutaImagen = null;
+        string? rutaFisica = null;
+    
         try
         {
-            // 1. Crear la devolución
+            // Guardar imagen si el usuario adjuntó una
+            if (dto.imagen != null && dto.imagen.Length > 0)
+            {
+                // Máximo 5 MB
+                if (dto.imagen.Length > 5 * 1024 * 1024)
+                    return BadRequest(new { success = false, message = "La imagen no puede superar los 5 MB." });
+    
+                var extensionesPermitidas = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+                var extension = Path.GetExtension(dto.imagen.FileName).ToLowerInvariant();
+    
+                if (!extensionesPermitidas.Contains(extension))
+                    return BadRequest(new { success = false, message = "Formato de imagen no permitido." });
+    
+                var tiposPermitidos = new[] { "image/jpeg", "image/png", "image/webp" };
+    
+                if (!tiposPermitidos.Contains(dto.imagen.ContentType.ToLowerInvariant()))
+                    return BadRequest(new { success = false, message = "El archivo debe ser una imagen válida." });
+    
+                var carpeta = Path.Combine(
+                    _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"),
+                    "uploads",
+                    "devoluciones"
+                );
+    
+                Directory.CreateDirectory(carpeta);
+    
+                var nombreArchivo = $"{Guid.NewGuid()}{extension}";
+    
+                rutaFisica = Path.Combine(carpeta, nombreArchivo);
+                rutaImagen = $"/uploads/devoluciones/{nombreArchivo}";
+    
+                using (var stream = new FileStream(rutaFisica, FileMode.Create))
+                {
+                    await dto.imagen.CopyToAsync(stream);
+                }
+            }
+    
+            using var transaction = await _context.Database.BeginTransactionAsync();
+    
+            // Crear devolución
             var nuevaDevolucion = new devolucion
             {
                 motivo = dto.motivo,
                 fechasolicitud = DateOnly.FromDateTime(DateTime.Now),
                 estado = "En Proceso",
                 tipodevolucion = dto.tipodevolucion,
-                montoreintegrado = 0
+                montoreintegrado = 0,
+                rutaimagen = rutaImagen
             };
+    
             _context.devolucions.Add(nuevaDevolucion);
             await _context.SaveChangesAsync();
-
-            // 2. Vincular a la venta/producto/usuario
+    
+            // Asociar devolución a venta, producto y usuario
             var generar1 = new generar1
             {
                 id_usuario = rut,
@@ -104,17 +157,32 @@ public class DevolucionesController : ControllerBase
                 id_producto = dto.id_producto,
                 cantidad = dto.cantidad
             };
+    
             _context.generar1s.Add(generar1);
-
+    
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
-
-            return Ok(new { success = true, message = "Devolución solicitada.", data = new { id = nuevaDevolucion.id }, errors = (object?)null });
+    
+            return Ok(new
+            {
+                success = true,
+                message = "Devolución solicitada.",
+                data = new { id = nuevaDevolucion.id },
+                errors = (object?)null
+            });
         }
         catch (Exception ex)
         {
-            await transaction.RollbackAsync();
-            return StatusCode(500, new { success = false, message = "Error al crear la devolución.", errors = new[] { ex.Message } });
+            // Si falla el registro, eliminar la imagen guardada
+            if (rutaFisica != null && System.IO.File.Exists(rutaFisica))
+                System.IO.File.Delete(rutaFisica);
+    
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Error al crear la devolución.",
+                errors = new[] { ex.Message }
+            });
         }
     }
 

@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using TiendaOnline.API.DTOs;
 using TiendaOnline.API.Models;
+using System.Text.Json.Nodes;
+
 
 namespace TiendaOnline.API.Controllers;
 
@@ -214,38 +215,72 @@ public class VentasController : ControllerBase
         }
     }
 
-        // GET: api/ventas/mis-compras (Cliente)
+    
+
+    // GET: api/ventas/mis-compras (Cliente)
     [HttpGet("mis-compras")]
     public async Task<IActionResult> GetMisCompras()
     {
         var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut)) return Unauthorized();
 
-        var compras = await _context.venta
+        if (string.IsNullOrEmpty(rut))
+            return Unauthorized();
+
+        var ventas = await _context.venta
             .Where(v => v.id_cliente == rut)
-            .Include(v => v.generar3s).ThenInclude(g => g.id_productoNavigation)
-            .Include(v => v.generar4s).ThenInclude(g => g.id_servicioNavigation)
             .OrderByDescending(v => v.fecha)
             .Select(v => new
             {
                 id_venta = v.id,
                 fecha = v.fecha,
-                total = v.neto + (v.neto * v.iva),
+                neto = v.neto,
+                iva = v.iva,
                 estado = v.estado,
-                productos = v.generar3s.Select(g => new { 
-                    nombre = g.id_productoNavigation.nombre, 
-                    cantidad = g.cantidad, 
-                    total = g.totalfinal 
+
+                productos = v.generar3s.Select(g => new
+                {
+                    id = g.id_producto,
+                    nombre = g.id_productoNavigation.nombre,
+                    cantidad = g.cantidad,
+                    total = g.totalfinal,
+                    imagen = g.id_productoNavigation.rutaimagen
                 }).ToList(),
-                servicios = v.generar4s.Select(g => new { 
-                    nombre = g.id_servicioNavigation.nombre, 
-                    cantidad = g.cantidad, 
-                    total = g.totalfinal 
+
+                servicios = v.generar4s.Select(g => new
+                {
+                    id = g.id_servicio,
+                    nombre = g.id_servicioNavigation.nombre,
+                    cantidad = g.cantidad,
+                    total = g.totalfinal,
+                    imagen = g.id_servicioNavigation.rutaimagen
                 }).ToList()
             })
             .ToListAsync();
 
-        return Ok(new { success = true, message = "Historial de compras.", data = compras, errors = (object?)null });
+        var compras = ventas.Select(v => new
+        {
+            id_venta = v.id_venta,
+            fecha = v.fecha,
+            neto = v.neto,
+            iva = v.iva,
+
+            total = Math.Round(
+                (decimal)v.neto * (1m + v.iva),
+                MidpointRounding.AwayFromZero
+            ),
+
+            estado = v.estado,
+            productos = v.productos,
+            servicios = v.servicios
+        }).ToList();
+
+        return Ok(new
+        {
+            success = true,
+            message = "Historial de compras.",
+            data = compras,
+            errors = (object?)null
+        });
     }
 
     // GET: api/ventas/mis-ventas (Vendedor)
@@ -265,7 +300,7 @@ public class VentasController : ControllerBase
             {
                 id_venta = v.id,
                 fecha = v.fecha,
-                total = v.neto + (v.neto * v.iva),
+                total_venta = (decimal)v.neto * (1m + v.iva),
                 estado = v.estado,
                 cliente = v.id_clienteNavigation.nombre,
                 productos = v.generar3s.Select(g => g.id_productoNavigation.nombre).ToList(),
@@ -274,6 +309,8 @@ public class VentasController : ControllerBase
             .ToListAsync();
 
         return Ok(new { success = true, message = "Historial de ventas.", data = ventas, errors = (object?)null });
+
+        
     }
 
     // GET: api/ventas/{id} (Detalle para la Boleta)
@@ -330,7 +367,7 @@ public class VentasController : ControllerBase
         return Ok(new { success = true, message = "Detalle de venta obtenido.", data = resultado, errors = (object?)null });
     }
 
-    // =====================================================================
+     // =====================================================================
     //  Gestión de pedidos del vendedor (pantalla "Pedidos")
     // =====================================================================
     //
