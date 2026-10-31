@@ -31,6 +31,7 @@ import CatalogScreen from "./pages/Catalog/CatalogScreen";
 import AdminScreen from './pages/Admin/AdminScreen';
 import NewQuoteScreen from './pages/NewQuote/NewQuoteScreen';
 import AddressesScreen from "./pages/Addresses/AddressesScreen";
+import ShipmentTrackingScreen from "./pages/ShipmentTracking/ShipmentTrackingScreen";
 
 const App = () => {
   return (
@@ -70,6 +71,7 @@ const App = () => {
                 <Route path="/admin" element={<AdminScreen />} />
                 <Route path="/cotizaciones/nueva" element={<NewQuoteScreen />} />
                 <Route path="/direcciones" element={<AddressesScreen />} />
+                <Route path="/seguimiento-despacho" element={<ShipmentTrackingScreen />} />
               </Routes>
             </CartProvider>
           </QuotesProvider>
