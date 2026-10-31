@@ -10,7 +10,7 @@ public class ProductoCreateDto
     public string nombre { get; set; } = null!;
     public bool restriccionedad { get; set; }
     public JsonElement caracteristicas { get; set; }
-
+    
     public string? imagen { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "La categoría es obligatoria.")]
