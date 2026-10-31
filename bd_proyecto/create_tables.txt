@@ -112,7 +112,7 @@ CREATE TABLE Usuario (
     FechaNacimiento DATE NOT NULL,
     FechaCreacion DATE NOT NULL,
     TipoUsuario VARCHAR(20) NOT NULL,
-    Descuentos JSON,
+    Descuentos JSON DEFAULT NULL,
     SecionIniciada BOOLEAN NOT NULL DEFAULT FALSE,                  
     CONSTRAINT chk_usuario_fecha_nac CHECK (FechaNacimiento >= '1940-01-01'),
     CONSTRAINT chk_usuario_fecha_creacion CHECK (FechaCreacion >= '1995-01-01' AND FechaCreacion <= CURRENT_DATE)
@@ -127,6 +127,7 @@ CREATE TABLE Devolucion (
     Estado VARCHAR(20) NOT NULL,
     TipoDevolucion VARCHAR(30) NOT NULL,
     MontoReintegrado INTEGER CHECK (MontoReintegrado >= 0),
+    RutaImagen TEXT DEFAULT NULL,
     CONSTRAINT chk_devolucion_fecha_sol CHECK (FechaSolicitud >= '1995-01-01'),
     CONSTRAINT chk_devolucion_fecha_res CHECK (FechaResolucion IS NULL OR FechaResolucion >= '1995-01-01')
 );
