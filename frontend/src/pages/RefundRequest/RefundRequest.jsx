@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Box } from "@mui/material";
 
 import Header from "../../components/organisms/Header/Header";
@@ -6,25 +7,30 @@ import Footer from "../../components/organisms/Footer/Footer";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import CustomDialog from "../../components/atoms/CustomDialog/CustomDialog";
 
+import { returnService } from "../../services/returnService";
+import { ventaService } from "../../services/ventaService";
+
 const RefundRequest = () => {
   const [reason, setReason] = useState("");
   const [preference, setPreference] = useState("refund");
   const [details, setDetails] = useState("");
   const [evidence, setEvidence] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState("");
+  const [dialogTitle, setDialogTitle] = useState("Solicitud incompleta");
 
-  // Datos de ejemplo
-  const product = {
-    order: "#10452",
-    purchaseDate: "12-09-2026",
-    seller: "TecnoOsorno",
-    name: 'Laptop Lenovo 14". gris',
-    customer: "María Soto",
-    quantity: 1,
-    price: 389990,
-    paymentMethod: "Tarjeta terminada en 4521",
-  };
+  const location = useLocation();
+
+  const {
+    id_venta,
+    id_producto,
+    cantidad,
+  } = location.state || {};
+
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const reasons = [
     "Producto defectuoso",
@@ -34,6 +40,95 @@ const RefundRequest = () => {
     "Otro",
   ];
 
+  const handleImageChange = (event) => {
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    const formatosPermitidos = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!formatosPermitidos.includes(file.type)) {
+      setDialogTitle("Formato no permitido");
+      setDialogMessage("Selecciona una imagen JPG, PNG o WEBP.");
+      setOpenDialog(true);
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setDialogTitle("Imagen demasiado grande");
+      setDialogMessage("La imagen no puede superar los 5 MB.");
+      setOpenDialog(true);
+      event.target.value = "";
+      return;
+    }
+
+    setEvidence(file);
+    setPreviewImage(URL.createObjectURL(file));
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewImage) {
+        URL.revokeObjectURL(previewImage);
+      }
+    };
+  }, [previewImage]);
+
+  useEffect(() => {
+    const cargarProducto = async () => {
+      try {
+        const compras = await ventaService.getMisCompras();
+
+        // Buscar la venta seleccionada
+        const venta = compras.find(
+          (item) => item.id_venta === id_venta
+        );
+
+        if (!venta) {
+          throw new Error("No se encontró la compra.");
+        }
+
+        // Buscar el producto dentro de la venta
+        const producto = venta.productos.find(
+          (item) => item.id === id_producto
+        );
+
+        if (!producto) {
+          throw new Error("No se encontró el producto en la compra.");
+        }
+
+        setProduct({
+          order: venta.id_venta,
+          purchaseDate: new Date(venta.fecha).toLocaleDateString("es-CL"),
+          name: producto.nombre,
+          quantity: cantidad,
+          price: producto.cantidad > 0
+            ? producto.total / producto.cantidad * cantidad
+            : 0,
+          image: producto.imagen,
+        });
+
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!id_venta || !id_producto || !cantidad) {
+      setError("No se recibieron los datos de la compra.");
+      setLoading(false);
+      return;
+    }
+
+    cargarProducto();
+  }, [id_venta, id_producto, cantidad]);
+
   const money = (value) =>
     new Intl.NumberFormat("es-CL", {
       style: "currency",
@@ -41,23 +136,51 @@ const RefundRequest = () => {
       maximumFractionDigits: 0,
     }).format(value);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
+    // Validar motivo
     if (!reason) {
+      setDialogTitle("Solicitud incompleta");
       setDialogMessage("Selecciona un motivo para la devolución.");
       setOpenDialog(true);
       return;
     }
 
-    console.log({
-      order: product.order,
-      reason,
-      preference,
-      details,
-      evidence,
-    });
+    try {
+      const resultado = await returnService.crearDevolucion(
+        id_venta,
+        id_producto,
+        cantidad,
+        reason,
+        preference === "refund" ? "Reembolso" : "Cambio",
+        evidence
+      );
+
+      // Solicitud exitosa
+      setDialogTitle("¡Solicitud enviada!");
+      setDialogMessage(
+        resultado.message || "Devolución solicitada correctamente."
+      );
+      setOpenDialog(true);
+
+    } catch (error) {
+      // Error al enviar
+      setDialogTitle("Error en la solicitud");
+      setDialogMessage(
+        error.message || "No se pudo solicitar la devolución."
+      );
+      setOpenDialog(true);
+    }
   };
+
+  if (loading) {
+    return <Box sx={{ padding: 4 }}>Cargando producto...</Box>;
+  }
+  
+  if (error || !product) {
+    return <Box sx={{ padding: 4 }}>{error || "No se encontró el producto."}</Box>;
+  }
 
   return (
     <Box
@@ -404,15 +527,13 @@ const RefundRequest = () => {
           >
             Adjuntar evidencia (opcional)
           </Box>
-
+          
           <Box
             component="input"
             id="return-evidence"
             type="file"
-            accept="image/*"
-            onChange={(event) =>
-              setEvidence(event.target.files?.[0] ?? null)
-            }
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleImageChange}
             sx={{
               width: "100%",
               maxWidth: "350px",
@@ -428,12 +549,42 @@ const RefundRequest = () => {
             }}
           />
 
-          {evidence && (
-            <Box
-              component="p"
-              sx={{ fontSize: "10px", color: "#666" }}
-            >
-              Archivo seleccionado: {evidence.name}
+          {/* Previsualización */}
+          {previewImage && (
+            <Box sx={{ marginTop: "12px" }}>
+              <Box
+                component="p"
+                sx={{
+                  fontSize: "11px",
+                  color: "#666",
+                  marginBottom: "6px",
+                }}
+              >
+                Imagen seleccionada:
+              </Box>
+              
+              <Box
+                component="img"
+                src={previewImage}
+                alt="Evidencia de devolución"
+                sx={{
+                  width: "150px",
+                  height: "120px",
+                  objectFit: "cover",
+                  border: "1px solid #ddd",
+                  borderRadius: "5px",
+                }}
+              />
+
+              <Box
+                component="p"
+                sx={{
+                  fontSize: "10px",
+                  color: "#666",
+                }}
+              >
+                {evidence.name}
+              </Box>
             </Box>
           )}
         </Box>
@@ -476,7 +627,7 @@ const RefundRequest = () => {
       <CustomDialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
-        title="Solicitud incompleta"
+        title={dialogTitle}
         maxWidth="xs"
         actions={
         <CustomButton
