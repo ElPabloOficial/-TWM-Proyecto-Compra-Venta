@@ -19,5 +19,7 @@ public partial class devolucion
 
     public int? montoreintegrado { get; set; }
 
+    public string? rutaimagen { get; set; }
+
     public virtual ICollection<generar1> generar1s { get; set; } = new List<generar1>();
 }
