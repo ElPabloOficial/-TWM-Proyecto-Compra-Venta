@@ -1,4 +1,3 @@
-
 import { Box } from "@mui/material";
 
 export default function ProductDescription({
@@ -13,7 +12,7 @@ export default function ProductDescription({
         backgroundColor: "white",
         p: 2,
         mt: 1,
-        borderRadius: 1,
+        borderRadius: 1, 
       }}
     >
       <Box

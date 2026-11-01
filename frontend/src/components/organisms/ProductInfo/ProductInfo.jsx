@@ -1,3 +1,4 @@
+const API_URL = import.meta.env.VITE_API_URL;
 
 import { Box } from "@mui/material";
 
@@ -14,12 +15,18 @@ export default function ProductInfo({
   quantity,
   aumentarCantidad,
   disminuirCantidad,
-  date,
+  date, 
   setDate,
   time,
   setTime,
 }) {
   const isService = type === "service";
+
+  const imagenUrl = product.imagen
+  ? product.imagen.startsWith("http")
+    ? product.imagen
+    : `${API_URL.replace(/\/api\/?$/, "")}/${product.imagen.replace(/^\/+/, "")}`
+  : null;
 
   const inputSx = {
     width: "100%",
@@ -49,10 +56,33 @@ export default function ProductInfo({
         sx={{
           width: { xs: "100%", md: "45%" },
           minHeight: 220,
+          height: { xs: 250, md: 320 },
           backgroundColor: "#d9d9d9",
           flexShrink: 0,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          overflow: "hidden",
+          borderRadius: 1,
         }}
-      />
+      >
+        {imagenUrl ? (
+          <Box
+            component="img"
+            src={imagenUrl}
+            alt={product.nombre}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+            }}
+          />
+        ) : (
+          <Box sx={{ color: "#777", fontSize: 13 }}>
+            Imagen no disponible
+          </Box>
+        )}
+      </Box>
 
       {/* INFORMACIÓN */}
       <Box sx={{ flex: 1, minWidth: 0 }}>
