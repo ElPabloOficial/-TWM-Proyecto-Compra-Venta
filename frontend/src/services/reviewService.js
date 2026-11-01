@@ -1,7 +1,7 @@
-
 const API_URL = import.meta.env.VITE_API_URL;
 
 export const reviewService = {
+  // Crear reseña
   crearResenia: async (tipo, id_item, calificacion, comentario) => {
     const token = localStorage.getItem("authToken");
 
@@ -28,5 +28,39 @@ export const reviewService = {
     }
 
     return resultado;
+  },
+
+  // Obtener reseñas de un producto
+  obtenerReseniasProducto: async (idProducto) => {
+    const respuesta = await fetch(
+      `${API_URL}/resenias/producto/${idProducto}`
+    );
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(
+        resultado.message || "Error al obtener las reseñas del producto."
+      );
+    }
+
+    return resultado.data ?? [];
+  },
+
+  // Obtener reseñas de un servicio
+  obtenerReseniasServicio: async (idServicio) => {
+    const respuesta = await fetch(
+      `${API_URL}/resenias/servicio/${idServicio}`
+    );
+
+    const resultado = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(
+        resultado.message || "Error al obtener las reseñas del servicio."
+      );
+    }
+
+    return resultado.data ?? [];
   },
 };
