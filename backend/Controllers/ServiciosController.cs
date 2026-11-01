@@ -1,4 +1,3 @@
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -29,9 +28,34 @@ public class ServiciosController : ControllerBase
             .Include(s => s.ofrecer2s)
             .ToListAsync();
 
+        // Obtener los precios de todos los servicios
+        var idsServicios = serviciosDb
+            .Select(s => s.id)
+            .ToList();
+
+        var preciosDb = await _context.valorars
+            .Where(v => idsServicios.Contains(v.id_servicio))
+            .Select(v => new
+            {
+                v.id_servicio,
+                v.id_usuario,
+                v.precio
+            })
+            .ToListAsync();
+
         var servicios = serviciosDb.Select(s =>
         {
             var oferta = s.ofrecer2s.FirstOrDefault();
+
+            // Buscar el precio correspondiente al vendedor seleccionado
+            int? precio = oferta == null
+                ? null
+                : preciosDb
+                    .Where(v =>
+                        v.id_servicio == s.id &&
+                        v.id_usuario == oferta.id_usuario)
+                    .Select(v => (int?)v.precio)
+                    .FirstOrDefault();
 
             JsonElement caracteristicasJson;
 
@@ -59,6 +83,7 @@ public class ServiciosController : ControllerBase
                 caracteristicas = caracteristicasJson,
                 imagen = s.rutaimagen,
                 rut_vendedor = oferta != null ? oferta.id_usuario : null,
+                precio = precio,
                 categorias = s.id_categoria.Select(c => c.id).ToList()
             };
         }).ToList();
@@ -71,6 +96,7 @@ public class ServiciosController : ControllerBase
             errors = (object?)null
         });
     }
+
 
     // GET: api/servicios/{id} (Público - Detalle)
     [HttpGet("{id}")]
@@ -94,6 +120,16 @@ public class ServiciosController : ControllerBase
         }
 
         var vendedor = servicio.ofrecer2s.FirstOrDefault();
+
+        int? precio = null;
+        
+        if (vendedor != null)
+        {
+            precio = await _context.valorars
+                .Where(v => v.id_servicio == id && v.id_usuario == vendedor.id_usuario)
+                .Select(v => (int?)v.precio)
+                .FirstOrDefaultAsync();
+        }
 
         JsonElement caracteristicasJson;
 
@@ -134,12 +170,33 @@ public class ServiciosController : ControllerBase
                 : null
         };
 
+
         return Ok(new
         {
             success = true,
-            message = "Servicio obtenido.",
-            data = resultado,
-            errors = (object?)null
+            message = "Servicio obtenido correctamente.",
+            data = new
+            {
+                id = servicio.id,
+                nombre = servicio.nombre,
+                restriccionedad = servicio.restriccionedad,
+                duracion = servicio.duracion,
+                caracteristicas = servicio.caracteristicas,
+                imagen = servicio.rutaimagen,
+                precio = precio,
+
+                categorias = servicio.id_categoria.Select(c => new
+                {
+                    id = c.id,
+                    nombre = c.nombre
+                }),
+
+                vendedor = vendedor == null ? null : new
+                {
+                    rut = vendedor.id_usuarioNavigation.rut,
+                    nombre = vendedor.id_usuarioNavigation.nombre
+                }
+            }
         });
     }
 

@@ -49,7 +49,8 @@ public class DevolucionesController : ControllerBase
                 tipodevolucion = g.id_devolucionNavigation.tipodevolucion,
                 monto_reintegrado = g.id_devolucionNavigation.montoreintegrado,
                 fecha_solicitud = g.id_devolucionNavigation.fechasolicitud,
-                fecha_resolucion = g.id_devolucionNavigation.fecharesolucion
+                fecha_resolucion = g.id_devolucionNavigation.fecharesolucion,
+                rutaimagen = g.id_devolucionNavigation.rutaimagen
             })
             .ToListAsync();
 

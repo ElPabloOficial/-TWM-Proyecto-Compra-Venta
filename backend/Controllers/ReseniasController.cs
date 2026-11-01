@@ -236,4 +236,31 @@ public async Task<IActionResult> CrearResenia([FromBody] ReseniaCreateDto dto)
 
         return Ok(new { success = true, message = "Reseñas obtenidas.", data = resenias, errors = (object?)null });
     }
+
+    // GET: api/resenias/servicio/1 (Público)
+    [HttpGet("servicio/{idServicio}")]
+    public async Task<IActionResult> GetReseniasServicio(int idServicio)
+    {
+        var resenias = await _context.escribir2s
+            .Where(e => e.id_servicio == idServicio)
+            .Include(e => e.id_calificacionNavigation)
+            .Include(e => e.id_usuarioNavigation)
+            .Select(e => new
+            {
+                id = e.id_calificacion,
+                usuario = e.id_usuarioNavigation.nombre,
+                calificacion = e.id_calificacionNavigation.calificacion1,
+                comentario = e.id_calificacionNavigation.comentario,
+                fecha = e.id_calificacionNavigation.fecha
+            })
+            .ToListAsync();
+    
+        return Ok(new
+        {
+            success = true,
+            message = "Reseñas obtenidas.",
+            data = resenias,
+            errors = (object?)null
+        });
+    }
 }
