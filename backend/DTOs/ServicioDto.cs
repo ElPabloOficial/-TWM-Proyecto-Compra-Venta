@@ -9,9 +9,8 @@ public class ServicioDto
     public bool restriccionedad { get; set; }
     public TimeOnly duracion { get; set; }
     public JsonElement caracteristicas { get; set; }
-
     public string? imagen { get; set; }
-
     public string? rut_vendedor { get; set; }
+    public int? precio { get; set; }
     public List<int> categorias { get; set; } = new List<int>();
 }
