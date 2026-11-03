@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Box, CircularProgress } from "@mui/material";
+import { Box } from "@mui/material";
 import { useParams } from "react-router-dom";
 
 import Header from "../../components/organisms/Header/Header";
 import Footer from "../../components/organisms/Footer/Footer";
+import ProductSheetSkeleton from "../../components/molecules/ProductSheetSkeleton/ProductSheetSkeleton";
 
 import ProductInfo from "../../components/organisms/ProductInfo/ProductInfo";
 import ProductDescription from "../../components/organisms/ProductDescription/ProductDescription";
@@ -235,16 +236,7 @@ console.log(
       <>
         <Header />
 
-        <Box
-          sx={{
-            minHeight: "60vh",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <CircularProgress />
-        </Box>
+        <ProductSheetSkeleton />
 
         <Footer />
       </>

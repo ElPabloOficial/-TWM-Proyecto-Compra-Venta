@@ -245,11 +245,10 @@ public class ServiciosController : ControllerBase
         caracteristicas.ValueKind == JsonValueKind.Undefined ? "{}" : caracteristicas.GetRawText();
 
 
-    // POST: api/servicios (Requiere autenticación)
+    // POST: api/servicios (Requiere Auth - Vendedor)
     [HttpPost]
-    [Authorize]
-    public async Task<IActionResult> CreateServicio(
-        [FromBody] ServicioCreateDto dto)
+    [Authorize(Roles = "Vendedor,Administrador")]
+    public async Task<IActionResult> CreateServicio([FromBody] ServicioCreateDto dto)
     {
         var rutVendedor = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(rutVendedor))
@@ -271,7 +270,7 @@ public class ServiciosController : ControllerBase
                 nombre = dto.nombre,
                 restriccionedad = dto.restriccionedad,
                 duracion = dto.duracion,
-                caracteristicas = dto.caracteristicas.GetRawText(),
+                caracteristicas = CaracteristicasComoTexto(dto.caracteristicas),
                 rutaimagen = dto.imagen
             };
 
@@ -299,18 +298,14 @@ public class ServiciosController : ControllerBase
             await transaction.CommitAsync();
 
             return StatusCode(201, new { success = true, message = "Servicio creado exitosamente.", data = new { id = nuevoServicio.id }, errors = (object?)null });
-
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-
-            {
-                await transaction.RollbackAsync();
-                return StatusCode(500, new { success = false, message = "Error interno al crear el servicio.", errors = new[] { ex.Message } });
-            }
+            return StatusCode(500, new { success = false, message = "Error interno al crear el servicio.", errors = new[] { ex.InnerException?.Message ?? ex.Message } });
         }
     }
+
     // PUT: api/servicios/{id}
     [HttpPut("{id}")]
     [Authorize(Roles = "Vendedor,Administrador")]
@@ -365,7 +360,7 @@ public class ServiciosController : ControllerBase
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { success = false, message = "Error interno al actualizar el servicio.", errors = new[] { ex.Message } });
+            return StatusCode(500, new { success = false, message = "Error interno al actualizar el servicio.", errors = new[] { ex.InnerException?.Message ?? ex.Message } });
         }
     }
 

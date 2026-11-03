@@ -50,7 +50,7 @@ export const authService = {
 
         if (!respuesta.ok) {
             console.warn('[authService] La API respondió con error:', respuesta.status, cuerpo);
-            throw new Error(cuerpo?.message ?? 'No se pudo iniciar sesión.');
+            throw new Error(cuerpo?.message ?? `No se pudo iniciar sesión (error ${respuesta.status} de la API; revisa la terminal donde corre).`);
         }
 
         const token = cuerpo.data.token;

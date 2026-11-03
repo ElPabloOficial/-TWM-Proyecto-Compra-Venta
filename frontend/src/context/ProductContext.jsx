@@ -30,6 +30,8 @@ export const ProductosProvider = ({ children }) => {
   // Empieza en "cargando" si ya hay una sesión iniciada, para que las pantallas esperen los datos
   const [cargando, setCargando] = useState(() => Boolean(authService.getCurrentUser()));
   const [error, setError] = useState("");
+  // Pasa a true cuando termina la primera carga (con éxito o con error). Evita mostrar ceros antes de pedir los datos
+  const [cargado, setCargado] = useState(false);
 
   // Pide a la API los productos del vendedor y las categorías.
   // Con { silencioso: true } no muestra el aviso "cargando" (se usa después de guardar o eliminar).
@@ -37,6 +39,7 @@ export const ProductosProvider = ({ children }) => {
     if (!authService.getCurrentUser()) {
       setProductosApi([]);
       setCargando(false);
+      setCargado(false);
       return;
     }
 
@@ -53,6 +56,7 @@ export const ProductosProvider = ({ children }) => {
       setError(e.message);
     } finally {
       setCargando(false);
+      setCargado(true);
     }
   }, []);
 
@@ -96,6 +100,7 @@ export const ProductosProvider = ({ children }) => {
         categoriasProducto,
         categoriasServicio,
         cargando,
+        cargado,
         error,
         recargar,
         agregarProducto,

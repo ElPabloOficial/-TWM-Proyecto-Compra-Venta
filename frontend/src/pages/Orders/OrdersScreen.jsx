@@ -8,6 +8,8 @@ import MenuItem from "@mui/material/MenuItem";
 import EditIcon from "@mui/icons-material/Edit";
 import CancelIcon from "@mui/icons-material/Cancel";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import ListPageSkeleton from "../../components/organisms/ListPageSkeleton/ListPageSkeleton";
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import CustomButton from "../../components/atoms/Button/CustomButton";
@@ -176,7 +178,11 @@ const OrderDialog = ({ open, pedido, onClose, onGuardar }) => {
 const OrdersScreen = () => {
   const [pedidos, setPedidos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  // Esqueleto solo en la primera carga: si ya hay pedidos, se siguen mostrando mientras se actualiza
+  const cargandoInicial = cargando && pedidos.length === 0;
   const [error, setError] = useState("");
+  // Si la API falló y no hay nada que mostrar, solo se ve el aviso de error (sin tarjetas en cero)
+  const sinDatosPorError = Boolean(error) && pedidos.length === 0;
   const [pedidoEditando, setPedidoEditando] = useState(null);
   const [pedidoACancelar, setPedidoACancelar] = useState(null);
   const [orden, setOrden] = useState("recientes");
@@ -270,9 +276,12 @@ const OrdersScreen = () => {
         </div>
       </div>
 
-      {error && <div style={{ color: "#EF4444", fontSize: 13, marginTop: 12 }}>{error}</div>}
-      {cargando && <div style={{ fontSize: 13, marginTop: 12 }}>Cargando pedidos...</div>}
+      {error && <ErrorState detalle={error} onReintentar={recargar} />}
 
+      {cargandoInicial ? (
+        <ListPageSkeleton columnas={7} />
+      ) : !sinDatosPorError && (
+        <>
       <div className="inv-stats">
         <StatCard titulo="Total de Pedidos" valor={pedidos.length} />
         <StatCard titulo="Por despachar" valor={pendientes} />
@@ -334,7 +343,7 @@ const OrdersScreen = () => {
               </tr>
             </thead>
             <tbody>
-              {visibles.length === 0 && (
+              {!error && visibles.length === 0 && (
                 <tr>
                   <td colSpan={7} className="inv-empty">
                     No hay pedidos para mostrar.
@@ -422,6 +431,8 @@ const OrdersScreen = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
 
       <OrderDialog
         open={Boolean(pedidoEditando)}

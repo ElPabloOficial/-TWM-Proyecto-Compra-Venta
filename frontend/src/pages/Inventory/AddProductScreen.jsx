@@ -1,6 +1,7 @@
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/organisms/Header/Header";
 import ProductForm from "../../components/organisms/ProductForm/ProductForm";
+import FormSkeleton from "../../components/molecules/FormSkeleton/FormSkeleton";
 import { useProductos } from "../../context/ProductContext";
 import "../../styles/AddProduct.css";
 
@@ -15,7 +16,14 @@ const AddProductScreen = () => {
 
   // Si se abre directo la dirección de edición, hay que esperar a que lleguen los productos
   if (editando && cargando) {
-    return <div style={{ padding: 40 }}>Cargando producto...</div>;
+    return (
+      <div className="addp-page">
+        <Header />
+        <div className="addp-content">
+          <FormSkeleton />
+        </div>
+      </div>
+    );
   }
 
   if (editando && !producto) {

@@ -11,18 +11,26 @@ import ChatIcon from "@mui/icons-material/Chat";
 import StarIcon from "@mui/icons-material/Star";
 import UndoIcon from "@mui/icons-material/Undo";
 import InventoryIcon from "@mui/icons-material/Inventory2";
+import ServicesIcon from "@mui/icons-material/MiscellaneousServices";
 import LogoutIcon from "@mui/icons-material/Logout";
 import LoginIcon from "@mui/icons-material/Login";
 import { authService } from "../../../services/authService";
 import CustomButton from "../../atoms/Button/CustomButton";
 import "../../../styles/ProfileMenu.css";
 
-// Opciones para cualquier usuario.
+// Tipos de usuario (campo "tipousuario" de la base de datos):
+//   cliente  -> solo compra: ve las opciones de cliente
+//   vendedor -> vende, y además puede comprar: ve las opciones de cliente + las de vendedor
+//   admin    -> caso aparte: por ahora ve el menú de cliente
+//
+// Las opciones sin "para" las ven todos los que iniciaron sesión.
+// Las que tienen para: "vendedor" solo las ven los vendedores.
+//
 // "ruta" es la pantalla del cliente. Si el usuario es vendedor y la opción tiene
 // "rutaVendedor", se va a esa pantalla (su versión del panel de vendedor).
 // Si una opción no tiene la ruta que le corresponde, por ahora solo cierra el menú
 // (la pantalla aún no existe). Se agrega su "ruta" cuando se cree.
-const opcionesUsuario = [
+const opciones = [
   {
     id: "perfil",
     label: "Mi perfil",
@@ -31,9 +39,10 @@ const opcionesUsuario = [
   },
   {
     id: "pedidos",
-    label: "Mis pedidos",
+    label: "Mis pedidos", // las ventas que ha hecho el vendedor
     icon: <ReceiptLongIcon fontSize="small" />,
-    rutaVendedor: "/pedidos",
+    ruta: "/pedidos",
+    para: "vendedor",
   },
   {
     id: "compras",
@@ -78,7 +87,7 @@ const opcionesUsuario = [
   },
 ];
 
-// Opciones solo para vendedores
+// Panel de gestión: solo para vendedores (aparece separado por una línea)
 const opcionesVendedor = [
   {
     id: "inventario",
@@ -86,12 +95,23 @@ const opcionesVendedor = [
     icon: <InventoryIcon fontSize="small" />,
     ruta: "/inventario",
   },
+  {
+    id: "servicios",
+    label: "Gestión de servicios",
+    icon: <ServicesIcon fontSize="small" />,
+    ruta: "/servicios",
+  },
 ];
-
 
 const ProfileMenu = () => {
   const [usuario, setUsuario] = useState(() => authService.getCurrentUser());
-  const esVendedor = usuario?.role === "vendedor";
+  // "tipousuario" viene de la base de datos. Las sesiones guardadas antes de este cambio
+  // solo tienen "role"; para esas se usa "role".
+  const tipo = usuario?.tipousuario ?? usuario?.role;
+  // Un vendedor también puede comprar, así que ve todo lo de cliente y además lo suyo
+  const esVendedor = tipo === "vendedor";
+
+  const visible = (opcion) => opcion.para !== "vendedor" || esVendedor;
   const [posicion, setPosicion] = useState(null);
   const navigate = useNavigate();
   const abierto = posicion !== null;
@@ -185,7 +205,7 @@ const ProfileMenu = () => {
                 </button>
               ) : (
                 <>
-                  {opcionesUsuario.map(renderOpcion)}
+                  {opciones.filter(visible).map(renderOpcion)}
 
                   {esVendedor && (
                     <>

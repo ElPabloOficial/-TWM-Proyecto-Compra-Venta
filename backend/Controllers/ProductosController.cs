@@ -171,7 +171,7 @@ public class ProductosController : ControllerBase
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { success = false, message = "Error interno al crear el producto.", errors = new[] { ex.Message } });
+            return StatusCode(500, new { success = false, message = "Error interno al crear el producto.", errors = new[] { ex.InnerException?.Message ?? ex.Message } });
         }
     }
 

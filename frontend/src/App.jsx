@@ -32,6 +32,11 @@ import AdminScreen from './pages/Admin/AdminScreen';
 import NewQuoteScreen from './pages/NewQuote/NewQuoteScreen';
 import AddressesScreen from "./pages/Addresses/AddressesScreen";
 import ShipmentTrackingScreen from "./pages/ShipmentTracking/ShipmentTrackingScreen";
+import PurchaseHistory from "./pages/History/History";
+import RefundRequest from "./pages/RefundRequest/RefundRequest";
+import ReturnManagement from "./pages/ReturnManagement/ReturnManagement";
+import ProductSheet from "./pages/ProductSheet/ProductSheet";
+import TestScreen from "./pages/Test/TestScreen";
 
 const App = () => {
   return (
@@ -72,6 +77,12 @@ const App = () => {
                 <Route path="/cotizaciones/nueva" element={<NewQuoteScreen />} />
                 <Route path="/direcciones" element={<AddressesScreen />} />
                 <Route path="/seguimiento-despacho" element={<ShipmentTrackingScreen />} />
+                <Route path="/historial" element={<PurchaseHistory />} />
+                <Route path="/devolucion" element={<RefundRequest />} />
+                <Route path="/devoluciones" element={<ReturnManagement />} />
+                <Route path="/producto/:id" element={<ProductSheet type="product" />} />
+                <Route path="/servicio/:id" element={<ProductSheet type="service" />} />
+                <Route path="/test" element={<TestScreen />} />
               </Routes>
             </CartProvider>
           </QuotesProvider>

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace TiendaOnline.API.Models;
@@ -19,7 +19,7 @@ public partial class producto
 
     public DateOnly? fechafin { get; set; }
 
-    public string? imagen { get; set; }
+    public string? rutaimagen { get; set; }
 
     public virtual ICollection<almacenar> almacenars { get; set; } = new List<almacenar>();
 

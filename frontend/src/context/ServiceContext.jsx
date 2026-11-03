@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { authService } from "../services/authService";
-import * as api from "../services/servicioService";
+import * as api from "../services/servicioVendedorService";
 
 export const modalidades = ["Presencial", "Online", "A domicilio"];
 
@@ -10,10 +10,13 @@ export const ServiciosProvider = ({ children }) => {
   const [serviciosApi, setServiciosApi] = useState([]);
   const [cargando, setCargando] = useState(() => Boolean(authService.getCurrentUser()));
   const [error, setError] = useState("");
+  // Pasa a true cuando termina la primera carga (con éxito o con error). Evita mostrar ceros antes de pedir los datos
+  const [cargado, setCargado] = useState(false);
   const recargar = useCallback(async ({ silencioso = false } = {}) => {
     if (!authService.getCurrentUser()) {
       setServiciosApi([]);
       setCargando(false);
+      setCargado(false);
       return;
     }
 
@@ -25,6 +28,7 @@ export const ServiciosProvider = ({ children }) => {
       setError(e.message);
     } finally {
       setCargando(false);
+      setCargado(true);
     }
   }, []);
 
@@ -59,6 +63,7 @@ export const ServiciosProvider = ({ children }) => {
       value={{
         servicios,
         cargando,
+        cargado,
         error,
         recargar,
         agregarServicio,

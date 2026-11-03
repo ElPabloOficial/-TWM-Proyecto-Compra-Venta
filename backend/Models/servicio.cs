@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace TiendaOnline.API.Models;
@@ -21,7 +21,7 @@ public partial class servicio
 
     public DateOnly? fechafin { get; set; }
 
-    public string? imagen { get; set; }
+    public string? rutaimagen { get; set; }
 
     public virtual ICollection<crear2> crear2s { get; set; } = new List<crear2>();
 

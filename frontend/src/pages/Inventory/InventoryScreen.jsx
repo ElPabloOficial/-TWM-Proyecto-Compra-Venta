@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import ListPageSkeleton from "../../components/organisms/ListPageSkeleton/ListPageSkeleton";
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import ProductToolbar from "../../components/molecules/ProductToolbar/ProductToolbar";
 import ProductTable from "../../components/organisms/ProductTable/ProductTable";
@@ -21,7 +23,12 @@ const comparadores = {
 
 const InventoryScreen = () => {
   const navigate = useNavigate();
-  const { productos, categorias, cargando, error, recargar, eliminarProducto } = useProductos();
+  const { productos, categorias, cargando, cargado, error, recargar, eliminarProducto } = useProductos();
+  // Esqueleto solo en la primera carga: si ya hay productos, se siguen mostrando mientras se actualiza.
+  // "!cargado" cubre el instante antes de que arranque la carga, para que no aparezcan ceros.
+  const cargandoInicial = (cargando || !cargado) && productos.length === 0;
+  // Si la API falló y no hay nada que mostrar, solo se ve el aviso de error (sin tarjetas en cero)
+  const sinDatosPorError = Boolean(error) && productos.length === 0;
 
   const [productoEliminar, setProductoEliminar] = useState(null);
   const [orden, setOrden] = useState("");
@@ -111,9 +118,12 @@ const InventoryScreen = () => {
         </CustomButton>
       </div>
 
-      {error && <div style={{ color: "#EF4444", fontSize: 13, marginTop: 12 }}>{error}</div>}
-      {cargando && <div style={{ fontSize: 13, marginTop: 12 }}>Cargando productos...</div>}
+      {error && <ErrorState detalle={error} onReintentar={recargar} />}
 
+      {cargandoInicial ? (
+        <ListPageSkeleton columnas={8} />
+      ) : !sinDatosPorError && (
+        <>
       <div className="inv-stats">
         <StatCard titulo="Total de Productos" valor={productos.length} />
         <StatCard titulo="Stock Total" valor={stockTotal} />
@@ -137,6 +147,7 @@ const InventoryScreen = () => {
         <ProductTable
           productos={visibles}
           categorias={categorias}
+          error={error}
           onEditar={abrirEditar}
           onEliminar={confirmarEliminar}
         />
@@ -174,6 +185,8 @@ const InventoryScreen = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
 
       <CustomDialog
         open={Boolean(productoEliminar)}

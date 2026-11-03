@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/organisms/Header/Header";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import FormSkeleton from "../../components/molecules/FormSkeleton/FormSkeleton";
 import DateField from "../../components/atoms/DateField/DateField";
 import { useProductos } from "../../context/ProductContext";
 import { useServicios, modalidades } from "../../context/ServiceContext";
@@ -31,7 +32,14 @@ const ServiceFormScreen = () => {
 
   // Espera a que lleguen los servicios
   if (editando && cargando) {
-    return <div style={{ padding: 40 }}>Cargando servicio...</div>;
+    return (
+      <div className="addp-page">
+        <Header />
+        <div className="addp-content">
+          <FormSkeleton />
+        </div>
+      </div>
+    );
   }
 
   if (editando && !servicio) {

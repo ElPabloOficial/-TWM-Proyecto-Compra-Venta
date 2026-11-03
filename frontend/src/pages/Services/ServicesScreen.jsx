@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import ListPageSkeleton from "../../components/organisms/ListPageSkeleton/ListPageSkeleton";
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import CustomDialog from "../../components/atoms/CustomDialog/CustomDialog";
@@ -23,6 +25,10 @@ const comparadores = {
 
 const formatoPrecio = (n) => `$${Number(n).toLocaleString("es-CL")}`;
 
+// Precio con el descuento aplicado, redondeado a peso entero (igual que en la tabla de productos)
+const precioConDescuento = (precio, oferta) =>
+  Math.round(Number(precio) * (1 - Number(oferta) / 100));
+
 // 2026-10-31 -> 31/10/2026
 const formatoFecha = (iso) => {
   if (!iso) return "";
@@ -35,7 +41,12 @@ const textosOferta = { vigente: "Vigente", programada: "Programada", vencida: "V
 const ServicesScreen = () => {
   const navigate = useNavigate();
   const { categorias } = useProductos();
-  const { servicios, cargando, error, recargar, eliminarServicio } = useServicios();
+  const { servicios, cargando, cargado, error, recargar, eliminarServicio } = useServicios();
+  // Esqueleto solo en la primera carga: si ya hay servicios, se siguen mostrando mientras se actualiza.
+  // "!cargado" cubre el instante antes de que arranque la carga, para que no aparezcan ceros.
+  const cargandoInicial = (cargando || !cargado) && servicios.length === 0;
+  // Si la API falló y no hay nada que mostrar, solo se ve el aviso de error (sin tarjetas en cero)
+  const sinDatosPorError = Boolean(error) && servicios.length === 0;
 
   const [servicioEliminar, setServicioEliminar] = useState(null);
   const [orden, setOrden] = useState("");
@@ -109,9 +120,12 @@ const ServicesScreen = () => {
         </CustomButton>
       </div>
 
-      {error && <div style={{ color: "#EF4444", fontSize: 13, marginTop: 12 }}>{error}</div>}
-      {cargando && <div style={{ fontSize: 13, marginTop: 12 }}>Cargando servicios...</div>}
+      {error && <ErrorState detalle={error} onReintentar={recargar} />}
 
+      {cargandoInicial ? (
+        <ListPageSkeleton columnas={9} />
+      ) : !sinDatosPorError && (
+        <>
       <div className="inv-stats">
         <StatCard titulo="Total de Servicios" valor={servicios.length} />
         <StatCard titulo="Solo mayores de 18" valor={mayores} />
@@ -156,7 +170,7 @@ const ServicesScreen = () => {
               <tr>{columnas.map((col) => <th key={col}>{col}</th>)}</tr>
             </thead>
             <tbody>
-              {visibles.length === 0 && (
+              {!error && visibles.length === 0 && (
                 <tr>
                   <td colSpan={columnas.length} className="inv-empty">
                     No hay servicios registrados.
@@ -171,7 +185,18 @@ const ServicesScreen = () => {
                   <td>{nombreCategoria(s.categoriaId)}</td>
                   <td>{s.modalidad}</td>
                   <td>{s.duracion} min</td>
-                  <td>{formatoPrecio(s.precio)}</td>
+                  <td>
+                    {s.oferta > 0 && s.estadoOferta === "vigente" ? (
+                      <>
+                        <div className="inv-precio-original">{formatoPrecio(s.precio)}</div>
+                        <div className="inv-precio-final">
+                          {formatoPrecio(precioConDescuento(s.precio, s.oferta))}
+                        </div>
+                      </>
+                    ) : (
+                      formatoPrecio(s.precio)
+                    )}
+                  </td>
                   <td>
                     {!(s.oferta > 0) ? (
                       "-"
@@ -231,6 +256,8 @@ const ServicesScreen = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
 
       <CustomDialog
         open={Boolean(servicioEliminar)}

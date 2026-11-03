@@ -24,7 +24,7 @@ const formatoFecha = (iso) => {
   return `${dia}/${mes}/${anio}`;
 };
 
-const ProductTable = ({ productos, categorias = [], onEditar, onEliminar }) => {
+const ProductTable = ({ productos, categorias = [], error = "", onEditar, onEliminar }) => {
   const nombreCategoria = (id) =>
     categorias.find((c) => c.id === id)?.nombre ?? "-";
 
@@ -39,7 +39,7 @@ const ProductTable = ({ productos, categorias = [], onEditar, onEliminar }) => {
           </tr>
         </thead>
         <tbody>
-          {productos.length === 0 && (
+          {!error && productos.length === 0 && (
             <tr>
               <td colSpan={columnas.length} className="inv-empty">
                 No hay productos registrados.
