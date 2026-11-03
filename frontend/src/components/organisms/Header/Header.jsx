@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Badge from '@mui/material/Badge';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +7,7 @@ import CustomLogo from '../../atoms/Logo/CustomLogo';
 import SearchBar from '../../molecules/SearchBar/SearchBar';
 import ProfileMenu from '../../molecules/ProfileMenu/ProfileMenu';
 import CustomButton from '../../atoms/Button/CustomButton';
+import CategoryMenu from '../CategoryMenu/CategoryMenu';
 
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -15,6 +17,7 @@ import useCart from '../../../context/useCart';
 const Header = () => {
   const navigate = useNavigate();
   const { cartCount, user } = useCart();
+  const [categoriasAbiertas, setCategoriasAbiertas] = useState(false);
 
   return (
     <Box>
@@ -86,6 +89,7 @@ const Header = () => {
             variant="primary"
             size="small"
             startIcon={<FavoriteIcon />}
+            onClick={() => navigate(user ? '/listasdedeseos' : '/login')}
           >
             Favoritos
           </CustomButton>
@@ -120,69 +124,84 @@ const Header = () => {
           SEGUNDA FRANJA
           4 botones
           ===================================================== */}
+      {/* Segunda franja + menú de categorías */}
       <Box
-        sx={{
-          backgroundColor: '#FFFFFF',
-
-          display: 'flex',
-          alignItems: 'center',
-
-          gap: 0,
-
-          padding: 0,
-
-          border: '1px solid #000000',
-          borderRadius: 0,
-
-          overflow: 'hidden',
-
-          width: '100%',
-          boxSizing: 'border-box',
-        }}
+        sx={{ position: 'relative' }}
+        onMouseLeave={() => setCategoriasAbiertas(false)}
       >
-        <CustomButton
-          variant="secondary"
-          size="small"
+        <Box
           sx={{
-            border: 'none',
-            borderRadius: 0,
-          }}
-        >
-          Categorias
-        </CustomButton>
+            backgroundColor: '#FFFFFF',
 
-        <CustomButton
-          variant="secondary"
-          size="small"
-          sx={{
-            border: 'none',
-            borderRadius: 0,
-          }}
-        >
-          Ofertas
-        </CustomButton>
+            display: 'flex',
+            alignItems: 'center',
 
-        <CustomButton
-          variant="secondary"
-          size="small"
-          sx={{
-            border: 'none',
-            borderRadius: 0,
-          }}
-        >
-          Productos
-        </CustomButton>
+            gap: 0,
 
-        <CustomButton
-          variant="secondary"
-          size="small"
-          sx={{
-            border: 'none',
+            padding: 0,
+
+            border: '1px solid #000000',
             borderRadius: 0,
+
+            overflow: 'hidden',
+
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
-          Servicios
-        </CustomButton>
+          <CustomButton
+            variant="secondary"
+            size="small"
+            aria-haspopup="true"
+            aria-expanded={categoriasAbiertas}
+            onMouseEnter={() => setCategoriasAbiertas(true)}
+            onClick={() => setCategoriasAbiertas((v) => !v)}
+            sx={{
+              border: 'none',
+              borderRadius: 0,
+              ...(categoriasAbiertas && { backgroundColor: '#EC3333', color: '#FFFFFF' }),
+            }}
+          >
+            Categorias
+          </CustomButton>
+
+          <CustomButton
+            variant="secondary"
+            size="small"
+            sx={{
+              border: 'none',
+              borderRadius: 0,
+            }}
+          >
+            Ofertas
+          </CustomButton>
+
+          <CustomButton
+            variant="secondary"
+            size="small"
+            sx={{
+              border: 'none',
+              borderRadius: 0,
+            }}
+          >
+            Productos
+          </CustomButton>
+
+          <CustomButton
+            variant="secondary"
+            size="small"
+            sx={{
+              border: 'none',
+              borderRadius: 0,
+            }}
+          >
+            Servicios
+          </CustomButton>
+        </Box>
+        <CategoryMenu
+          abierto={categoriasAbiertas}
+          onCerrar={() => setCategoriasAbiertas(false)}
+        />
       </Box>
     </Box>
   );

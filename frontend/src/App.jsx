@@ -22,6 +22,7 @@ import ReceiptScreen from "./pages/Receipt/ReceiptScreen";
 import ReportsScreen from "./pages/Reports/ReportsScreen";
 import TransHistoryScreen from "./pages/TransHistoryScreen/TransHistoryScreen";
 import ShippingCostsScreen from "./pages/Shipping/ShippingCostsScreen";
+import WishlistListsScreen from "./pages/WishlistLists/WishlistListsScreen";
 import WishlistScreen from "./pages/Wishlist/WishlistScreen";
 import CategoryManagementScreen from "./pages/Category/CategoryManagementScreen";
 import AdminUserManagementScreen from "./pages/AdminUser/AdminUserAdministrationScreen";
@@ -67,6 +68,7 @@ const App = () => {
                 <Route path="/reportes" element={<ReportsScreen />} />
                 <Route path="/transacciones" element={<TransHistoryScreen />} />
                 <Route path="/envios" element={<ShippingCostsScreen />} />
+                <Route path="/listasdedeseos" element={<WishlistListsScreen />} />
                 <Route path="/listadedeseos" element={<WishlistScreen />} />
                 <Route path="/categorias" element={<CategoryManagementScreen />} />
                 <Route path="/carrito" element={<CartScreen />} />

@@ -60,7 +60,7 @@ const opciones = [
     id: "favoritos",
     label: "Mis favoritos",
     icon: <FavoriteIcon fontSize="small" />,
-    ruta: "/listadedeseos",
+    ruta: "/listasdedeseos",
   },
   {
     id: "direcciones",

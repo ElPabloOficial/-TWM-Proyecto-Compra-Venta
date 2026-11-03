@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Header from "../../components/organisms/Header/Header";
 import CustomButton from "../../components/atoms/Button/CustomButton";
@@ -9,10 +9,23 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 
+import { listarListasDeseos } from "../../services/wishlistService";
+
 import "../../styles/Wishlist.css";
 
 const WishlistScreen = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const [nombreLista, setNombreLista] = useState("");
+
+    // Nombre de la lista elegida en "Mis listas de deseos" (?lista=id)
+    useEffect(() => {
+        const id = Number(searchParams.get("lista"));
+        if (!id) return;
+        listarListasDeseos().then((listas) => {
+            setNombreLista(listas.find((l) => l.id === id)?.nombre ?? "");
+        });
+    }, [searchParams]);
 
     // Temporary mock data — replace with API data later.
     const [wishlist, setWishlist] = useState([
@@ -106,7 +119,7 @@ const WishlistScreen = () => {
         <section className="wishlist-header">
         <div>
 
-        <h1>Lista de deseos</h1>
+        <h1>{nombreLista || "Lista de deseos"}</h1>
 
         <p className="wishlist-subtitle">
         Revisa tus productos guardados y agrega los que quieras al carrito.
