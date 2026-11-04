@@ -49,13 +49,13 @@ const opciones = [
     id: "compras",
     label: "Mis compras",
     icon: <ShoppingBagIcon fontSize="small" />,
-    ruta: "/transacciones",
+    ruta: "/historial",
   },
   {
     id: "cotizaciones",
-    label: "Mis Cotizaciones",
+    label: "Mis Cotizaciones", // las que pidió como cliente (la del vendedor está en su menú de gestión)
     icon: <ReceiptLongIcon fontSize="small" />,
-    ruta: "/cotizaciones",
+    ruta: "/mis-cotizaciones",
   },
   {
     id: "favoritos",
@@ -77,9 +77,9 @@ const opciones = [
   },
   {
     id: "resenas",
-    label: "Mis reseñas",
+    label: "Mis reseñas", // las que escribió como cliente
     icon: <StarIcon fontSize="small" />,
-    rutaVendedor: "/resenas",
+    ruta: "/mis-resenas",
   },
   {
     id: "devoluciones",

@@ -216,6 +216,52 @@ public async Task<IActionResult> CrearResenia([FromBody] ReseniaCreateDto dto)
     }
 }
 
+    // GET: api/resenias/mias
+    // Las reseñas (de productos y de servicios) que escribió el usuario con sesión iniciada.
+    [HttpGet("mias")]
+    [Authorize]
+    public async Task<IActionResult> GetMisResenias()
+    {
+        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(rut))
+            return Unauthorized(new { success = false, message = "Usuario no autenticado." });
+
+        var deProductos = await _context.escribir1s
+            .Where(e => e.id_usuario == rut)
+            .Select(e => new
+            {
+                id = e.id_calificacion,
+                tipo = "producto",
+                id_item = e.id_producto,
+                item = e.id_productoNavigation.nombre,
+                calificacion = e.id_calificacionNavigation.calificacion1,
+                comentario = e.id_calificacionNavigation.comentario,
+                fecha = e.id_calificacionNavigation.fecha
+            })
+            .ToListAsync();
+
+        var deServicios = await _context.escribir2s
+            .Where(e => e.id_usuario == rut)
+            .Select(e => new
+            {
+                id = e.id_calificacion,
+                tipo = "servicio",
+                id_item = e.id_servicio,
+                item = e.id_servicioNavigation.nombre,
+                calificacion = e.id_calificacionNavigation.calificacion1,
+                comentario = e.id_calificacionNavigation.comentario,
+                fecha = e.id_calificacionNavigation.fecha
+            })
+            .ToListAsync();
+
+        var resenias = deProductos.Concat(deServicios)
+            .OrderByDescending(r => r.fecha)
+            .ToList();
+
+        return Ok(new { success = true, message = "Reseñas obtenidas.", data = resenias, errors = (object?)null });
+    }
+
     // GET: api/resenias/producto/1 (Público)
     [HttpGet("producto/{idProducto}")]
     public async Task<IActionResult> GetReseniasProducto(int idProducto)

@@ -3,6 +3,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import Header from "../../components/organisms/Header/Header";
 import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import "../../styles/Addresses.css";
+import { useToast } from "../../context/ToastContext";
 
 // TEMPORAL: las regiones y comunas vendrán de la base de datos cuando se conecte el backend.
 const regiones = {
@@ -60,6 +61,7 @@ const formVacio = {
 };
 
 const AddressesScreen = () => {
+  const { mostrarToast } = useToast();
   const [direcciones, setDirecciones] = useState(direccionesIniciales);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(formVacio);
@@ -198,6 +200,7 @@ const AddressesScreen = () => {
 
     // Si justo se estaba editando la dirección borrada, se cierra el formulario
     if (editandoId === direccionAEliminar.id) cerrarForm();
+    mostrarToast("Dirección eliminada correctamente");
     setDireccionAEliminar(null);
   };
 

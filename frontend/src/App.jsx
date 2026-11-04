@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProductosProvider } from "./context/ProductContext";
+import { ToastProvider } from "./context/ToastContext";
 import { ServiciosProvider } from "./context/ServiceContext";
 import { QuotesProvider } from "./context/QuotesContext";
 import { CartProvider } from "./context/CartContext";
@@ -34,6 +35,8 @@ import NewQuoteScreen from './pages/NewQuote/NewQuoteScreen';
 import AddressesScreen from "./pages/Addresses/AddressesScreen";
 import ShipmentTrackingScreen from "./pages/ShipmentTracking/ShipmentTrackingScreen";
 import PurchaseHistory from "./pages/History/History";
+import MyReviewsScreen from "./pages/MyReviews/MyReviewsScreen";
+import MyQuotesScreen from "./pages/MyQuotes/MyQuotesScreen";
 import RefundRequest from "./pages/RefundRequest/RefundRequest";
 import ReturnManagement from "./pages/ReturnManagement/ReturnManagement";
 import ProductSheet from "./pages/ProductSheet/ProductSheet";
@@ -43,6 +46,7 @@ import AdminRoute from "./components/organisms/AdminRoute/AdminRoute";
 const App = () => {
   return (
     <BrowserRouter>
+      <ToastProvider>
       <ProductosProvider>
         <ServiciosProvider>
           <QuotesProvider>
@@ -62,8 +66,10 @@ const App = () => {
                 <Route path="/registro" element={<RegisterScreen />} />
                 <Route path="/perfil" element={<ProfileScreen />} />
                 <Route path="/cotizaciones" element={<QuotesScreen />} />
+                <Route path="/mis-cotizaciones" element={<MyQuotesScreen />} />
                 <Route path="/cotizaciones/:id" element={<QuoteDetailScreen />} />
                 <Route path="/resenas" element={<ReviewsScreen />} />
+                <Route path="/mis-resenas" element={<MyReviewsScreen />} />
                 <Route path="/pedidos" element={<OrdersScreen />} />
                 <Route path="/recibo" element={<ReceiptScreen />} />
                 <Route path="/reportes" element={<ReportsScreen />} />
@@ -91,6 +97,7 @@ const App = () => {
           </QuotesProvider>
         </ServiciosProvider>
       </ProductosProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 };

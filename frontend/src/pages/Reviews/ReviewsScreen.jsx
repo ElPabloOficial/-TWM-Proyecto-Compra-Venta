@@ -13,6 +13,7 @@ import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialo
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import "../../styles/Inventory.css";
 import "../../styles/Reviews.css";
+import { useToast } from "../../context/ToastContext";
 
 const MAX_CARACTERES = 300;
 
@@ -243,6 +244,7 @@ const ReviewReplyDialog = ({ open, resena, onClose, onGuardar }) => {
 
 // ---------- Pantalla ----------
 const ReviewsScreen = () => {
+  const { mostrarToast } = useToast();
   // TEMPORAL: las reseñas viven solo en memoria (se pierden al recargar la página).
   const [resenas, setResenas] = useState(resenasIniciales);
   const [resenaRespondiendo, setResenaRespondiendo] = useState(null);
@@ -273,6 +275,7 @@ const ReviewsScreen = () => {
       )
     );
     setResenaAEliminar(null);
+    mostrarToast("Respuesta eliminada correctamente");
   };
 
   const verTodas = () => {

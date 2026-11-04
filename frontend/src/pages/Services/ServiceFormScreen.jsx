@@ -6,6 +6,7 @@ import FormSkeleton from "../../components/molecules/FormSkeleton/FormSkeleton";
 import DateField from "../../components/atoms/DateField/DateField";
 import { useProductos } from "../../context/ProductContext";
 import { useServicios, modalidades } from "../../context/ServiceContext";
+import { useToast } from "../../context/ToastContext";
 import "../../styles/AddProduct.css";
 
 const inicial = {
@@ -51,6 +52,7 @@ const ServiceFormScreen = () => {
 
 const ServiceForm = ({ servicio }) => {
   const navigate = useNavigate();
+  const { mostrarToast } = useToast();
   const { categoriasServicio: categorias } = useProductos();
   const { agregarServicio, actualizarServicio } = useServicios();
 
@@ -117,6 +119,7 @@ const ServiceForm = ({ servicio }) => {
       } else {
         await agregarServicio(datos);
       }
+      mostrarToast(editando ? "Servicio actualizado correctamente" : "Servicio creado correctamente");
       navigate("/servicios");
     } catch (e) {
       // Error de la API bajo el formulario

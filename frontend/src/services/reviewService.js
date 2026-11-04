@@ -1,6 +1,11 @@
+import { pedir } from "./apiClient";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export const reviewService = {
+  // Reseñas que escribió el usuario con sesión iniciada (productos y servicios)
+  obtenerMisResenias: async () => (await pedir("/resenias/mias")) ?? [],
+
   // Crear reseña
   crearResenia: async (tipo, id_item, calificacion, comentario) => {
     const token = localStorage.getItem("authToken");

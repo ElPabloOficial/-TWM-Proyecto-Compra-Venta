@@ -5,6 +5,7 @@ import StatCard from "../../components/molecules/StatCard/StatCard";
 import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import "../../styles/Inventory.css";
 import "../../styles/Messages.css";
+import { useToast } from "../../context/ToastContext";
 
 // TEMPORAL: estas conversaciones son de ejemplo. Los clientes escriben desde la tienda;
 // cuando se conecte el backend se cargan desde la API (solo las del vendedor).
@@ -74,6 +75,7 @@ const ultimoMensaje = (c) => c.mensajes[c.mensajes.length - 1];
 const mensajesSinLeer = (c) => c.mensajes.filter((m) => m.autor === "cliente" && !m.leido).length;
 
 const MessagesScreen = () => {
+  const { mostrarToast } = useToast();
   // TEMPORAL: las conversaciones viven solo en memoria (se pierden al recargar la página).
   const [conversaciones, setConversaciones] = useState(conversacionesIniciales);
   const [seleccionadaId, setSeleccionadaId] = useState(null);
@@ -146,6 +148,7 @@ const MessagesScreen = () => {
     setConversaciones(conversaciones.filter((c) => c.id !== conversacionAEliminar.id));
     if (seleccionadaId === conversacionAEliminar.id) setSeleccionadaId(null);
     setConversacionAEliminar(null);
+    mostrarToast("Conversación eliminada correctamente");
   };
 
   // ---------- Búsqueda, filtro y orden de la lista ----------

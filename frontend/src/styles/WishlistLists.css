@@ -20,10 +20,10 @@
 }
 .wl-cabecera h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -1px; color: #000; }
 .wl-subtitulo { margin: 10px 0 0; color: #777; font-size: 15px; line-height: 1.5; }
+.wl-acciones { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .wl-contador {
-  flex-shrink: 0;
   padding: 8px 14px;
-  border: 2px solid #000;
+  border: 2px solid #ec3333;
   font-size: 13px;
   font-weight: 700;
 }
@@ -49,11 +49,12 @@
   color: inherit;
   font: inherit;
   text-align: left;
-  border: 2px solid #000;
+  border: 1px solid #ddd;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.wl-tarjeta:hover { border-color: #ec3333; }
+.wl-tarjeta:hover { border-color: #ec3333; box-shadow: 0 4px 14px rgba(236, 51, 51, 0.15); }
 .wl-tarjeta:focus-visible { outline: 3px solid #ec3333; outline-offset: 2px; }
 
 .wl-tarjeta-icono {
@@ -102,4 +103,5 @@
 
 @media (max-width: 600px) {
   .wl-cabecera { flex-direction: column; align-items: flex-start; }
+  .wl-acciones { width: 100%; justify-content: space-between; }
 }

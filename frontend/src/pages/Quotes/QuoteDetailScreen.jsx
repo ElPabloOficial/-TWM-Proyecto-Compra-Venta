@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link as RouterLink, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link as RouterLink, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Button from '@mui/material/Button';
@@ -34,12 +34,15 @@ const getRemainingDays = (expirationDate) => {
 const QuoteDetailScreen = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Quien viene de "Mis cotizaciones" (cliente) vuelve ahí; el vendedor vuelve a su listado
+  const volverA = location.state?.volverA ?? '/cotizaciones';
   const { quotes, acceptQuote } = useQuotes();
   const [accepted, setAccepted] = useState(false);
   const quote = quotes.find((item) => item.id === id);
 
   if (!quote) {
-    return <Navigate to="/cotizaciones" replace />;
+    return <Navigate to={volverA} replace />;
   }
 
   const subtotal = quote.items.reduce(
@@ -66,7 +69,7 @@ const QuoteDetailScreen = () => {
           <Link component={RouterLink} to="/inicio" underline="hover" color="inherit">
             Inicio
           </Link>
-          <Link component={RouterLink} to="/cotizaciones" underline="hover" color="inherit">
+          <Link component={RouterLink} to={volverA} underline="hover" color="inherit">
             Cotizaciones
           </Link>
           <Typography color="text.primary">Detalle de cotización</Typography>
@@ -117,7 +120,7 @@ const QuoteDetailScreen = () => {
             <dl>
               <div>
                 <dt>Nombre</dt>
-                <dd>{quote.seller.name}</dd>
+                <dd>{quote.status === 'Solicitada' ? 'Aún sin responder' : quote.seller.name}</dd>
               </div>
               <div>
                 <dt>RUT</dt>
@@ -143,10 +146,10 @@ const QuoteDetailScreen = () => {
                 {quote.items.map((item) => (
                   <tr key={item.name}>
                     <td>{item.name}</td>
-                    <td>{formatPrice(item.unitPrice)}</td>
+                    <td>{item.unitPrice > 0 ? formatPrice(item.unitPrice) : 'Por cotizar'}</td>
                     <td>{item.quantity}</td>
                     <td className="quotes-total">
-                      {formatPrice(item.unitPrice * item.quantity)}
+                      {item.unitPrice > 0 ? formatPrice(item.unitPrice * item.quantity) : '—'}
                     </td>
                   </tr>
                 ))}
@@ -169,6 +172,12 @@ const QuoteDetailScreen = () => {
           </div>
         </section>
 
+        {quote.note && (
+          <Alert severity="info" className="quote-feedback">
+            <strong>Mensaje del emprendedor:</strong> {quote.note}
+          </Alert>
+        )}
+
         <div className="quote-detail-actions">
           <Button
             variant="contained"
@@ -187,7 +196,7 @@ const QuoteDetailScreen = () => {
             Descargar PDF
           </Button>
           <Button
-            onClick={() => navigate('/cotizaciones')}
+            onClick={() => navigate(volverA)}
             className="quote-return-button"
           >
             Volver a Mis Cotizaciones

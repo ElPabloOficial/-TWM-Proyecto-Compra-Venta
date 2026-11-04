@@ -15,3 +15,13 @@ const LISTAS_EJEMPLO = [
 export async function listarListasDeseos() {
     return LISTAS_EJEMPLO;
 }
+
+// datos: { nombre, descripcion, publica }
+// TEMPORAL: la lista nueva solo existe mientras la página no se recargue.
+// Con el backend esto pasa a ser un POST que guarda nombrelista, descripcion y visibilidad.
+export async function crearListaDeseos({ nombre, descripcion, publica }) {
+    const id = Math.max(0, ...LISTAS_EJEMPLO.map((l) => l.id)) + 1;
+    const nueva = { id, nombre, descripcion, publica, cantidad: 0 };
+    LISTAS_EJEMPLO.push(nueva);
+    return nueva;
+}

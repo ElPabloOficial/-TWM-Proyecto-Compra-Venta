@@ -11,6 +11,7 @@ import CustomDialog from "../../components/atoms/CustomDialog/CustomDialog";
 import { useProductos } from "../../context/ProductContext";
 import { useServicios } from "../../context/ServiceContext";
 import "../../styles/Inventory.css";
+import { useToast } from "../../context/ToastContext";
 
 const POR_PAGINA = 6;
 const columnas = ["Código", "Servicio", "Categoría", "Modalidad", "Duración", "Precio", "Oferta", "Edad", "Acciones"];
@@ -39,6 +40,7 @@ const formatoFecha = (iso) => {
 const textosOferta = { vigente: "Vigente", programada: "Programada", vencida: "Vencida" };
 
 const ServicesScreen = () => {
+  const { mostrarToast } = useToast();
   const navigate = useNavigate();
   const { categorias } = useProductos();
   const { servicios, cargando, cargado, error, recargar, eliminarServicio } = useServicios();
@@ -68,8 +70,9 @@ const ServicesScreen = () => {
     console.log("[ServicesScreen] confirmarEliminar() - ELIMINAR servicio:", servicioEliminar);
     try {
       await eliminarServicio(servicioEliminar.id);
+      mostrarToast("Servicio eliminado correctamente");
     } catch (e) {
-      alert(e.message);
+      mostrarToast(e.message, "error");
     }
     setServicioEliminar(null);
   };

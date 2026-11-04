@@ -1,0 +1,103 @@
+/* Página "Mis reseñas" (cliente): paleta del proyecto (rojo #EC3333, negro, blanco) */
+.mr-page {
+  max-width: 1000px;
+  width: calc(100% - 48px);
+  margin: 0 auto;
+  padding: 32px 0 64px;
+  color: #242424;
+  box-sizing: border-box;
+}
+.mr-page *, .mr-page *::before, .mr-page *::after { box-sizing: border-box; }
+
+.mr-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #ec3333;
+}
+.mr-cabecera h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -1px; color: #000; }
+.mr-subtitulo { margin: 10px 0 0; color: #777; font-size: 15px; line-height: 1.5; }
+
+.mr-resumen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 2px solid #ec3333;
+  font-size: 13px;
+}
+.mr-resumen-num { font-weight: 700; font-size: 15px; }
+.mr-resumen-sep { width: 1px; height: 16px; margin: 0 8px; background: #ec3333; }
+.mr-resumen-estrella { color: #ec3333; }
+
+/* Filtros */
+.mr-filtros { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.mr-filtro {
+  padding: 7px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #000;
+  background: #fff;
+  border: 2px solid #ec3333;
+  cursor: pointer;
+}
+.mr-filtro:hover { background: rgba(236, 51, 51, 0.08); color: #ec3333; }
+.mr-filtro.activo { background: #ec3333; color: #fff; }
+.mr-filtro:focus-visible { outline: 3px solid #ec3333; outline-offset: 2px; }
+
+/* Lista */
+.mr-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+
+.mr-tarjeta {
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+.mr-tarjeta-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+
+.mr-item { font-size: 1.05rem; font-weight: 700; color: #000; text-decoration: none; }
+.mr-item:hover { color: #ec3333; text-decoration: underline; }
+
+.mr-meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 12px; color: #777; }
+.mr-etiqueta { padding: 2px 9px; font-size: 11px; font-weight: 700; }
+.mr-etiqueta.producto { background: rgba(236, 51, 51, 0.1); color: #ec3333; }
+.mr-etiqueta.servicio { background: #f2f2f2; color: #444; }
+
+.mr-comentario { margin: 14px 0 0; font-size: 14px; line-height: 1.55; color: #333; }
+.mr-sin-comentario { color: #999; font-style: italic; }
+
+/* Estados */
+.mr-mensaje { color: #555; }
+.mr-error { color: #ef4444; }
+.mr-reintentar {
+  font: inherit;
+  font-weight: 700;
+  color: #ec3333;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.mr-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 56px 16px;
+  text-align: center;
+  border: 2px dashed #d9d9d9;
+}
+.mr-vacio h2 { margin: 0; font-size: 1.3rem; }
+.mr-vacio p { margin: 0 0 8px; color: #777; }
+.mr-vacio-icono { color: #ec3333; font-size: 40px !important; }
+
+@media (max-width: 600px) {
+  .mr-cabecera, .mr-tarjeta-cabecera { flex-direction: column; align-items: flex-start; }
+}

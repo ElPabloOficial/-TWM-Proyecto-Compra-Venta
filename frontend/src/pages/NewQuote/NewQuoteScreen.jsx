@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Header from '../../components/organisms/Header/Header';
+import useQuotes from '../../context/useQuotes';
+import { useToast } from '../../context/ToastContext';
 import CustomButton from '../../components/atoms/Button/CustomButton';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -16,9 +18,25 @@ const itemsIniciales = [
 
 export default function CreateQuoteScreen() {
   const navigate = useNavigate();
-  const [items, setItems] = useState(itemsIniciales);
+  const { addQuote } = useQuotes();
+  const { mostrarToast } = useToast();
+  const [items, setItems] = useState(itemsIniciales.map((item) => ({ ...item, cantidad: 1 })));
 
-  const total = items.reduce((acc, item) => acc + item.precio, 0);
+  const total = items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+
+  const cambiarCantidad = (id, cambio) => {
+    setItems(items.map((item) =>
+      item.id === id ? { ...item, cantidad: Math.max(1, item.cantidad + cambio) } : item,
+    ));
+  };
+
+  // TEMPORAL: la cotización se guarda en memoria; con el backend es POST /cotizaciones
+  const enviarSolicitud = () => {
+    if (items.length === 0) return;
+    addQuote(items.map((item) => ({ name: item.nombre, unitPrice: item.precio, quantity: item.cantidad })));
+    mostrarToast('Cotización solicitada correctamente');
+    navigate('/mis-cotizaciones');
+  };
 
   const eliminarItem = (id) => {
     setItems(items.filter((item) => item.id !== id));
@@ -34,7 +52,7 @@ export default function CreateQuoteScreen() {
       <Box sx={{ maxWidth: 1000, margin: '0 auto', padding: 4 }}>
         {/* Breadcrumb */}
         <Typography sx={{ fontSize: '0.8rem', color: '#555', mb: 1 }}>
-          Mis Cotizaciones <span style={{ margin: '0 8px' }}>›</span>
+          <span style={{ cursor: 'pointer' }} onClick={() => navigate('/mis-cotizaciones')}>Mis Cotizaciones</span> <span style={{ margin: '0 8px' }}>›</span>
           <strong style={{ color: '#000' }}>Nueva cotización</strong>
         </Typography>
 
@@ -74,9 +92,9 @@ export default function CreateQuoteScreen() {
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid #000', borderRadius: 1 }}>
-                  <CustomButton variant="text" size="small" sx={{ minWidth: 30, padding: 0 }}><RemoveIcon fontSize="small" /></CustomButton>
-                  <Typography sx={{ px: 2, fontWeight: 600 }}>1</Typography>
-                  <CustomButton variant="text" size="small" sx={{ minWidth: 30, padding: 0 }}><AddIcon fontSize="small" /></CustomButton>
+                  <CustomButton variant="text" size="small" onClick={() => cambiarCantidad(item.id, -1)} sx={{ minWidth: 30, padding: 0 }}><RemoveIcon fontSize="small" /></CustomButton>
+                  <Typography sx={{ px: 2, fontWeight: 600 }}>{item.cantidad}</Typography>
+                  <CustomButton variant="text" size="small" onClick={() => cambiarCantidad(item.id, 1)} sx={{ minWidth: 30, padding: 0 }}><AddIcon fontSize="small" /></CustomButton>
                 </Box>
                 <CustomButton variant="text" size="small" onClick={() => eliminarItem(item.id)} sx={{ color: '#000' }}>
                   <DeleteIcon />
@@ -110,7 +128,7 @@ export default function CreateQuoteScreen() {
           <CustomButton variant="secondary" onClick={() => navigate(-1)}>
             Cancelar
           </CustomButton>
-          <CustomButton variant="primary">
+          <CustomButton variant="primary" onClick={enviarSolicitud} disabled={items.length === 0}>
             Enviar solicitud de cotización
           </CustomButton>
         </Box>

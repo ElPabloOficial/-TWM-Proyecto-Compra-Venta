@@ -5,6 +5,7 @@ import AdminTemplate from "../../components/templates/SellerTemplate/SellerTempl
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import MessageToolbar from "../../components/molecules/MessageToolbar/MessageToolbar";
 import MessageModerationTable from "../../components/organisms/MessageModerationTable/MessageModerationTable";
+import { useToast } from "../../context/ToastContext";
 
 const POR_PAGINA = 6;
 
@@ -18,6 +19,7 @@ const mensajesIniciales = [
 ];
 
 const MessageModerationScreen = ()=> {
+  const { mostrarToast } = useToast();
   const [mensajes, setMensajes] = useState(mensajesIniciales);
   const [filtro, setFiltro] = useState("pendiente"); //muestra pendientes
   const [orden, setOrden] = useState("");
@@ -35,6 +37,7 @@ const MessageModerationScreen = ()=> {
       setMensajes(mensajes.map((m) =>
         m.id === mensaje.id ? { ...m, estado: "eliminado" } : m
       ));
+      mostrarToast("Mensaje eliminado correctamente");
       // Estado eliminado x
     }
   };

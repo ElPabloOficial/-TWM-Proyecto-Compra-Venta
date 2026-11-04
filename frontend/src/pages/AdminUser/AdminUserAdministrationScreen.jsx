@@ -9,6 +9,7 @@ import UserFormDialog from "../../components/organisms/UserFormDialog/UserFormDi
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import { listarUsuarios, crearUsuario as crearUsuarioApi, eliminarUsuario as eliminarUsuarioApi } from "../../services/adminService";
+import { useToast } from "../../context/ToastContext";
 
 const POR_PAGINA = 5;
 
@@ -18,6 +19,7 @@ const normalizar = (texto) =>  // texto en minusculas y sin tildes
 const limpiarRut = (rut) => rut.replace(/[.-]/g, ""); //rut sin puntos ni guion
 
 const AdminUserAdministrationScreen = () => {
+  const { mostrarToast } = useToast();
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState("");
@@ -65,6 +67,7 @@ const AdminUserAdministrationScreen = () => {
     try {
       await eliminarUsuarioApi(usuario.rut);
       setUsuarios((actuales) => actuales.filter((u) => u.id !== usuario.id));
+      mostrarToast("Usuario eliminado correctamente");
     } catch (e) {
       setErrorAccion(e.message);
     }

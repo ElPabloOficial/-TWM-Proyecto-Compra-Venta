@@ -3,10 +3,12 @@ import Header from "../../components/organisms/Header/Header";
 import ProductForm from "../../components/organisms/ProductForm/ProductForm";
 import FormSkeleton from "../../components/molecules/FormSkeleton/FormSkeleton";
 import { useProductos } from "../../context/ProductContext";
+import { useToast } from "../../context/ToastContext";
 import "../../styles/AddProduct.css";
 
 const AddProductScreen = () => {
   const navigate = useNavigate();
+  const { mostrarToast } = useToast();
   const { id } = useParams();
   const { productos, categoriasProducto, cargando, agregarProducto, actualizarProducto } = useProductos();
 
@@ -38,6 +40,7 @@ const AddProductScreen = () => {
     } else {
       await agregarProducto(datos);
     }
+    mostrarToast(editando ? "Producto actualizado correctamente" : "Producto creado correctamente");
     navigate("/inventario");
   };
 

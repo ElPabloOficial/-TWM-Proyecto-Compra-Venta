@@ -10,6 +10,7 @@ import CustomButton from "../../components/atoms/Button/CustomButton";
 import CustomDialog from "../../components/atoms/CustomDialog/CustomDialog";
 import { useProductos } from "../../context/ProductContext";
 import "../../styles/Inventory.css";
+import { useToast } from "../../context/ToastContext";
 
 const POR_PAGINA = 6;
 
@@ -22,6 +23,7 @@ const comparadores = {
 };
 
 const InventoryScreen = () => {
+  const { mostrarToast } = useToast();
   const navigate = useNavigate();
   const { productos, categorias, cargando, cargado, error, recargar, eliminarProducto } = useProductos();
   // Esqueleto solo en la primera carga: si ya hay productos, se siguen mostrando mientras se actualiza.
@@ -53,8 +55,9 @@ const InventoryScreen = () => {
     console.log("[InventoryScreen] confirmarEliminar() - ELIMINAR producto:", productoEliminar);
     try {
       await eliminarProducto(productoEliminar.id);
+      mostrarToast("Producto eliminado correctamente");
     } catch (e) {
-      alert(e.message);
+      mostrarToast(e.message, "error");
     }
     setProductoEliminar(null);
   };
