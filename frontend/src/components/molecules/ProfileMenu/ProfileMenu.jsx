@@ -10,6 +10,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ChatIcon from "@mui/icons-material/Chat";
 import StarIcon from "@mui/icons-material/Star";
 import UndoIcon from "@mui/icons-material/Undo";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import InventoryIcon from "@mui/icons-material/Inventory2";
 import ServicesIcon from "@mui/icons-material/MiscellaneousServices";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -103,6 +104,14 @@ const opcionesVendedor = [
   },
 ];
 
+// Panel de administración: solo para administradores
+const opcionAdmin = {
+  id: "admin",
+  label: "Panel de administración",
+  icon: <AdminPanelSettingsIcon fontSize="small" />,
+  ruta: "/admin",
+};
+
 const ProfileMenu = () => {
   const [usuario, setUsuario] = useState(() => authService.getCurrentUser());
   // "tipousuario" viene de la base de datos. Las sesiones guardadas antes de este cambio
@@ -110,6 +119,7 @@ const ProfileMenu = () => {
   const tipo = usuario?.tipousuario ?? usuario?.role;
   // Un vendedor también puede comprar, así que ve todo lo de cliente y además lo suyo
   const esVendedor = tipo === "vendedor";
+  const admin = Boolean(usuario) && authService.esAdmin();
 
   const visible = (opcion) => opcion.para !== "vendedor" || esVendedor;
   const [posicion, setPosicion] = useState(null);
@@ -205,6 +215,13 @@ const ProfileMenu = () => {
                 </button>
               ) : (
                 <>
+                  {admin && (
+                    <>
+                      {renderOpcion(opcionAdmin)}
+                      <hr className="pm-divider" />
+                    </>
+                  )}
+
                   {opciones.filter(visible).map(renderOpcion)}
 
                   {esVendedor && (

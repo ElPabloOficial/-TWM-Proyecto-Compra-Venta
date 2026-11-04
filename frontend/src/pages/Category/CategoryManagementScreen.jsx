@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 
-import Header from "../../components/organisms/Header/Header";
+import AdminTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 
 import AddIcon from "@mui/icons-material/Add";
@@ -270,10 +270,8 @@ const CategoryManagementScreen = () => {
     const totalCategories = countCategories(categories);
 
     return (
-        <>
-            <Header />
-
-            <main className="category-management-page">
+        <AdminTemplate>
+            <div className="category-management-page">
                 <section className="category-page-header">
                     <div className="category-page-heading">
                         <p className="category-eyebrow">
@@ -352,8 +350,8 @@ const CategoryManagementScreen = () => {
                         </div>
                     )}
                 </section>
-            </main>
-        </>
+            </div>
+        </AdminTemplate>
     );
 };
 

@@ -1,3 +1,4 @@
+import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import DashboardIcon from '@mui/icons-material/BarChart'; // O DashboardIcon
@@ -8,14 +9,26 @@ import ChatIcon from '@mui/icons-material/Chat';
 import logoImage from '../../../assets/logo.png'; // Ajusta la ruta si es necesario
 
 const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-  { id: 'usuarios', label: 'Usuarios', icon: <PeopleIcon /> },
-  { id: 'categorias', label: 'Categorías', icon: <FolderIcon /> },
-  { id: 'transacciones', label: 'Transacciones', icon: <SyncIcon /> },
-  { id: 'mensajeria', label: 'Mensajería', icon: <ChatIcon /> },
+  { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon />, ruta: '/admin' },
+  { id: 'usuarios', label: 'Usuarios', icon: <PeopleIcon />, ruta: '/usuarios' },
+  { id: 'categorias', label: 'Categorías', icon: <FolderIcon />, ruta: '/categorias' },
+  { id: 'transacciones', label: 'Transacciones', icon: <SyncIcon />, ruta: '/transacciones' },
+  { id: 'mensajeria', label: 'Mensajería', icon: <ChatIcon />, ruta: '/mensajes' },
 ];
 
-export default function AdminSidebar({ activo = 'dashboard', onSelect }) {
+export default function AdminSidebar({ onSelect }) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  // La opción activa sale de la URL; si no coincide ninguna, es el Dashboard
+  const activo =
+    menuItems.find((m) => pathname === m.ruta || pathname.startsWith(m.ruta + '/'))?.id ?? 'dashboard';
+
+  const handleSelect = (item) => {
+    navigate(item.ruta);
+    onSelect?.(item.id);
+  };
+
   return (
     <Box
       sx={{
@@ -49,7 +62,7 @@ export default function AdminSidebar({ activo = 'dashboard', onSelect }) {
           return (
             <Box
               key={item.id}
-              onClick={() => onSelect?.(item.id)}
+              onClick={() => handleSelect(item)}
               sx={{
                 display: 'flex',
                 alignItems: 'center',

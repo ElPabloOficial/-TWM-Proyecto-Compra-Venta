@@ -38,6 +38,7 @@ import RefundRequest from "./pages/RefundRequest/RefundRequest";
 import ReturnManagement from "./pages/ReturnManagement/ReturnManagement";
 import ProductSheet from "./pages/ProductSheet/ProductSheet";
 import TestScreen from "./pages/Test/TestScreen";
+import AdminRoute from "./components/organisms/AdminRoute/AdminRoute";
 
 const App = () => {
   return (
@@ -56,7 +57,7 @@ const App = () => {
                 <Route path="/servicios" element={<ServicesScreen />} />
                 <Route path="/servicios/nuevo" element={<ServiceFormScreen />} />
                 <Route path="/servicios/editar/:id" element={<ServiceFormScreen />} />
-                <Route path="/mensajes" element={<MessageModerationScreen />} />
+                <Route path="/mensajes" element={<AdminRoute><MessageModerationScreen /></AdminRoute>} />
                 <Route path="/mensajes/vendedor" element={<MessagesScreen />} />
                 <Route path="/registro" element={<RegisterScreen />} />
                 <Route path="/perfil" element={<ProfileScreen />} />
@@ -70,12 +71,12 @@ const App = () => {
                 <Route path="/envios" element={<ShippingCostsScreen />} />
                 <Route path="/listasdedeseos" element={<WishlistListsScreen />} />
                 <Route path="/listadedeseos" element={<WishlistScreen />} />
-                <Route path="/categorias" element={<CategoryManagementScreen />} />
+                <Route path="/categorias" element={<AdminRoute><CategoryManagementScreen /></AdminRoute>} />
                 <Route path="/carrito" element={<CartScreen />} />
-                <Route path="/usuarios" element={<AdminUserManagementScreen />} />
+                <Route path="/usuarios" element={<AdminRoute><AdminUserManagementScreen /></AdminRoute>} />
                 <Route path="/confirmarcompra" element={<ConfirmPurchaseScreen />} />
                 <Route path="/catalogo" element={<CatalogScreen />} />
-                <Route path="/admin" element={<AdminScreen />} />
+                <Route path="/admin" element={<AdminRoute><AdminScreen /></AdminRoute>} />
                 <Route path="/cotizaciones/nueva" element={<NewQuoteScreen />} />
                 <Route path="/direcciones" element={<AddressesScreen />} />
                 <Route path="/seguimiento-despacho" element={<ShipmentTrackingScreen />} />

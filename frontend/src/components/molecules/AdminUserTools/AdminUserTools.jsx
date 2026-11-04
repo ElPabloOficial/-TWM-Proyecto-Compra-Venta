@@ -27,6 +27,7 @@ const AdminUserTools = ({ busqueda, onBusqueda, tipo, onTipo, estado, onEstado }
         <MenuItem value="">Tipo: Todos</MenuItem>
         <MenuItem value="vendedor">Vendedor</MenuItem>
         <MenuItem value="cliente">Cliente</MenuItem>
+        <MenuItem value="administrador">Administrador</MenuItem>
       </Select>
 
       <Select size="small" displayEmpty value={estado} onChange={(e) => onEstado(e.target.value)} sx={{ fontSize: 13 }}>

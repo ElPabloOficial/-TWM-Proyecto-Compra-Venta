@@ -399,3 +399,11 @@
         padding: 13px 14px;
     }
 }
+
+/* Dentro del menú de administración (AdminTemplate) el contenedor ya trae su propio margen */
+.inv-main-content .category-management-page {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 0 64px;
+}

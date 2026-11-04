@@ -75,6 +75,15 @@ export const authService = {
         return userStr ? JSON.parse(userStr) : null;
     },
 
+    // true si el usuario con sesión iniciada es administrador.
+    // "tipousuario" viene de la base de datos ('admin' o 'administrador'); las sesiones
+    // guardadas antes de agregarlo solo tienen "role".
+    esAdmin() {
+        const usuario = authService.getCurrentUser();
+        const tipo = String(usuario?.tipousuario ?? usuario?.role ?? '').trim().toLowerCase();
+        return ['admin', 'administrador'].includes(tipo);
+    },
+
     // JWT que entregó la API al iniciar sesión (dura 2 horas)
     getToken() {
         return localStorage.getItem('authToken');

@@ -1,0 +1,46 @@
+/* Panel de control estadístico: paleta del proyecto (rojo #EC3333, negro, blanco) */
+.adm-subtitulo { margin: 4px 0 0; font-size: 13px; color: #666; }
+.adm-cargando { margin-top: 24px; color: #555; }
+.adm-error { margin-top: 24px; color: #ef4444; }
+
+/* Tarjetas de totales (reutilizan StatCard) */
+.adm-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.adm-kpis .inv-stat { min-width: 0; border-radius: 8px; }
+.adm-kpis .inv-stat-value { font-size: 24px; letter-spacing: -0.5px; }
+
+/* Gráficos a la izquierda, calidad a la derecha */
+.adm-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.adm-columna { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+.adm-tarjeta {
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+.adm-tarjeta-titulo { margin: 0 0 14px; font-size: 16px; font-weight: 700; }
+.adm-centrado { text-align: center; }
+
+/* Análisis de calidad */
+.adm-calidad { display: flex; flex-direction: column; gap: 16px; }
+.adm-calidad-item {
+  padding: 14px 16px;
+  background: #d9d9d9;
+  border-radius: 6px;
+}
+.adm-calidad-nombre { font-size: 13px; font-weight: 700; }
+.adm-calidad-valor { margin-top: 6px; font-size: 20px; font-weight: 700; }
+
+@media (max-width: 900px) {
+  .adm-layout { grid-template-columns: minmax(0, 1fr); }
+}

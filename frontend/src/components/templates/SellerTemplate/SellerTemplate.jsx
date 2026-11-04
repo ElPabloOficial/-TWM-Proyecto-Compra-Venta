@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import MenuIcon from "@mui/icons-material/Menu";
 import Header from "../../organisms/Header/Header";
 import Sidebar from "../../organisms/Sidebar/Sidebar";
+import AdminSidebar from "../../organisms/AdminSidebar/AdminSidebar";
+import { authService } from "../../../services/authService";
 
 const SellerTemplate = ({ children }) => {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -27,7 +29,11 @@ const SellerTemplate = ({ children }) => {
           El Sidebar navega y marca la opción activa por sí solo (según la URL);
           aquí solo se cierra el menú. */}
       <aside className={`inv-drawer ${menuAbierto ? "abierto" : ""}`}>
-        <Sidebar onSelect={() => setMenuAbierto(false)} />
+        {authService.esAdmin() ? (
+          <AdminSidebar onSelect={() => setMenuAbierto(false)} />
+        ) : (
+          <Sidebar onSelect={() => setMenuAbierto(false)} />
+        )}
       </aside>
 
       <main className="inv-main">
