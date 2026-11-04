@@ -25,5 +25,6 @@ dist-ssr
 
 .env
 appsettings.Development.json
+backend/appsettings.Development.json
 bin/
 obj/
