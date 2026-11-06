@@ -173,6 +173,66 @@ public class AdminController : ControllerBase
         return Ok(new { success = true, message = "Mensajes obtenidos.", data = mensajes, errors = (object?)null });
     }
 
+    // GET: api/admin/ventas
+    // Todas las ventas de la plataforma (operaciones globales del administrador),
+    // con cliente, vendedor, total (neto + IVA) y el detalle de lo vendido.
+    [HttpGet("ventas")]
+    public async Task<IActionResult> GetVentas()
+    {
+        var ventasDb = await _context.venta
+            .AsNoTracking()
+            .OrderByDescending(v => v.fecha)
+            .ThenByDescending(v => v.id)
+            .Select(v => new
+            {
+                id = v.id,
+                fecha = v.fecha,
+                estado = v.estado,
+                neto = v.neto,
+                iva = v.iva,
+                requieredespacho = v.requieredespacho,
+                nota = v.nota,
+                cliente = v.id_clienteNavigation.nombre,
+                rut_cliente = v.id_cliente,
+                vendedor = v.id_vendedorNavigation.nombre,
+                rut_vendedor = v.id_vendedor,
+                productos = v.generar3s.Select(g => new
+                {
+                    nombre = g.id_productoNavigation.nombre,
+                    cantidad = g.cantidad,
+                    subtotal = g.totalfinal
+                }).ToList(),
+                servicios = v.generar4s.Select(g => new
+                {
+                    nombre = g.id_servicioNavigation.nombre,
+                    cantidad = g.cantidad,
+                    subtotal = g.totalfinal
+                }).ToList()
+            })
+            .ToListAsync();
+
+        var ventas = ventasDb.Select(v => new
+        {
+            v.id,
+            v.fecha,
+            v.estado,
+            v.neto,
+            total = Math.Round(v.neto + v.neto * v.iva, MidpointRounding.AwayFromZero),
+            requiere_despacho = v.requieredespacho,
+            v.nota,
+            v.cliente,
+            v.rut_cliente,
+            v.vendedor,
+            v.rut_vendedor,
+            items = v.productos
+                .Select(p => new { tipo = "producto", p.nombre, p.cantidad, p.subtotal })
+                .Concat(v.servicios.Select(s => new { tipo = "servicio", s.nombre, s.cantidad, s.subtotal }))
+                .ToList()
+        }).ToList();
+
+        return Ok(new { success = true, message = "Ventas obtenidas.", data = ventas, errors = (object?)null });
+    }
+
     // GET: api/admin/devoluciones
     [HttpGet("devoluciones")]
     public async Task<IActionResult> GetDevoluciones()

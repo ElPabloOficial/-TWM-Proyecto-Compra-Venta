@@ -79,6 +79,45 @@ export async function eliminarUsuario(rut) {
     await pedir(`/admin/usuarios/${encodeURIComponent(rut)}`, { method: 'DELETE' });
 }
 
+// ---------- Ventas / transacciones (AdminController: /admin/ventas) ----------
+
+// La BD guarda el estado como texto libre ("Completada", "Anulado", "Pendiente"...).
+// Se agrupa en tres tipos para poder contar y pintar cada estado.
+const tipoEstadoVenta = (estado) => {
+    const e = String(estado ?? '').trim().toLowerCase();
+    if (['completada', 'entregado', 'entregada'].includes(e)) return 'completada';
+    if (['anulado', 'anulada', 'cancelado', 'cancelada'].includes(e)) return 'anulada';
+    return 'pendiente';
+};
+
+const aTransaccion = (v) => ({
+    id: v.id,
+    codigo: `VEN-${String(v.id).padStart(4, '0')}`,
+    fecha: v.fecha ?? null,
+    estado: String(v.estado ?? '').trim(),
+    tipoEstado: tipoEstadoVenta(v.estado),
+    neto: Number(v.neto) || 0,
+    total: Number(v.total) || 0,
+    requiereDespacho: Boolean(v.requiere_despacho),
+    nota: v.nota ?? '',
+    cliente: v.cliente ?? '',
+    rutCliente: v.rut_cliente ?? '',
+    vendedor: v.vendedor ?? '',
+    rutVendedor: v.rut_vendedor ?? '',
+    items: (v.items ?? []).map((i) => ({
+        tipo: i.tipo,
+        nombre: i.nombre,
+        cantidad: Number(i.cantidad) || 0,
+        subtotal: Number(i.subtotal) || 0,
+    })),
+});
+
+// Todas las ventas de la plataforma (solo administrador)
+export async function listarVentas() {
+    const datos = await pedir('/admin/ventas');
+    return (datos ?? []).map(aTransaccion);
+}
+
 // ---------- Estadísticas ----------
 
 export async function obtenerEstadisticasAdmin() {

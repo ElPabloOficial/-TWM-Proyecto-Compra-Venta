@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ventaService } from "../../services/ventaService";
 import { reviewService } from "../../services/reviewService"
+import { adaptarBoleta, descargarBoletaPdf } from "../../services/boletaPdf";
 
 import { useState } from "react";
 import { Box, Typography, Alert } from "@mui/material";
@@ -18,6 +19,8 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import ReplayOutlinedIcon from "@mui/icons-material/ReplayOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
+import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 
 const PurchaseHistory = () => {
   
@@ -33,6 +36,10 @@ const PurchaseHistory = () => {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [reviewSuccess, setReviewSuccess] = useState("");
+
+  // Boleta: cuál compra se está descargando y el error si falla
+  const [receiptLoadingId, setReceiptLoadingId] = useState(null);
+  const [receiptError, setReceiptError] = useState("");
 
   const navigate = useNavigate();
 
@@ -108,6 +115,22 @@ const PurchaseHistory = () => {
     const valor = Number(price ?? 0);
     
     return `$ ${valor.toLocaleString("es-CL")}`;
+  };
+
+  // Pide el detalle de la venta a la API y descarga la boleta como PDF
+  const handleDownloadReceipt = async (purchaseId) => {
+    try {
+      setReceiptLoadingId(purchaseId);
+      setReceiptError("");
+
+      const detalle = await ventaService.getDetalle(purchaseId);
+      descargarBoletaPdf(adaptarBoleta(detalle));
+    } catch (error) {
+      console.error("Error al descargar la boleta:", error);
+      setReceiptError(error.message);
+    } finally {
+      setReceiptLoadingId(null);
+    }
   };
 
   const handleReturn = (purchaseId, productId, productquantity) => {
@@ -303,6 +326,12 @@ const PurchaseHistory = () => {
           </Alert>
         )}
 
+        {receiptError && (
+          <Alert severity="error" sx={{ mt: 2, mb: 2 }} onClose={() => setReceiptError("")}>
+            {receiptError}
+          </Alert>
+        )}
+
         {/* HISTORIAL */}
         <Typography
           variant="h5"
@@ -337,6 +366,9 @@ const PurchaseHistory = () => {
           ) : (
             purchases.map((purchase) => {
             const isExpanded = expandedPurchase === purchase.id;
+            // Una compra anulada o cancelada no tiene boleta
+            const hasReceipt = !/anulad|cancelad/i.test(String(purchase.status));
+            const isDownloading = receiptLoadingId === purchase.id;
 
             return (
               <Box
@@ -438,6 +470,17 @@ const PurchaseHistory = () => {
                         {formatPrice(purchase.total)}
                       </Typography>
                     </Box>
+
+                    {hasReceipt && (
+                      <CustomIconButton
+                        ariaLabel="Descargar boleta"
+                        title="Descargar boleta (PDF)"
+                        disabled={isDownloading}
+                        onClick={() => handleDownloadReceipt(purchase.id)}
+                      >
+                        <FileDownloadOutlinedIcon />
+                      </CustomIconButton>
+                    )}
 
                     <CustomIconButton
                       ariaLabel={isExpanded ? "Contraer compra" : "Expandir compra"}
@@ -718,6 +761,36 @@ const PurchaseHistory = () => {
                             </Box>
                           ))}
                         </Box>
+                      </Box>
+                    )}
+
+                    {/* BOLETA */}
+                    {hasReceipt && (
+                      <Box
+                        sx={{
+                          mt: 2,
+                          display: "flex",
+                          gap: 1.5,
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <CustomButton
+                          variant="secondary"
+                          startIcon={<ReceiptLongOutlinedIcon />}
+                          onClick={() => navigate(`/boleta/${purchase.id}`)}
+                        >
+                          Ver boleta
+                        </CustomButton>
+
+                        <CustomButton
+                          variant="primary"
+                          startIcon={<FileDownloadOutlinedIcon />}
+                          disabled={isDownloading}
+                          onClick={() => handleDownloadReceipt(purchase.id)}
+                        >
+                          {isDownloading ? "Generando..." : "Descargar boleta"}
+                        </CustomButton>
                       </Box>
                     )}
 

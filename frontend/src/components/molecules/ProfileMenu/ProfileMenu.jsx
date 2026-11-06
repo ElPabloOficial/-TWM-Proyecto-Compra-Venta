@@ -74,6 +74,7 @@ const opciones = [
     id: "mensajes",
     label: "Mensajes",
     icon: <ChatIcon fontSize="small" />,
+    ruta: "/mensajes/cliente", // el cliente escribe a los vendedores de sus compras
     rutaVendedor: "/mensajes/vendedor",
   },
   {

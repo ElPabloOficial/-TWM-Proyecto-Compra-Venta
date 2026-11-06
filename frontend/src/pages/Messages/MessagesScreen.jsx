@@ -1,15 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import StatCard from "../../components/molecules/StatCard/StatCard";
+import MessageTabs from "../../components/molecules/MessageTabs/MessageTabs";
+import ConversationPanel from "../../components/organisms/ConversationPanel/ConversationPanel";
+import QuestionsPanel from "../../components/organisms/QuestionsPanel/QuestionsPanel";
 import "../../styles/Inventory.css";
 import "../../styles/Messages.css";
+
+// Bandeja del vendedor, en dos pestañas:
+//   - Mensajes privados: las conversaciones con los clientes que le compraron (una por venta).
+//   - Preguntas públicas: las preguntas de las fichas de sus productos; las que llevan más de
+//     48 horas sin respuesta se marcan en rojo.
+// (El cliente tiene su propia versión en /mensajes/cliente; el administrador supervisa todo en /mensajes.)
 
 // TEMPORAL: estas conversaciones son de ejemplo. Los clientes escriben desde la tienda;
 // cuando se conecte el backend se cargan desde la API (solo las del vendedor).
 const conversacionesIniciales = [
   {
     id: 1,
-    cliente: "Camila Rojas",
+    contraparte: "Camila Rojas",
     asunto: "Notebook Lenovo",
     mensajes: [
       { id: 1, autor: "cliente", texto: "Hola, ¿el notebook viene con garantía?", fecha: "2026-10-13", hora: "10:15", leido: true },
@@ -19,7 +28,7 @@ const conversacionesIniciales = [
   },
   {
     id: 2,
-    cliente: "Matías Pérez",
+    contraparte: "Matías Pérez",
     asunto: "Audífonos Bluetooth",
     mensajes: [
       { id: 4, autor: "cliente", texto: "Compré los audífonos y no conectan con mi celular.", fecha: "2026-10-12", hora: "18:40", leido: false },
@@ -28,7 +37,7 @@ const conversacionesIniciales = [
   },
   {
     id: 3,
-    cliente: "Francisca Soto",
+    contraparte: "Francisca Soto",
     asunto: "Pedido PED-1006",
     mensajes: [
       { id: 6, autor: "cliente", texto: "¿Cuándo llega mi pedido?", fecha: "2026-10-11", hora: "09:05", leido: true },
@@ -38,7 +47,7 @@ const conversacionesIniciales = [
   },
   {
     id: 4,
-    cliente: "Diego Álvarez",
+    contraparte: "Diego Álvarez",
     asunto: "Hervidor eléctrico",
     mensajes: [
       { id: 9, autor: "cliente", texto: "¿Tienen stock del hervidor en color negro?", fecha: "2026-10-09", hora: "16:10", leido: true },
@@ -47,11 +56,31 @@ const conversacionesIniciales = [
   },
   {
     id: 5,
-    cliente: "Valentina Muñoz",
+    contraparte: "Valentina Muñoz",
     asunto: "Cotización de mouse",
     mensajes: [
       { id: 11, autor: "cliente", texto: "Necesito una cotización por 10 mouse inalámbricos.", fecha: "2026-10-08", hora: "12:00", leido: false },
     ],
+  },
+];
+
+// TEMPORAL: preguntas de ejemplo. Las horas son relativas a "ahora" para que siempre
+// haya algunas con alerta (+48 h) y otras recientes.
+const haceHoras = (horas) => new Date(Date.now() - horas * 3600000).toISOString();
+
+const preguntasIniciales = [
+  { id: 1, producto: "Notebook Lenovo", productoId: 1, persona: "Camila Rojas", texto: "¿Incluye el cargador original y viene con Windows instalado?", fecha: haceHoras(60), respuesta: null },
+  { id: 2, producto: "Mouse inalámbrico", productoId: 4, persona: "Valentina Muñoz", texto: "¿El receptor es USB-A o USB-C? Mi notebook solo tiene USB-C.", fecha: haceHoras(75), respuesta: null },
+  { id: 3, producto: "Audífonos Bluetooth", productoId: 2, persona: "Matías Pérez", texto: "¿Son compatibles con iPhone?", fecha: haceHoras(30), respuesta: null },
+  { id: 4, producto: "Hervidor eléctrico", productoId: 3, persona: "Diego Álvarez", texto: "¿Cuál es la capacidad en litros?", fecha: haceHoras(5), respuesta: null },
+  {
+    id: 5,
+    producto: "Notebook Lenovo",
+    productoId: 1,
+    persona: "Francisca Soto",
+    texto: "¿Cuánto demora el despacho a Osorno?",
+    fecha: haceHoras(96),
+    respuesta: { texto: "Entre 2 y 3 días hábiles con Chilexpress.", fecha: haceHoras(90) },
   },
 ];
 
@@ -61,107 +90,67 @@ const hoyLocal = () => new Date().toLocaleDateString("sv-SE");
 const horaActual = () =>
   new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false });
 
-// 2026-10-13 -> 13/10
-const fechaCorta = (iso) => {
-  const [, mes, dia] = iso.split("-");
-  return `${dia}/${mes}`;
-};
-
-const ultimoMensaje = (c) => c.mensajes[c.mensajes.length - 1];
-
-const mensajesSinLeer = (c) => c.mensajes.filter((m) => m.autor === "cliente" && !m.leido).length;
-
 const MessagesScreen = () => {
-  // TEMPORAL: las conversaciones viven solo en memoria (se pierden al recargar la página).
+  // TEMPORAL: todo vive solo en memoria (se pierde al recargar la página).
+  const [vista, setVista] = useState("privados");
   const [conversaciones, setConversaciones] = useState(conversacionesIniciales);
-  const [seleccionadaId, setSeleccionadaId] = useState(null);
-  const [busqueda, setBusqueda] = useState("");
-  const [filtro, setFiltro] = useState("");
-  const [texto, setTexto] = useState("");
-  const hiloRef = useRef(null);
-
-  const seleccionada = conversaciones.find((c) => c.id === seleccionadaId) ?? null;
-
-  // Al abrir un mensaje nuevo, baja hasta el final de la conversación
-  useEffect(() => {
-    if (hiloRef.current) hiloRef.current.scrollTop = hiloRef.current.scrollHeight;
-  }, [seleccionadaId, seleccionada?.mensajes.length]);
+  const [preguntas, setPreguntas] = useState(preguntasIniciales);
+  const [ahora] = useState(() => Date.now()); // "ahora" se fija al abrir la pantalla
 
   // ---------- Acciones ----------
-  // TEMPORAL: abrir y enviar solo modifican el estado local.
-  // Con el backend pasan a ser llamadas a la API (PUT de leído, POST del mensaje).
+  // TEMPORAL: solo modifican el estado local. Con el backend pasan a ser llamadas a la API
+  // (PUT de leído, POST del mensaje, PUT de la respuesta de la pregunta).
   // El emprendedor no puede borrar las preguntas de los clientes (permisos del rol Emprendedor).
   const abrirConversacion = (id) => {
-    setSeleccionadaId(id);
-    setTexto("");
     // Al abrirla, los mensajes del cliente quedan como leídos
-    setConversaciones(
-      conversaciones.map((c) =>
+    setConversaciones((actuales) =>
+      actuales.map((c) =>
         c.id === id ? { ...c, mensajes: c.mensajes.map((m) => ({ ...m, leido: true })) } : c
       )
     );
   };
 
-  const enviarMensaje = (e) => {
-    e.preventDefault();
-    const mensaje = texto.trim();
-    if (!mensaje) return;
-
-    const datos = { conversacionId: seleccionada.id, autor: "vendedor", texto: mensaje };
-
+  const enviarMensaje = (id, texto) => {
     // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados.
-    // Con el backend esto se reemplaza por la llamada a la API (POST del mensaje).
-    console.log("[Mensajes] Enviar mensaje:", datos);
+    console.log("[Mensajes] Enviar mensaje:", { conversacionId: id, autor: "vendedor", texto });
 
-    setConversaciones(
-      conversaciones.map((c) =>
-        c.id === seleccionada.id
+    setConversaciones((actuales) =>
+      actuales.map((c) =>
+        c.id === id
           ? {
               ...c,
               mensajes: [
                 ...c.mensajes,
                 // TEMPORAL: el id, la fecha y la hora los pondrá la base de datos
-                { id: Date.now(), autor: "vendedor", texto: mensaje, fecha: hoyLocal(), hora: horaActual(), leido: true },
+                { id: Date.now(), autor: "vendedor", texto, fecha: hoyLocal(), hora: horaActual(), leido: true },
               ],
             }
           : c
       )
     );
-    setTexto("");
   };
 
-  // Enter envía el mensaje; Shift + Enter agrega un salto de línea
-  const teclaEnTexto = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      e.currentTarget.form.requestSubmit();
-    }
-  };
+  const responderPregunta = (id, texto) => {
+    console.log("[Preguntas] Responder:", { preguntaId: id, texto });
 
-  // ---------- Búsqueda, filtro y orden de la lista ----------
-  // TEMPORAL: se hacen aquí sobre todas las conversaciones en memoria.
-  // Con el backend pasan a ser parámetros de la consulta (WHERE, ORDER BY).
-  const texto_busqueda = busqueda.trim().toLowerCase();
-  const lista = conversaciones
-    .filter((c) => {
-      if (filtro === "sin" && mensajesSinLeer(c) === 0) return false;
-      if (!texto_busqueda) return true;
-      return (
-        c.cliente.toLowerCase().includes(texto_busqueda) ||
-        c.asunto.toLowerCase().includes(texto_busqueda)
-      );
-    })
-    .sort((a, b) => {
-      const ua = ultimoMensaje(a);
-      const ub = ultimoMensaje(b);
-      return `${ub.fecha} ${ub.hora}`.localeCompare(`${ua.fecha} ${ua.hora}`);
-    });
+    setPreguntas((actuales) =>
+      actuales.map((p) => (p.id === id ? { ...p, respuesta: { texto, fecha: new Date().toISOString() } } : p))
+    );
+  };
 
   // ---------- Tarjetas de totales ----------
-  // TEMPORAL: se calculan en el frontend. Con la base de datos pasan a ser
-  // consultas agregadas (COUNT de conversaciones y de mensajes no leídos).
-  const totalSinLeer = conversaciones.reduce((acc, c) => acc + mensajesSinLeer(c), 0);
-  const sinResponder = conversaciones.filter((c) => ultimoMensaje(c).autor === "cliente").length;
+  // TEMPORAL: se calculan en el frontend. Con la base de datos pasan a ser consultas agregadas.
+  const sinLeerDeCliente = (c) => c.mensajes.filter((m) => m.autor === "cliente" && !m.leido).length;
+  const totalSinLeer = conversaciones.reduce((acc, c) => acc + sinLeerDeCliente(c), 0);
+  const esperandoRespuesta = conversaciones.filter((c) => c.mensajes.at(-1)?.autor === "cliente").length;
+
+  const sinResponder = preguntas.filter((p) => !p.respuesta);
+  const conAlerta = sinResponder.filter((p) => (ahora - new Date(p.fecha).getTime()) / 3600000 > 48);
+
+  const tabs = [
+    { id: "privados", etiqueta: "Mensajes privados", contador: totalSinLeer },
+    { id: "preguntas", etiqueta: "Preguntas públicas", contador: sinResponder.length },
+  ];
 
   return (
     <SellerTemplate>
@@ -169,115 +158,42 @@ const MessagesScreen = () => {
         <div>
           <h1 className="inv-title">Mensajes</h1>
           <div className="inv-subtitle">
-            Responde las consultas de tus clientes sobre productos, pedidos y cotizaciones.
+            Responde a tus clientes: mensajes sobre sus compras y preguntas públicas de tus productos.
           </div>
         </div>
       </div>
 
-      <div className="inv-stats">
-        <StatCard titulo="Conversaciones" valor={conversaciones.length} />
-        <StatCard titulo="Mensajes sin leer" valor={totalSinLeer} />
-        <StatCard titulo="Esperando tu respuesta" valor={sinResponder} />
-      </div>
+      <MessageTabs tabs={tabs} activa={vista} onCambiar={setVista} />
 
-      <div className="msg-panel">
-        {/* ---------- Lista de conversaciones ---------- */}
-        <div className="msg-lista">
-          <div className="msg-filtros">
-            <input
-              type="search"
-              className="msg-buscar"
-              placeholder="Buscar cliente o asunto..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              aria-label="Buscar conversaciones"
-            />
-            <select
-              className="inv-select"
-              value={filtro}
-              onChange={(e) => setFiltro(e.target.value)}
-              aria-label="Filtrar conversaciones"
-            >
-              <option value="">Todas</option>
-              <option value="sin">Sin leer</option>
-            </select>
+      {vista === "privados" ? (
+        <>
+          <div className="inv-stats">
+            <StatCard titulo="Conversaciones" valor={conversaciones.length} />
+            <StatCard titulo="Mensajes sin leer" valor={totalSinLeer} />
+            <StatCard titulo="Esperando tu respuesta" valor={esperandoRespuesta} />
           </div>
 
-          <div className="msg-items">
-            {lista.length === 0 && <div className="msg-vacio">No hay conversaciones.</div>}
-
-            {lista.map((c) => {
-              const ultimo = ultimoMensaje(c);
-              const sinLeer = mensajesSinLeer(c);
-
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={`msg-item ${c.id === seleccionadaId ? "activa" : ""}`}
-                  onClick={() => abrirConversacion(c.id)}
-                >
-                  <div className="msg-item-top">
-                    <span className="msg-cliente">{c.cliente}</span>
-                    <span className="msg-hora">{fechaCorta(ultimo.fecha)}</span>
-                  </div>
-                  <div className="msg-asunto">{c.asunto}</div>
-                  <div className="msg-preview">
-                    <span className="msg-preview-texto">
-                      {ultimo.autor === "vendedor" ? "Tú: " : ""}
-                      {ultimo.texto}
-                    </span>
-                    {sinLeer > 0 && <span className="msg-badge">{sinLeer}</span>}
-                  </div>
-                </button>
-              );
-            })}
+          <ConversationPanel
+            conversaciones={conversaciones}
+            rol="vendedor"
+            onAbrir={abrirConversacion}
+            onEnviar={enviarMensaje}
+            placeholderBusqueda="Buscar cliente o asunto..."
+            placeholderMensaje="Escribe tu respuesta..."
+            vacio="Todavía no tienes conversaciones. Cuando un cliente te escriba por una compra, aparecerá aquí."
+          />
+        </>
+      ) : (
+        <>
+          <div className="inv-stats">
+            <StatCard titulo="Sin responder" valor={sinResponder.length} />
+            <StatCard titulo="Con alerta (+48 h)" valor={conAlerta.length} />
+            <StatCard titulo="Respondidas" valor={preguntas.length - sinResponder.length} />
           </div>
-        </div>
 
-        {/* ---------- Conversación abierta ---------- */}
-        <div className="msg-hilo">
-          {!seleccionada ? (
-            <div className="msg-vacio">Selecciona una conversación para ver los mensajes.</div>
-          ) : (
-            <>
-              <div className="msg-hilo-head">
-                <div>
-                  <div className="msg-cliente">{seleccionada.cliente}</div>
-                  <div className="msg-asunto">{seleccionada.asunto}</div>
-                </div>
-              </div>
-
-              <div className="msg-mensajes" ref={hiloRef}>
-                {seleccionada.mensajes.map((m) => (
-                  <div key={m.id} className={`msg-burbuja ${m.autor}`}>
-                    {m.texto}
-                    <span className="msg-burbuja-hora">
-                      {fechaCorta(m.fecha)} {m.hora}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <form className="msg-form" onSubmit={enviarMensaje}>
-                <textarea
-                  className="msg-input"
-                  rows={2}
-                  placeholder="Escribe tu respuesta..."
-                  value={texto}
-                  onChange={(e) => setTexto(e.target.value)}
-                  onKeyDown={teclaEnTexto}
-                  aria-label="Mensaje"
-                />
-                <button type="submit" className="msg-enviar" disabled={!texto.trim()}>
-                  Enviar
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-      </div>
-
+          <QuestionsPanel preguntas={preguntas} rol="vendedor" ahora={ahora} onResponder={responderPregunta} />
+        </>
+      )}
     </SellerTemplate>
   );
 };

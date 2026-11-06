@@ -326,6 +326,7 @@ public class VentasController : ControllerBase
             .Include(v => v.generar3s).ThenInclude(g => g.id_productoNavigation)
             .Include(v => v.generar4s).ThenInclude(g => g.id_servicioNavigation)
             .Include(v => v.generar3s).ThenInclude(g => g.id_pagoNavigation)
+            .Include(v => v.generar4s).ThenInclude(g => g.id_pagoNavigation)
             .FirstOrDefaultAsync(v => v.id == id);
 
         if (venta == null) return NotFound(new { success = false, message = "Venta no encontrada." });
@@ -334,9 +335,10 @@ public class VentasController : ControllerBase
         if (venta.id_cliente != rut && venta.id_vendedor != rut)
             return Forbid();
 
-        // Obtener el método de pago (viene del primer detalle)
-        var metodoPago = venta.generar3s.FirstOrDefault()?.id_pagoNavigation?.mediopago 
-                      ?? venta.generar4s.FirstOrDefault()?.id_pagoNavigation?.mediopago;
+        // Obtener el pago (viene del primer detalle)
+        var pago = venta.generar3s.FirstOrDefault()?.id_pagoNavigation
+                ?? venta.generar4s.FirstOrDefault()?.id_pagoNavigation;
+        var metodoPago = pago?.mediopago;
 
         var resultado = new
         {
@@ -348,6 +350,13 @@ public class VentasController : ControllerBase
             total = venta.neto + (venta.neto * venta.iva),
             requiere_despacho = venta.requieredespacho,
             metodo_pago = metodoPago,
+            // La boleta debe mostrar los últimos 4 dígitos de la tarjeta o el código de transferencia
+            pago = pago == null ? null : new
+            {
+                medio = pago.mediopago,
+                ult4digitos = pago.ult4digitostarjeta,
+                codigo_transferencia = pago.codigotransferencia
+            },
             cliente = new { rut = venta.id_cliente, nombre = venta.id_clienteNavigation.nombre },
             vendedor = new { rut = venta.id_vendedor, nombre = venta.id_vendedorNavigation.nombre },
             productos = venta.generar3s.Select(g => new {

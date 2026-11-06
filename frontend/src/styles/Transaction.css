@@ -116,3 +116,89 @@
 .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 18%; } /* Amount */
 .data-table th:nth-child(4), .data-table td:nth-child(4) { width: 18%; } /* Status */
 .data-table th:nth-child(5), .data-table td:nth-child(5) { width: 24%; } /* Action button */
+
+/* ---- Tabla de transacciones del administrador (datos reales) ---- */
+.tx-scroll {
+    overflow-x: auto;
+}
+
+.tx-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.92rem;
+}
+
+.tx-table th {
+    padding: 10px 14px;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.tx-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f0f1f3;
+    white-space: nowrap;
+}
+
+.tx-table td.num,
+.tx-table th.num {
+    text-align: right;
+}
+
+.status-badge.cancelled {
+    background-color: #fde8e8;
+    color: #9b1c1c;
+}
+
+.tx-pie {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+.tx-detalle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 20px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+}
+
+.tx-detalle dt {
+    color: #6b7280;
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+.tx-detalle dd {
+    margin: 0 0 6px;
+    font-weight: 500;
+}
+
+.tx-totales {
+    margin-top: 12px;
+    margin-left: auto;
+    width: 220px;
+    font-size: 0.9rem;
+}
+
+.tx-totales div {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+}
+
+.tx-totales .total {
+    font-weight: 700;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 4px;
+    padding-top: 6px;
+}

@@ -13,6 +13,7 @@ import ServicesScreen from "./pages/Services/ServicesScreen";
 import ServiceFormScreen from "./pages/Services/ServiceFormScreen";
 import MessageModerationScreen from "./pages/MessageModeration/MessageModerationScreen";
 import MessagesScreen from "./pages/Messages/MessagesScreen";
+import ClientMessagesScreen from "./pages/ClientMessages/ClientMessagesScreen";
 import HomeScreen from "./pages/Home/HomeScreen";
 import ProfileScreen from "./pages/Profile/ProfileScreen";
 import QuotesScreen from "./pages/Quotes/QuotesScreen";
@@ -63,6 +64,7 @@ const App = () => {
                 <Route path="/servicios/editar/:id" element={<ServiceFormScreen />} />
                 <Route path="/mensajes" element={<AdminRoute><MessageModerationScreen /></AdminRoute>} />
                 <Route path="/mensajes/vendedor" element={<MessagesScreen />} />
+                <Route path="/mensajes/cliente" element={<ClientMessagesScreen />} />
                 <Route path="/registro" element={<RegisterScreen />} />
                 <Route path="/perfil" element={<ProfileScreen />} />
                 <Route path="/cotizaciones" element={<QuotesScreen />} />
@@ -73,7 +75,7 @@ const App = () => {
                 <Route path="/pedidos" element={<OrdersScreen />} />
                 <Route path="/recibo" element={<ReceiptScreen />} />
                 <Route path="/reportes" element={<ReportsScreen />} />
-                <Route path="/transacciones" element={<TransHistoryScreen />} />
+                <Route path="/transacciones" element={<AdminRoute><TransHistoryScreen /></AdminRoute>} />
                 <Route path="/envios" element={<ShippingCostsScreen />} />
                 <Route path="/listasdedeseos" element={<WishlistListsScreen />} />
                 <Route path="/listadedeseos" element={<WishlistScreen />} />

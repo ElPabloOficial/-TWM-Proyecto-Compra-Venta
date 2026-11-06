@@ -23,4 +23,30 @@ export const ventaService = {
 
     return resultado.data;
   },
+
+  // Detalle de una venta (para la boleta): artículos, neto, IVA, total y medio de pago.
+  // Solo lo puede pedir el cliente o el vendedor de esa venta.
+  getDetalle: async (idVenta) => {
+    const token = localStorage.getItem("authToken");
+
+    const respuesta = await fetch(`${API_URL}/ventas/${idVenta}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (respuesta.status === 403) {
+      throw new Error("No tienes permiso para ver esta boleta.");
+    }
+
+    const resultado = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok) {
+      throw new Error(resultado.message || "No se pudo obtener la boleta.");
+    }
+
+    return resultado.data;
+  },
 };

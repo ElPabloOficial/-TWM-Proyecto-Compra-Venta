@@ -1,53 +1,93 @@
-//TransHistoryScreen.jsx
-import Header from "../../components/organisms/Header/Header";
-import CustomButton from '../../components/atoms/Button/CustomButton';
-import AddIcon from '@mui/icons-material/Add';
-
-import { useState } from "react";
+// TransHistoryScreen.jsx
+//
+// Transacciones del administrador: todas las ventas de la plataforma ("operaciones globales").
+// Datos reales de la API (GET /admin/ventas). El vendedor ve las suyas en "Mis pedidos"
+// y el cliente las suyas en "Mis compras".
+import { useEffect, useState } from "react";
+import Box from "@mui/material/Box";
+import AdminTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
+import StatCard from "../../components/molecules/StatCard/StatCard";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import ListPageSkeleton from "../../components/organisms/ListPageSkeleton/ListPageSkeleton";
 import { TransactionTableSection } from "../../components/organisms/Transaction/TransactionTableSection";
+import { listarVentas } from "../../services/adminService";
 
+import "../../styles/Inventory.css";
 import "../../styles/Transaction.css";
 
+const formatoPrecio = (n) => `$${Number(n).toLocaleString("es-CL")}`;
+
 const TransHistoryScreen = () => {
-	const [transactions, setTransactions] = useState([
-		{ id: 1, code: "TXN-98412", date: "2026-06-01", amount: "$1,240.00", status: "Completed" },
-		{ id: 2, code: "TXN-98413", date: "2026-06-03", amount: "$89.50", status: "Pending" },
-		{ id: 3, code: "TXN-98414", date: "2026-06-05", amount: "$420.90", status: "Completed" },
-	]);
+  const [ventas, setVentas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  // Sube al pedir "Reintentar" para volver a ejecutar la carga
+  const [intento, setIntento] = useState(0);
 
-	const [sortAscending, setSortAscending] = useState(true);
+  useEffect(() => {
+    let activo = true; // evita actualizar el estado si la pantalla se cerró antes de que llegue la respuesta
 
-	// Handle row-specific action button click
-	const handleRowAction = (transaction) => {
-		alert(`Triggered action for transaction: ${transaction.code}`);
-	};
+    const cargar = async () => {
+      try {
+        const datos = await listarVentas();
+        if (activo) setVentas(datos);
+      } catch (e) {
+        if (activo) setError(e.message);
+      } finally {
+        if (activo) setCargando(false);
+      }
+    };
 
-	// Handle sorting/ordering
-	const handleSortClick = () => {
-		const sorted = [...transactions].sort((a, b) => {
-			return sortAscending ? a.code.localeCompare(b.code) : b.code.localeCompare(a.code);
-		});
-		setTransactions(sorted);
-		setSortAscending(!sortAscending);
-	};
+    cargar();
+    return () => {
+      activo = false;
+    };
+  }, [intento]);
 
-	return (
-<>
-<Header />
+  const reintentar = () => {
+    setCargando(true);
+    setError("");
+    setIntento((n) => n + 1);
+  };
 
-<div className="page-container">
-<h1>Historial de transacciones</h1>
+  // Las ventas anuladas no suman al monto vendido
+  const montoVendido = ventas
+    .filter((v) => v.tipoEstado !== "anulada")
+    .reduce((suma, v) => suma + v.total, 0);
+  const completadas = ventas.filter((v) => v.tipoEstado === "completada").length;
+  const anuladas = ventas.filter((v) => v.tipoEstado === "anulada").length;
 
-<TransactionTableSection
-title="Transacciones recientes: 12"
-transactions={transactions}
-onSortClick={handleSortClick}
-onRowAction={handleRowAction}
-/>
-</div>
+  return (
+    <AdminTemplate>
+      <Box sx={{ marginBottom: 3 }}>
+        <Box component="h1" sx={{ margin: 0, fontSize: 24 }}>
+          Transacciones
+        </Box>
+        <Box sx={{ fontSize: 13, marginTop: 0.5, color: "#666" }}>
+          Todas las ventas registradas en la plataforma
+        </Box>
+      </Box>
 
-</>
-);
+      {cargando ? (
+        <ListPageSkeleton columnas={7} filas={8} tarjetas={4} />
+      ) : error ? (
+        <ErrorState titulo="No pudimos cargar las transacciones" detalle={error} onReintentar={reintentar} />
+      ) : (
+        <>
+          <div className="inv-stats">
+            <StatCard titulo="Ventas registradas" valor={ventas.length} />
+            <StatCard titulo="Monto vendido" valor={formatoPrecio(montoVendido)} />
+            <StatCard titulo="Completadas" valor={completadas} />
+            <StatCard titulo="Anuladas" valor={anuladas} />
+          </div>
+
+          <div className="inv-panel">
+            <TransactionTableSection title="Historial de transacciones" transactions={ventas} />
+          </div>
+        </>
+      )}
+    </AdminTemplate>
+  );
 };
 
 export default TransHistoryScreen;
