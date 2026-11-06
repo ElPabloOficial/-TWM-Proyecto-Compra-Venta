@@ -775,6 +775,16 @@ const PurchaseHistory = () => {
                           justifyContent: "flex-end",
                         }}
                       >
+                        {purchase.products.length > 0 && (
+                          <CustomButton
+                            variant="secondary"
+                            startIcon={<LocalShippingOutlinedIcon />}
+                            onClick={() => navigate(`/seguimiento/${purchase.id}`)}
+                          >
+                            Seguir envío
+                          </CustomButton>
+                        )}
+
                         <CustomButton
                           variant="secondary"
                           startIcon={<ReceiptLongOutlinedIcon />}

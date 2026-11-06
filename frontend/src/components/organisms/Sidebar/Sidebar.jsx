@@ -9,12 +9,14 @@ import ChatIcon from "@mui/icons-material/Chat";
 import StarIcon from "@mui/icons-material/Star";
 import CalculateIcon from "@mui/icons-material/Calculate";
 import UndoIcon from "@mui/icons-material/Undo";
+import RouteOutlinedIcon from "@mui/icons-material/RouteOutlined";
 
 const items = [
   { id: "productos", label: "Productos", icon: <InventoryIcon fontSize="small" /> },
   { id: "servicios", label: "Servicios", icon: <BuildIcon fontSize="small" /> },
   { id: "pedidos", label: "Pedidos", icon: <ShoppingCartIcon fontSize="small" /> },
   { id: "envios", label: "Envíos", icon: <LocalShippingIcon fontSize="small" /> },
+  { id: "despachos", label: "Despachos", icon: <RouteOutlinedIcon fontSize="small" /> },
   { id: "reportes", label: "Reportes", icon: <BarChartIcon fontSize="small" /> },
   { id: "mensajes", label: "Mensajes", icon: <ChatIcon fontSize="small" /> },
   { id: "resenas", label: "Reseñas", icon: <StarIcon fontSize="small" /> },
@@ -28,6 +30,7 @@ const rutas = {
   servicios: "/servicios",
   pedidos: "/pedidos",
   envios: "/envios",
+  despachos: "/seguimiento-despacho",
   reportes: "/reportes",
   mensajes: "/mensajes/vendedor",
   resenas: "/resenas",

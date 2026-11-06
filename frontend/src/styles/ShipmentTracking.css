@@ -1,285 +1,58 @@
-.seguimiento-pagina {
-  min-height: 100vh;
-  background: #fff;
-}
+/* Seguimiento de despachos (vendedor): paleta del proyecto (rojo #EC3333, blanco) */
+.st-mensaje { color: #555; }
 
-.seguimiento-contenido {
-  width: min(81%, 1100px);
-  margin: 0 auto;
-  padding: 34px 0 64px;
-}
-
-.seguimiento-encabezado {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 16px;
-}
-
-.seguimiento-encabezado h1 {
-  margin: 0;
-  color: #171717;
-  font-size: 19px;
-  font-weight: 750;
-}
-
-.seguimiento-encabezado p {
-  margin: 0;
-  color: #555;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.seguimiento-encabezado .seguimiento-pedido {
-  margin-top: 5px;
-  color: #777;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.seguimiento-etapas {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.seguimiento-etapa {
-  position: relative;
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
-  color: #505050;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.seguimiento-etapa-circulo {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border-radius: 50%;
-  background: #d1d5db;
-  color: #fff;
-}
-
-.seguimiento-etapa-circulo svg {
-  width: 22px;
-  height: 22px;
-}
-
-.seguimiento-etapa-actual {
-  color: #ec3333;
-}
-
-.seguimiento-etapa-actual .seguimiento-etapa-circulo {
-  background: #ec3333;
-}
-
-.seguimiento-etapa-completada .seguimiento-etapa-circulo {
-  background: #ec3333;
-}
-
-.seguimiento-etapa-completada .seguimiento-etapa-circulo svg {
-  opacity: 0.8;
-}
-
-.seguimiento-conector {
-  position: absolute;
-  top: 23px;
-  left: calc(50% + 24px);
-  width: calc(100% - 48px);
-  height: 3px;
-  border-radius: 3px;
-  background: #d1d5db;
-}
-
-.seguimiento-conector-completado {
-  background: #ec3333;
-}
-
-.seguimiento-listado {
-  margin-top: 42px;
-}
-
-.seguimiento-listado-encabezado {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
-}
-
-.seguimiento-listado-encabezado h2 {
-  margin: 0;
-  color: #171717;
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.seguimiento-listado-encabezado p {
-  margin: 5px 0 0;
-  color: #666;
-  font-size: 12px;
-}
-
-.seguimiento-listado-encabezado > span {
-  color: #666;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.seguimiento-tabla-contenedor {
-  overflow-x: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-}
-
-.seguimiento-tabla {
-  width: 100%;
-  min-width: 850px;
-  border-collapse: collapse;
-  color: #333;
-  font-size: 12px;
-  text-align: left;
-}
-
-.seguimiento-tabla th {
-  padding: 12px 14px;
-  background: #f7f7f7;
-  color: #555;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.seguimiento-tabla td {
-  padding: 12px 14px;
-  border-top: 1px solid #eee;
-  white-space: nowrap;
-}
-
-.seguimiento-tabla tbody tr {
-  transition: background-color 120ms ease;
-}
-
-.seguimiento-tabla tbody tr:hover,
-.seguimiento-tabla tbody .seguimiento-fila-seleccionada {
-  background: #fff6f6;
-}
-
-.seguimiento-destinatario,
-.seguimiento-destino {
-  display: block;
-}
-
-.seguimiento-destinatario {
-  color: #222;
-  font-weight: 650;
-}
-
-.seguimiento-destino {
-  margin-top: 3px;
-  color: #777;
-  font-size: 11px;
-}
-
-.seguimiento-pedido-boton {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #d92727;
+.st-filtros { display: flex; gap: 8px; margin: 4px 0 16px; flex-wrap: wrap; }
+.st-filtro {
+  padding: 7px 14px;
   font: inherit;
+  font-size: 13px;
   font-weight: 700;
+  color: #000;
+  background: #fff;
+  border: 2px solid #ec3333;
   cursor: pointer;
 }
+.st-filtro:hover { background: rgba(236, 51, 51, 0.08); color: #ec3333; }
+.st-filtro.activo { background: #ec3333; color: #fff; }
+.st-filtro:focus-visible { outline: 3px solid #ec3333; outline-offset: 2px; }
 
-.seguimiento-pedido-boton:hover {
-  text-decoration: underline;
+.st-tabla-scroll { overflow-x: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
+.st-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
+.st-tabla th {
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 700;
+  background: #f5f5f5;
+  border-bottom: 2px solid #ec3333;
+  white-space: nowrap;
 }
+.st-tabla td { padding: 12px 14px; border-bottom: 1px solid #eee; vertical-align: middle; }
+.st-tabla tbody tr:last-child td { border-bottom: none; }
+.st-tabla tbody tr:hover { background: rgba(236, 51, 51, 0.04); }
 
-.seguimiento-pedido-boton:focus-visible {
-  outline: 2px solid #ec3333;
-  outline-offset: 3px;
-  border-radius: 2px;
+.st-pedido { font-weight: 700; color: #ec3333; text-decoration: none; }
+.st-pedido:hover { text-decoration: underline; }
+.st-cliente { display: block; font-weight: 600; }
+.st-destino { display: block; margin-top: 2px; font-size: 12px; color: #777; }
+
+.st-estado { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.st-estado-0 { background: #fff0e5; color: #f97316; }
+.st-estado-1 { background: #e8f0fe; color: #2563eb; }
+.st-estado-2 { background: rgba(236, 51, 51, 0.1); color: #ec3333; }
+.st-estado-3 { background: #dff5e6; color: #16a34a; }
+
+.st-accion {
+  padding: 7px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #ec3333;
+  border: 2px solid #ec3333;
+  cursor: pointer;
+  white-space: nowrap;
 }
-
-.seguimiento-estado {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.seguimiento-estado-0 {
-  background: #f1f2f4;
-  color: #626770;
-}
-
-.seguimiento-estado-1 {
-  background: #eef2ff;
-  color: #4f46a5;
-}
-
-.seguimiento-estado-2,
-.seguimiento-estado-3 {
-  background: #fff2df;
-  color: #a45b08;
-}
-
-.seguimiento-estado-4 {
-  background: #e8f6ee;
-  color: #25804c;
-}
-
-@media (max-width: 600px) {
-  .seguimiento-contenido {
-    width: min(88%, 420px);
-    padding-top: 28px;
-  }
-
-  .seguimiento-encabezado {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 22px;
-  }
-
-  .seguimiento-etapas {
-    flex-direction: column;
-    gap: 0;
-  }
-
-  .seguimiento-etapa {
-    min-height: 74px;
-    flex: none;
-    flex-direction: row;
-    gap: 14px;
-    text-align: left;
-  }
-
-  .seguimiento-etapa-circulo {
-    width: 42px;
-    height: 42px;
-    flex: 0 0 42px;
-  }
-
-  .seguimiento-conector {
-    top: 48px;
-    left: 20px;
-    width: 3px;
-    height: 24px;
-  }
-
-  .seguimiento-listado {
-    margin-top: 30px;
-  }
-}
+.st-accion:hover { background: #fff; color: #ec3333; }
+.st-accion:focus-visible { outline: 3px solid #ec3333; outline-offset: 2px; }
+.st-sin-accion { color: #aaa; }
+.st-vacio { text-align: center; color: #777; padding: 28px 14px !important; }

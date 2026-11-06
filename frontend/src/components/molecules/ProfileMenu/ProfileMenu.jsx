@@ -5,7 +5,6 @@ import PersonIcon from "@mui/icons-material/Person";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
-import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ChatIcon from "@mui/icons-material/Chat";
@@ -20,31 +19,22 @@ import { authService } from "../../../services/authService";
 import CustomButton from "../../atoms/Button/CustomButton";
 import "../../../styles/ProfileMenu.css";
 
+// Este menú es lo que ve un CLIENTE (comprador). Un vendedor también es cliente, así que ve
+// exactamente las mismas opciones, y además un único acceso a su gestión ("Gestión de inventario").
+// Todo lo que hace como vendedor (productos, servicios, pedidos, despachos, mensajes recibidos,
+// reseñas recibidas, cotizaciones recibidas, devoluciones...) está en el menú lateral de esa gestión.
+//
 // Tipos de usuario (campo "tipousuario" de la base de datos):
-//   cliente  -> solo compra: ve las opciones de cliente
-//   vendedor -> vende, y además puede comprar: ve las opciones de cliente + las de vendedor
-//   admin    -> caso aparte: por ahora ve el menú de cliente
-//
-// Las opciones sin "para" las ven todos los que iniciaron sesión.
-// Las que tienen para: "vendedor" solo las ven los vendedores.
-//
-// "ruta" es la pantalla del cliente. Si el usuario es vendedor y la opción tiene
-// "rutaVendedor", se va a esa pantalla (su versión del panel de vendedor).
-// Si una opción no tiene la ruta que le corresponde, por ahora solo cierra el menú
-// (la pantalla aún no existe). Se agrega su "ruta" cuando se cree.
+//   cliente  -> solo compra
+//   vendedor -> vende, y además compra
+//   ambos    -> vende y compra (se trata igual que vendedor)
+//   admin    -> caso aparte: ve el menú de cliente + el panel de administración
 const opciones = [
   {
     id: "perfil",
     label: "Mi perfil",
     icon: <AccountCircleIcon fontSize="small" />,
     ruta: "/perfil",
-  },
-  {
-    id: "seguimiento-despacho",
-    label: "Seguimiento de despacho", // el estado de los envíos de las ventas del vendedor
-    icon: <LocalShippingIcon fontSize="small" />,
-    ruta: "/seguimiento-despacho",
-    para: "vendedor",
   },
   {
     id: "compras",
@@ -74,8 +64,7 @@ const opciones = [
     id: "mensajes",
     label: "Mensajes",
     icon: <ChatIcon fontSize="small" />,
-    ruta: "/mensajes/cliente", // el cliente escribe a los vendedores de sus compras
-    rutaVendedor: "/mensajes/vendedor",
+    ruta: "/mensajes/cliente", // escribe a los vendedores de sus compras (los que recibe como vendedor están en su gestión)
   },
   {
     id: "resenas",
@@ -108,8 +97,9 @@ const ProfileMenu = () => {
   // "tipousuario" viene de la base de datos. Las sesiones guardadas antes de este cambio
   // solo tienen "role"; para esas se usa "role".
   const tipo = usuario?.tipousuario ?? usuario?.role;
-  // Un vendedor también puede comprar, así que ve todo lo de cliente y además lo suyo
-  const esVendedor = tipo === "vendedor";
+  // Un vendedor también puede comprar, así que ve todo lo de cliente y además el acceso a su gestión.
+  // "ambos" es el usuario que vende y compra.
+  const esVendedor = ["vendedor", "ambos"].includes(String(tipo ?? "").toLowerCase());
   const admin = Boolean(usuario) && authService.esAdmin();
 
   const visible = (opcion) => opcion.para !== "vendedor" || esVendedor;

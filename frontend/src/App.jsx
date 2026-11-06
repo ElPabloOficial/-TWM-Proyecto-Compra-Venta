@@ -35,6 +35,7 @@ import AdminScreen from './pages/Admin/AdminScreen';
 import NewQuoteScreen from './pages/NewQuote/NewQuoteScreen';
 import AddressesScreen from "./pages/Addresses/AddressesScreen";
 import ShipmentTrackingScreen from "./pages/ShipmentTracking/ShipmentTrackingScreen";
+import OrderTrackingScreen from "./pages/OrderTracking/OrderTrackingScreen";
 import PurchaseHistory from "./pages/History/History";
 import MyReviewsScreen from "./pages/MyReviews/MyReviewsScreen";
 import MyQuotesScreen from "./pages/MyQuotes/MyQuotesScreen";
@@ -88,6 +89,7 @@ const App = () => {
                 <Route path="/cotizaciones/nueva" element={<NewQuoteScreen />} />
                 <Route path="/direcciones" element={<AddressesScreen />} />
                 <Route path="/seguimiento-despacho" element={<ShipmentTrackingScreen />} />
+                <Route path="/seguimiento/:idVenta" element={<OrderTrackingScreen />} />
                 <Route path="/historial" element={<PurchaseHistory />} />
                 <Route path="/devolucion" element={<RefundRequest />} />
                 <Route path="/devoluciones" element={<ReturnManagement />} />

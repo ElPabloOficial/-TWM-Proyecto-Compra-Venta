@@ -1,0 +1,81 @@
+/* Seguimiento del pedido (cliente): paleta del proyecto (rojo #EC3333, blanco) */
+.ot-page {
+  max-width: 1100px;
+  width: calc(100% - 48px);
+  margin: 0 auto;
+  padding: 28px 0 64px;
+  color: #242424;
+  box-sizing: border-box;
+}
+.ot-page *, .ot-page *::before, .ot-page *::after { box-sizing: border-box; }
+
+.ot-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
+.ot-principal, .ot-lateral { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+.ot-tarjeta { padding: 22px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
+.ot-subtitulo { margin: 0 0 16px; font-size: 16px; font-weight: 700; }
+
+.ot-pedido { margin: 0 0 6px; font-size: 13px; color: #777; }
+.ot-titular { margin: 0; font-size: clamp(24px, 3.5vw, 34px); font-weight: 700; letter-spacing: -0.5px; color: #000; }
+.ot-titular.entregado { color: #16a34a; }
+.ot-detalle { margin: 8px 0 0; font-size: 15px; color: #555; }
+
+/* Etapas */
+.ot-etapas { list-style: none; margin: 28px 0 0; padding: 0; display: flex; }
+.ot-etapa { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.ot-etapa:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 19px;
+  left: calc(50% + 24px);
+  right: calc(-50% + 24px);
+  height: 3px;
+  background: #ddd;
+}
+.ot-etapa.completada:not(:last-child)::after { background: #ec3333; }
+
+.ot-etapa-circulo {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  background: #fff;
+  color: #aaa;
+}
+.ot-etapa.completada .ot-etapa-circulo { background: #ec3333; border-color: #ec3333; color: #fff; }
+.ot-etapa.actual .ot-etapa-circulo { border-color: #ec3333; color: #ec3333; box-shadow: 0 0 0 4px rgba(236, 51, 51, 0.15); }
+.ot-etapa-nombre { font-size: 12px; font-weight: 600; color: #888; }
+.ot-etapa.completada .ot-etapa-nombre, .ot-etapa.actual .ot-etapa-nombre { color: #000; }
+
+/* Historial */
+.ot-historial { list-style: none; margin: 0; padding: 0; }
+.ot-evento { position: relative; display: flex; gap: 14px; padding: 0 0 22px; }
+.ot-evento:last-child { padding-bottom: 0; }
+.ot-evento:not(:last-child)::before { content: ""; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: #e0e0e0; }
+.ot-evento-punto { flex-shrink: 0; width: 12px; height: 12px; margin-top: 4px; border-radius: 50%; background: #ccc; }
+.ot-evento.reciente .ot-evento-punto { background: #ec3333; box-shadow: 0 0 0 4px rgba(236, 51, 51, 0.15); }
+.ot-evento-titulo { font-size: 14px; font-weight: 700; }
+.ot-evento-detalle { margin-top: 2px; font-size: 13px; color: #555; }
+.ot-evento-fecha { margin-top: 4px; font-size: 12px; color: #888; }
+
+/* Datos y productos */
+.ot-datos { margin: 0; display: flex; flex-direction: column; gap: 14px; }
+.ot-datos dt { font-size: 12px; color: #777; }
+.ot-datos dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+.ot-seguimiento { margin-right: 10px; }
+.ot-copiar { padding: 0; font: inherit; font-size: 13px; font-weight: 700; color: #ec3333; background: none; border: none; cursor: pointer; }
+.ot-copiar:hover { text-decoration: underline; }
+
+.ot-productos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.ot-productos li { display: flex; justify-content: space-between; gap: 12px; }
+.ot-cantidad { color: #777; }
+
+.ot-mensaje { color: #555; }
+.ot-error { color: #ef4444; }
+
+@media (max-width: 800px) {
+  .ot-layout { grid-template-columns: minmax(0, 1fr); }
+}
