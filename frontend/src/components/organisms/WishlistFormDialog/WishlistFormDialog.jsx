@@ -23,19 +23,29 @@ const radioRojo = {
 
 /*
  * Formulario para crear una lista de deseos.
- * `nombres` son los nombres de las listas que ya existen, para no repetirlos.
+ * `lista`: si se entrega, el formulario edita esa lista; si no, crea una nueva.
+ * `nombres` son los nombres de las otras listas, para no repetirlos.
  * `onGuardar` debe devolver una promesa; si se rechaza, el mensaje se muestra en el formulario.
  */
-const WishlistFormDialog = ({ open, nombres = [], onClose, onGuardar }) => {
+const WishlistFormDialog = ({ open, lista = null, nombres = [], onClose, onGuardar }) => {
+  const editando = Boolean(lista);
   const [form, setForm] = useState(vacio);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    setForm(vacio);
+    setForm(
+      lista
+        ? {
+            nombre: lista.nombre,
+            descripcion: lista.descripcion ?? "",
+            visibilidad: lista.publica ? "publica" : "privada",
+          }
+        : vacio
+    );
     setError("");
     setGuardando(false);
-  }, [open]);
+  }, [open, lista]);
 
   const handleChange = (campo) => (e) => setForm({ ...form, [campo]: e.target.value });
 
@@ -67,7 +77,7 @@ const WishlistFormDialog = ({ open, nombres = [], onClose, onGuardar }) => {
 
   return (
     <Dialog open={open} onClose={guardando ? undefined : onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Nueva lista de deseos</DialogTitle>
+      <DialogTitle>{editando ? "Editar lista de deseos" : "Nueva lista de deseos"}</DialogTitle>
 
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: "8px !important" }}>
         <TextField
@@ -129,7 +139,7 @@ const WishlistFormDialog = ({ open, nombres = [], onClose, onGuardar }) => {
           Cancelar
         </CustomButton>
         <CustomButton variant="primary" size="small" onClick={handleGuardar} disabled={guardando} sx={{ border: "2px solid #EC3333" }}>
-          {guardando ? "Guardando..." : "Crear lista"}
+          {guardando ? "Guardando..." : editando ? "Guardar cambios" : "Crear lista"}
         </CustomButton>
       </DialogActions>
     </Dialog>

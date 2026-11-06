@@ -1,9 +1,7 @@
 import { useState, useRef } from "react";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import Header from "../../components/organisms/Header/Header";
-import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import "../../styles/Addresses.css";
-import { useToast } from "../../context/ToastContext";
 
 // TEMPORAL: las regiones y comunas vendrán de la base de datos cuando se conecte el backend.
 const regiones = {
@@ -61,13 +59,11 @@ const formVacio = {
 };
 
 const AddressesScreen = () => {
-  const { mostrarToast } = useToast();
   const [direcciones, setDirecciones] = useState(direccionesIniciales);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(formVacio);
   const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState("");
-  const [direccionAEliminar, setDireccionAEliminar] = useState(null);
   const formRef = useRef(null);
 
   const editando = editandoId !== null;
@@ -91,8 +87,9 @@ const AddressesScreen = () => {
   };
 
   // ---------- Acciones ----------
-  // TEMPORAL: crear, editar, eliminar y marcar como principal solo modifican el estado local.
-  // Con el backend pasan a ser llamadas a la API (POST, PUT, DELETE).
+  // TEMPORAL: crear, editar y marcar como principal solo modifican el estado local.
+  // Con el backend pasan a ser llamadas a la API (POST, PUT).
+  // El cliente no puede eliminar direcciones (permisos del rol Cliente: Perfil y Direcciones).
   const abrirNueva = () => {
     setEditandoId(null);
     // La primera dirección que se guarda queda como principal
@@ -185,23 +182,6 @@ const AddressesScreen = () => {
     // SIMULACIÓN (solo frontend): con el backend pasa a ser una llamada PUT
     console.log("[Direcciones] Marcar como principal:", direccion);
     setDirecciones(direcciones.map((d) => ({ ...d, principal: d.id === direccion.id })));
-  };
-
-  const confirmarEliminar = () => {
-    // SIMULACIÓN (solo frontend): con el backend pasa a ser una llamada DELETE
-    console.log("[Direcciones] Eliminar dirección:", direccionAEliminar);
-
-    const restantes = direcciones.filter((d) => d.id !== direccionAEliminar.id);
-    // Si se borra la principal, la primera que quede pasa a ser la principal
-    if (direccionAEliminar.principal && restantes.length > 0) {
-      restantes[0] = { ...restantes[0], principal: true };
-    }
-    setDirecciones(restantes);
-
-    // Si justo se estaba editando la dirección borrada, se cierra el formulario
-    if (editandoId === direccionAEliminar.id) cerrarForm();
-    mostrarToast("Dirección eliminada correctamente");
-    setDireccionAEliminar(null);
   };
 
   // La principal siempre aparece primero
@@ -405,9 +385,6 @@ const AddressesScreen = () => {
                   <button type="button" className="dir-link" onClick={() => abrirEditar(d)}>
                     Editar
                   </button>
-                  <button type="button" className="dir-link" onClick={() => setDireccionAEliminar(d)}>
-                    Eliminar
-                  </button>
                   {!d.principal && (
                     <button type="button" className="dir-link" onClick={() => marcarPrincipal(d)}>
                       Marcar como principal
@@ -420,14 +397,6 @@ const AddressesScreen = () => {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={Boolean(direccionAEliminar)}
-        titulo="Eliminar dirección"
-        mensaje={`¿Seguro que quieres eliminar la dirección "${direccionAEliminar?.alias ?? ""}" (${direccionAEliminar?.calle ?? ""} ${direccionAEliminar?.numero ?? ""})? Esta acción no se puede deshacer.`}
-        textoConfirmar="Eliminar"
-        onConfirmar={confirmarEliminar}
-        onCancelar={() => setDireccionAEliminar(null)}
-      />
     </>
   );
 };

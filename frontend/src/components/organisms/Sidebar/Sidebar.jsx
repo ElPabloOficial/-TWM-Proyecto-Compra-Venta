@@ -32,6 +32,7 @@ const rutas = {
   mensajes: "/mensajes/vendedor",
   resenas: "/resenas",
   cotizacion: "/cotizaciones",
+  devoluciones: "/devoluciones",
 };
 
 const Sidebar = ({ onSelect }) => {

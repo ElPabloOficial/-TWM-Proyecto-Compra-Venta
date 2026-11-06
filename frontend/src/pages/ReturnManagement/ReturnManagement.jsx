@@ -1,12 +1,19 @@
 import { useState } from "react";
-import { Box } from "@mui/material";
 
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
-
-import ReturnStatCard from "../../components/molecules/ReturnStatCard/ReturnStatCard";
+import StatCard from "../../components/molecules/StatCard/StatCard";
 import ReturnRequestList from "../../components/organisms/ReturnRequestList/ReturnRequestList";
+import { useToast } from "../../context/ToastContext";
 
+import "../../styles/Inventory.css";
+import "../../styles/ReturnManagement.css";
+
+// Estados de una devolución en la BD: "En Proceso" (pendiente de respuesta), "Aprobada" y "Rechazada".
 const ReturnManagement = () => {
+  const { mostrarToast } = useToast();
+
+  // TEMPORAL: estas solicitudes son de ejemplo. Con el backend se cargan con GET /devoluciones
+  // y el cambio de estado pasa a ser PUT /devoluciones/{id}/estado.
   const [requests, setRequests] = useState([
     {
       id: 1,
@@ -17,7 +24,7 @@ const ReturnManagement = () => {
       price: "$389.990",
       reason:
         'Producto defectuoso - "La pantalla presenta líneas verticales desde el primer encendido."',
-      status: "Pendiente",
+      status: "En Proceso",
     },
     {
       id: 2,
@@ -27,118 +34,61 @@ const ReturnManagement = () => {
       quantity: "2 unidades",
       price: "$29.980",
       reason: "No es lo que esperaba.",
-      status: "Aprobado",
+      status: "Aprobada",
       refund:
         "Reembolso procesado el 18-09-2026 · $29.980 a tarjeta terminada en 4521",
     },
   ]);
 
-  // Cambiar el estado de una solicitud
+  // Aprobar o rechazar una solicitud pendiente
   const handleStatusChange = (id, newStatus) => {
     const request = requests.find((item) => item.id === id);
 
-    if (!request || request.status !== "Pendiente") {
+    if (!request || request.status !== "En Proceso") {
       return;
     }
 
-    const changeDate = new Date().toLocaleString("es-CL");
-
     // Actualizar la solicitud en pantalla
     setRequests((previousRequests) =>
-      previousRequests.map((item) =>
-        item.id === id
-          ? { ...item, status: newStatus }
-          : item
-      )
+      previousRequests.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
     );
 
-    // Registrar los datos del cambio
+    // SIMULACIÓN (solo frontend): con el backend esto es PUT /devoluciones/{id}/estado
     console.log({
       idSolicitud: request.id,
       pedido: request.order,
       producto: request.product,
-      precio: request.price,
       estadoAnterior: request.status,
       estadoNuevo: newStatus,
-      fechaCambio: changeDate,
+      fechaCambio: new Date().toLocaleString("es-CL"),
     });
+
+    mostrarToast(newStatus === "Aprobada" ? "Devolución aprobada correctamente" : "Devolución rechazada correctamente");
   };
 
-  // Calcular estadísticas según los estados actuales
-  const pendingCount = requests.filter(
-    (request) => request.status === "Pendiente"
-  ).length;
-
-  const approvedCount = requests.filter(
-    (request) => request.status === "Aprobado"
-  ).length;
+  // Estadísticas según los estados actuales
+  const pendingCount = requests.filter((request) => request.status === "En Proceso").length;
+  const approvedCount = requests.filter((request) => request.status === "Aprobada").length;
 
   return (
     <SellerTemplate>
-      <Box
-        sx={{
-          width: "100%",
-          padding: "20px 40px",
-          boxSizing: "border-box",
-        }}
-      >
-        {/* Título */}
-        <Box sx={{ marginBottom: "20px" }}>
-          <Box
-            component="h1"
-            sx={{
-              margin: 0,
-              fontSize: "22px",
-              fontWeight: 700,
-            }}
-          >
-            Gestión de devoluciones
-          </Box>
+      <div className="inv-head">
+        <div>
+          <h1 className="inv-title">Gestión de Devoluciones</h1>
+          <div className="inv-subtitle">
+            Revisa, aprueba o rechaza las solicitudes de devolución de tus clientes.
+          </div>
+        </div>
+      </div>
 
-          <Box
-            component="p"
-            sx={{
-              margin: "3px 0 0",
-              fontSize: "11px",
-              color: "#777",
-            }}
-          >
-            Revisa, aprueba o rechaza las solicitudes de devolución de tus
-            clientes.
-          </Box>
-        </Box>
+      <div className="inv-stats">
+        <StatCard titulo="Pendientes" valor={pendingCount} />
+        <StatCard titulo="Aprobadas" valor={approvedCount} />
+        {/* TEMPORAL: valor fijo; con el backend se calcula (devoluciones / ventas) */}
+        <StatCard titulo="Tasa de devolución" valor="3,1%" />
+      </div>
 
-        {/* Estadísticas */}
-        <Box
-          sx={{
-            display: "flex",
-            gap: "12px",
-            marginBottom: "30px",
-            flexWrap: "wrap",
-          }}
-        >
-          <ReturnStatCard
-            title="Pendientes"
-            value={String(pendingCount)}
-          />
-
-          <ReturnStatCard
-            title="Aprobadas"
-            value={String(approvedCount)}
-          />
-
-          <ReturnStatCard
-            title="Tasa de devolución"
-            value="3,1%"
-          />
-        </Box>
-
-        {/* Lista de solicitudes */}
-        <ReturnRequestList
-          requests={requests}
-          onStatusChange={handleStatusChange}
-        />
-      </Box>
+      <ReturnRequestList requests={requests} onStatusChange={handleStatusChange} />
     </SellerTemplate>
   );
 };

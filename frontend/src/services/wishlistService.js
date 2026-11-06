@@ -25,3 +25,18 @@ export async function crearListaDeseos({ nombre, descripcion, publica }) {
     LISTAS_EJEMPLO.push(nueva);
     return nueva;
 }
+
+// Cambia nombre, descripción y visibilidad de una lista. TEMPORAL: con el backend es un PUT.
+export async function actualizarListaDeseos(id, { nombre, descripcion, publica }) {
+    const lista = LISTAS_EJEMPLO.find((l) => l.id === id);
+    if (!lista) throw new Error('La lista no existe.');
+    Object.assign(lista, { nombre, descripcion, publica });
+    return lista;
+}
+
+// Elimina una lista (el cliente puede eliminar lo que guardó en su wishlist). TEMPORAL: con el backend es un DELETE.
+export async function eliminarListaDeseos(id) {
+    const indice = LISTAS_EJEMPLO.findIndex((l) => l.id === id);
+    if (indice === -1) throw new Error('La lista no existe.');
+    LISTAS_EJEMPLO.splice(indice, 1);
+}

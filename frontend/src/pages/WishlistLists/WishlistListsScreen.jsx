@@ -4,7 +4,13 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/organisms/Header/Header";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import WishlistFormDialog from "../../components/organisms/WishlistFormDialog/WishlistFormDialog";
-import { listarListasDeseos, crearListaDeseos } from "../../services/wishlistService";
+import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
+import {
+  listarListasDeseos,
+  crearListaDeseos,
+  actualizarListaDeseos,
+  eliminarListaDeseos,
+} from "../../services/wishlistService";
 import { useToast } from "../../context/ToastContext";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -16,6 +22,8 @@ const WishlistListsScreen = () => {
   const navigate = useNavigate();
   const { mostrarToast } = useToast();
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
+  const [listaEditando, setListaEditando] = useState(null); // null = creando una nueva
+  const [listaAEliminar, setListaAEliminar] = useState(null);
   const [listas, setListas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
@@ -33,11 +41,39 @@ const WishlistListsScreen = () => {
 
   const abrirLista = (id) => navigate(`/listadedeseos?lista=${id}`);
 
-  const crearLista = async (datos) => {
-    const nueva = await crearListaDeseos(datos); // si falla, el formulario muestra el error
-    setListas((actuales) => [...actuales, nueva]);
+  const abrirNueva = () => {
+    setListaEditando(null);
+    setDialogoAbierto(true);
+  };
+
+  const abrirEditar = (lista) => {
+    setListaEditando(lista);
+    setDialogoAbierto(true);
+  };
+
+  // Crea o edita según el formulario; si falla, el formulario muestra el error
+  const guardarLista = async (datos) => {
+    if (listaEditando) {
+      const actualizada = await actualizarListaDeseos(listaEditando.id, datos);
+      setListas((actuales) => actuales.map((l) => (l.id === actualizada.id ? { ...actualizada } : l)));
+      mostrarToast("Lista actualizada correctamente");
+    } else {
+      const nueva = await crearListaDeseos(datos);
+      setListas((actuales) => [...actuales, nueva]);
+      mostrarToast("Lista creada correctamente");
+    }
     setDialogoAbierto(false);
-    mostrarToast("Lista creada correctamente");
+  };
+
+  const confirmarEliminar = async () => {
+    try {
+      await eliminarListaDeseos(listaAEliminar.id);
+      setListas((actuales) => actuales.filter((l) => l.id !== listaAEliminar.id));
+      mostrarToast("Lista eliminada correctamente");
+    } catch (e) {
+      mostrarToast(e.message, "error");
+    }
+    setListaAEliminar(null);
   };
 
   return (
@@ -76,7 +112,7 @@ const WishlistListsScreen = () => {
               <CustomButton
                 variant="primary"
                 size="medium"
-                onClick={() => setDialogoAbierto(true)}
+                onClick={abrirNueva}
                 sx={{ border: "2px solid #EC3333", textTransform: "none" }}
               >
                 + Nuevo
@@ -103,25 +139,36 @@ const WishlistListsScreen = () => {
           <ul className="wl-grid">
             {listas.map((lista) => (
               <li key={lista.id}>
-                <button type="button" className="wl-tarjeta" onClick={() => abrirLista(lista.id)}>
-                  <span className="wl-tarjeta-icono">
-                    <FavoriteIcon fontSize="small" />
-                  </span>
-
-                  <span className="wl-tarjeta-texto">
-                    <span className="wl-tarjeta-nombre">{lista.nombre}</span>
-                    <span className="wl-tarjeta-desc">{lista.descripcion || "Sin descripción"}</span>
-                  </span>
-
-                  <span className="wl-tarjeta-pie">
-                    <span className="wl-tarjeta-cantidad">
-                      {lista.cantidad} {lista.cantidad === 1 ? "elemento" : "elementos"}
+                <div className="wl-tarjeta">
+                  <button type="button" className="wl-tarjeta-abrir" onClick={() => abrirLista(lista.id)}>
+                    <span className="wl-tarjeta-icono">
+                      <FavoriteIcon fontSize="small" />
                     </span>
-                    <span className={`wl-etiqueta ${lista.publica ? "publica" : "privada"}`}>
-                      {lista.publica ? "Pública" : "Privada"}
+
+                    <span className="wl-tarjeta-texto">
+                      <span className="wl-tarjeta-nombre">{lista.nombre}</span>
+                      <span className="wl-tarjeta-desc">{lista.descripcion || "Sin descripción"}</span>
                     </span>
-                  </span>
-                </button>
+
+                    <span className="wl-tarjeta-pie">
+                      <span className="wl-tarjeta-cantidad">
+                        {lista.cantidad} {lista.cantidad === 1 ? "elemento" : "elementos"}
+                      </span>
+                      <span className={`wl-etiqueta ${lista.publica ? "publica" : "privada"}`}>
+                        {lista.publica ? "Pública" : "Privada"}
+                      </span>
+                    </span>
+                  </button>
+
+                  <div className="wl-tarjeta-acciones">
+                    <button type="button" className="wl-link" onClick={() => abrirEditar(lista)}>
+                      Editar
+                    </button>
+                    <button type="button" className="wl-link" onClick={() => setListaAEliminar(lista)}>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
@@ -130,9 +177,19 @@ const WishlistListsScreen = () => {
 
       <WishlistFormDialog
         open={dialogoAbierto}
-        nombres={listas.map((l) => l.nombre)}
+        lista={listaEditando}
+        nombres={listas.filter((l) => l.id !== listaEditando?.id).map((l) => l.nombre)}
         onClose={() => setDialogoAbierto(false)}
-        onGuardar={crearLista}
+        onGuardar={guardarLista}
+      />
+
+      <ConfirmDialog
+        open={Boolean(listaAEliminar)}
+        titulo="Eliminar lista"
+        mensaje={`¿Seguro que quieres eliminar la lista "${listaAEliminar?.nombre ?? ""}"? Se quitarán también los elementos que guardaste en ella. Esta acción no se puede deshacer.`}
+        textoConfirmar="Eliminar"
+        onConfirmar={confirmarEliminar}
+        onCancelar={() => setListaAEliminar(null)}
       />
     </>
   );

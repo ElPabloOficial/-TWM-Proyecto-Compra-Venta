@@ -148,7 +148,9 @@ const MyQuotesScreen = () => {
                           Pedida el {formatoFecha(c.issueDate)} · {c.seller.name}
                         </div>
                       </div>
-                      <span className={`quote-status quote-status-${c.estado.toLowerCase()}`}>{c.estado}</span>
+                      <span className={`quote-status quote-status-${c.estado.toLowerCase()}`}>
+                        {c.estado === "Aceptada" ? "Aceptada por el cliente" : c.estado}
+                      </span>
                     </div>
 
                     <p className="mq-items">

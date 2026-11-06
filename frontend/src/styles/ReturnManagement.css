@@ -1,0 +1,59 @@
+/* Gestión de devoluciones: mismo formato que las otras pantallas del vendedor
+   (títulos y tarjetas de totales vienen de Inventory.css: inv-title, inv-subtitle, inv-stats) */
+.ret-lista { display: flex; flex-direction: column; gap: 16px; }
+
+.ret-tarjeta {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 16px;
+  background: #fff;
+}
+
+.ret-cabecera { display: flex; align-items: flex-start; gap: 16px; }
+
+.ret-evidencia {
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #f0f0f0;
+  color: #888;
+  font-size: 12px;
+  text-align: center;
+}
+.ret-evidencia img { width: 100%; height: 100%; object-fit: cover; }
+
+.ret-info { flex: 1; min-width: 0; }
+.ret-producto { margin: 0; font-size: 16px; font-weight: 700; }
+.ret-detalle { margin: 4px 0 0; font-size: 13px; color: #666; }
+
+.ret-estado {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ret-estado.pendiente { background: #fff0e5; color: #f97316; }
+.ret-estado.aprobada { background: #dff5e6; color: #16a34a; }
+.ret-estado.rechazada { background: #fde8e8; color: #ef4444; }
+
+.ret-motivo {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ret-botones { display: flex; gap: 12px; margin-top: 16px; }
+.ret-reembolso { margin: 14px 0 0; font-size: 13px; color: #666; }
+
+@media (max-width: 600px) {
+  .ret-cabecera { flex-wrap: wrap; }
+}

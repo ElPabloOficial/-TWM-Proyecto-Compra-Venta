@@ -1,20 +1,12 @@
-import { Box } from "@mui/material";
-
 import ReturnRequest from "../../molecules/ReturnRequest/ReturnRequest";
 
-const ReturnRequestList = ({
-  requests,
-  onStatusChange,
-  actualizandoId,
-}) => {
+const ReturnRequestList = ({ requests, onStatusChange, actualizandoId }) => {
+  if (requests.length === 0) {
+    return <p style={{ color: "#777", fontSize: 14 }}>Todavía no tienes solicitudes de devolución.</p>;
+  }
+
   return (
-    <Box
-      sx={{
-        width: "100%",
-        maxWidth: "850px",
-      }}
-    >
-      
+    <div className="ret-lista">
       {requests.map((request) => (
         <ReturnRequest
           key={request.id}
@@ -22,10 +14,8 @@ const ReturnRequestList = ({
           onStatusChange={onStatusChange}
           actualizandoId={actualizandoId}
         />
-
-         
       ))}
-    </Box>
+    </div>
   );
 };
 

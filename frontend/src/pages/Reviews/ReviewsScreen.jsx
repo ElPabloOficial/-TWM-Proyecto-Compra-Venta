@@ -5,11 +5,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import StatCard from "../../components/molecules/StatCard/StatCard";
-import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import "../../styles/Inventory.css";
 import "../../styles/Reviews.css";
@@ -99,7 +96,7 @@ const formatoFecha = (iso) => {
 };
 
 // ---------- Tarjeta de una reseña ----------
-const ReviewCard = ({ resena, onResponder, onEliminarRespuesta }) => {
+const ReviewCard = ({ resena, onResponder }) => {
   const respondida = Boolean(resena.respuesta);
 
   return (
@@ -126,25 +123,6 @@ const ReviewCard = ({ resena, onResponder, onEliminarRespuesta }) => {
             Tu respuesta · {formatoFecha(resena.fechaRespuesta)}
           </div>
           <p>{resena.respuesta}</p>
-
-          <div className="rev-acciones">
-            <button
-              type="button"
-              className="inv-icon-btn"
-              onClick={() => onResponder(resena)}
-              aria-label="Editar respuesta"
-            >
-              <EditIcon fontSize="small" />
-            </button>
-            <button
-              type="button"
-              className="inv-icon-btn"
-              onClick={() => onEliminarRespuesta(resena)}
-              aria-label="Eliminar respuesta"
-            >
-              <DeleteIcon fontSize="small" />
-            </button>
-          </div>
         </div>
       ) : (
         <div className="rev-acciones">
@@ -162,17 +140,15 @@ const ReviewCard = ({ resena, onResponder, onEliminarRespuesta }) => {
   );
 };
 
-// ---------- Diálogo para responder o editar la respuesta ----------
+// ---------- Diálogo para responder una reseña ----------
+// Las respuestas públicas solo se pueden crear y leer: no se editan ni se eliminan.
 const ReviewReplyDialog = ({ open, resena, onClose, onGuardar }) => {
   const [texto, setTexto] = useState("");
   const [error, setError] = useState("");
 
-  // Si la reseña ya tiene respuesta, se está editando; si no, se responde por primera vez
-  const editando = Boolean(resena?.respuesta);
-
-  // Cada vez que se abre: carga la respuesta existente o deja el campo vacío
+  // Cada vez que se abre deja el campo vacío
   useEffect(() => {
-    setTexto(resena?.respuesta ?? "");
+    setTexto("");
     setError("");
   }, [resena, open]);
 
@@ -191,18 +167,15 @@ const ReviewReplyDialog = ({ open, resena, onClose, onGuardar }) => {
     const datos = { id: resena.id, respuesta };
 
     // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados.
-    // Con el backend esto se reemplaza por la llamada a la API (POST al responder, PUT al editar).
-    console.log(
-      editando ? "[Reseñas] Actualizar respuesta:" : "[Reseñas] Responder reseña:",
-      datos
-    );
+    // Con el backend esto se reemplaza por la llamada a la API (POST de la respuesta).
+    console.log("[Reseñas] Responder reseña:", datos);
 
     onGuardar(datos);
   };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{editando ? "Editar respuesta" : "Responder reseña"}</DialogTitle>
+      <DialogTitle>Responder reseña</DialogTitle>
       <DialogContent className="rev-dialog-content">
         {resena && (
           <div className="rev-cita">
@@ -248,34 +221,22 @@ const ReviewsScreen = () => {
   // TEMPORAL: las reseñas viven solo en memoria (se pierden al recargar la página).
   const [resenas, setResenas] = useState(resenasIniciales);
   const [resenaRespondiendo, setResenaRespondiendo] = useState(null);
-  const [resenaAEliminar, setResenaAEliminar] = useState(null);
   const [orden, setOrden] = useState("recientes");
   const [filtroEstrellas, setFiltroEstrellas] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
 
   // ---------- Acciones ----------
-  // TEMPORAL: responder, editar y eliminar la respuesta solo modifican el estado local.
-  // Con el backend pasan a ser llamadas a la API (POST / PUT / DELETE de la respuesta).
+  // TEMPORAL: responder solo modifica el estado local.
+  // Con el backend pasa a ser una llamada a la API (POST de la respuesta).
   const guardarRespuesta = ({ id, respuesta }) => {
     setResenas(
       resenas.map((r) =>
         // TEMPORAL: la fecha de la respuesta la pondrá la base de datos
-        r.id === id ? { ...r, respuesta, fechaRespuesta: hoyLocal() } : r
+        r.id === id && !r.respuesta ? { ...r, respuesta, fechaRespuesta: hoyLocal() } : r
       )
     );
     setResenaRespondiendo(null);
-  };
-
-  const confirmarEliminarRespuesta = () => {
-    // SIMULACIÓN (solo frontend): con el backend pasa a ser una llamada DELETE
-    console.log("[Reseñas] Eliminar respuesta:", resenaAEliminar);
-    setResenas(
-      resenas.map((r) =>
-        r.id === resenaAEliminar.id ? { ...r, respuesta: "", fechaRespuesta: "" } : r
-      )
-    );
-    setResenaAEliminar(null);
-    mostrarToast("Respuesta eliminada correctamente");
+    mostrarToast("Respuesta publicada correctamente");
   };
 
   const verTodas = () => {
@@ -384,7 +345,6 @@ const ReviewsScreen = () => {
                 key={r.id}
                 resena={r}
                 onResponder={setResenaRespondiendo}
-                onEliminarRespuesta={setResenaAEliminar}
               />
             ))
           )}
@@ -396,15 +356,6 @@ const ReviewsScreen = () => {
         resena={resenaRespondiendo}
         onClose={() => setResenaRespondiendo(null)}
         onGuardar={guardarRespuesta}
-      />
-
-      <ConfirmDialog
-        open={Boolean(resenaAEliminar)}
-        titulo="Eliminar respuesta"
-        mensaje={`¿Seguro que quieres eliminar tu respuesta a ${resenaAEliminar?.cliente ?? ""}? Esta acción no se puede deshacer.`}
-        textoConfirmar="Eliminar"
-        onConfirmar={confirmarEliminarRespuesta}
-        onCancelar={() => setResenaAEliminar(null)}
       />
     </SellerTemplate>
   );

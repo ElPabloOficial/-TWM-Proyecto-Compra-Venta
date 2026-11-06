@@ -1,11 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import DeleteIcon from "@mui/icons-material/Delete";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import StatCard from "../../components/molecules/StatCard/StatCard";
-import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import "../../styles/Inventory.css";
 import "../../styles/Messages.css";
-import { useToast } from "../../context/ToastContext";
 
 // TEMPORAL: estas conversaciones son de ejemplo. Los clientes escriben desde la tienda;
 // cuando se conecte el backend se cargan desde la API (solo las del vendedor).
@@ -75,11 +72,9 @@ const ultimoMensaje = (c) => c.mensajes[c.mensajes.length - 1];
 const mensajesSinLeer = (c) => c.mensajes.filter((m) => m.autor === "cliente" && !m.leido).length;
 
 const MessagesScreen = () => {
-  const { mostrarToast } = useToast();
   // TEMPORAL: las conversaciones viven solo en memoria (se pierden al recargar la página).
   const [conversaciones, setConversaciones] = useState(conversacionesIniciales);
   const [seleccionadaId, setSeleccionadaId] = useState(null);
-  const [conversacionAEliminar, setConversacionAEliminar] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState("");
   const [texto, setTexto] = useState("");
@@ -93,8 +88,9 @@ const MessagesScreen = () => {
   }, [seleccionadaId, seleccionada?.mensajes.length]);
 
   // ---------- Acciones ----------
-  // TEMPORAL: abrir, enviar y eliminar solo modifican el estado local.
-  // Con el backend pasan a ser llamadas a la API (PUT de leído, POST del mensaje, DELETE).
+  // TEMPORAL: abrir y enviar solo modifican el estado local.
+  // Con el backend pasan a ser llamadas a la API (PUT de leído, POST del mensaje).
+  // El emprendedor no puede borrar las preguntas de los clientes (permisos del rol Emprendedor).
   const abrirConversacion = (id) => {
     setSeleccionadaId(id);
     setTexto("");
@@ -140,15 +136,6 @@ const MessagesScreen = () => {
       e.preventDefault();
       e.currentTarget.form.requestSubmit();
     }
-  };
-
-  const confirmarEliminar = () => {
-    // SIMULACIÓN (solo frontend): con el backend pasa a ser una llamada DELETE
-    console.log("[Mensajes] Eliminar conversación:", conversacionAEliminar);
-    setConversaciones(conversaciones.filter((c) => c.id !== conversacionAEliminar.id));
-    if (seleccionadaId === conversacionAEliminar.id) setSeleccionadaId(null);
-    setConversacionAEliminar(null);
-    mostrarToast("Conversación eliminada correctamente");
   };
 
   // ---------- Búsqueda, filtro y orden de la lista ----------
@@ -259,14 +246,6 @@ const MessagesScreen = () => {
                   <div className="msg-cliente">{seleccionada.cliente}</div>
                   <div className="msg-asunto">{seleccionada.asunto}</div>
                 </div>
-                <button
-                  type="button"
-                  className="inv-icon-btn"
-                  onClick={() => setConversacionAEliminar(seleccionada)}
-                  aria-label="Eliminar conversación"
-                >
-                  <DeleteIcon fontSize="small" />
-                </button>
               </div>
 
               <div className="msg-mensajes" ref={hiloRef}>
@@ -299,14 +278,6 @@ const MessagesScreen = () => {
         </div>
       </div>
 
-      <ConfirmDialog
-        open={Boolean(conversacionAEliminar)}
-        titulo="Eliminar conversación"
-        mensaje={`¿Seguro que quieres eliminar la conversación con ${conversacionAEliminar?.cliente ?? ""}? Esta acción no se puede deshacer.`}
-        textoConfirmar="Eliminar"
-        onConfirmar={confirmarEliminar}
-        onCancelar={() => setConversacionAEliminar(null)}
-      />
     </SellerTemplate>
   );
 };

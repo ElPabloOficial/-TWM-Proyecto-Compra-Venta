@@ -81,11 +81,6 @@ const opciones = [
     icon: <StarIcon fontSize="small" />,
     ruta: "/mis-resenas",
   },
-  {
-    id: "devoluciones",
-    label: "Devoluciones",
-    icon: <UndoIcon fontSize="small" />,
-  },
 ];
 
 // Panel de gestión: solo para vendedores (aparece separado por una línea)
@@ -95,12 +90,6 @@ const opcionesVendedor = [
     label: "Gestión de inventario",
     icon: <InventoryIcon fontSize="small" />,
     ruta: "/inventario",
-  },
-  {
-    id: "servicios",
-    label: "Gestión de servicios",
-    icon: <ServicesIcon fontSize="small" />,
-    ruta: "/servicios",
   },
 ];
 

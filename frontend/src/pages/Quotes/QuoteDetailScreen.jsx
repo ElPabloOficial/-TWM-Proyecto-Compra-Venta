@@ -78,7 +78,7 @@ const QuoteDetailScreen = () => {
         <div className="quote-detail-heading">
           <h1>Cotización #{quote.id}</h1>
           <span className={`quote-status quote-status-${quote.status.toLowerCase()}`}>
-            {quote.status}
+            {quote.status === 'Aceptada' ? 'Aceptada por el cliente' : quote.status}
           </span>
         </div>
 

@@ -128,7 +128,7 @@ const QuotesScreen = () => {
                       </td>
                       <td data-label="Estado">
                         <span className={`quote-status quote-status-${status.toLowerCase()}`}>
-                          {status === 'Solicitada' ? 'Por responder' : status}
+                          {status === 'Solicitada' ? 'Por responder' : status === 'Aceptada' ? 'Aceptada por el cliente' : status}
                         </span>
                       </td>
                       <td data-label="Vigencia">{getValidityLabel(quote, status)}</td>
