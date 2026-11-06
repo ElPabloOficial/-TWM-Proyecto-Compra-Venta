@@ -5,6 +5,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ChatIcon from "@mui/icons-material/Chat";
@@ -39,10 +40,10 @@ const opciones = [
     ruta: "/perfil",
   },
   {
-    id: "pedidos",
-    label: "Mis pedidos", // las ventas que ha hecho el vendedor
-    icon: <ReceiptLongIcon fontSize="small" />,
-    ruta: "/pedidos",
+    id: "seguimiento-despacho",
+    label: "Seguimiento de despacho", // el estado de los envíos de las ventas del vendedor
+    icon: <LocalShippingIcon fontSize="small" />,
+    ruta: "/seguimiento-despacho",
     para: "vendedor",
   },
   {

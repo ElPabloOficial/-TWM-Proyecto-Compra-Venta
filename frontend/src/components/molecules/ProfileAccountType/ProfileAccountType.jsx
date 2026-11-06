@@ -1,24 +1,78 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
-export default function ProfileAccountType({ tipo, rolActivo, esVendedor }) {
+/*
+ * ProfileAccountType
+ *
+ * Molécula que muestra el tipo de cuenta / rol activo del usuario.
+ * Dos botones: Cliente Comprador y Vendedor Comercial.
+ * El activo se pinta de rojo.
+ *
+ * @param {string} tipoActivo  → "cliente" o "vendedor"
+ * @param {Function} onChange  → Callback al cambiar de rol
+ */
+export default function ProfileAccountType({
+  tipoActivo = 'cliente',
+  onChange,
+}) {
+  const esCliente = tipoActivo === 'cliente';
+  const esVendedor = tipoActivo === 'vendedor';
+
+  const baseStyles = {
+    padding: '10px 24px',
+    borderRadius: '999px',
+    fontSize: '0.85rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    border: '2px solid #EC3333',
+    minWidth: 220,
+    textAlign: 'center',
+  };
+
+  const activoStyles = {
+    ...baseStyles,
+    backgroundColor: '#EC3333',
+    color: '#fff',
+  };
+
+  const inactivoStyles = {
+    ...baseStyles,
+    backgroundColor: '#fff',
+    color: '#EC3333',
+  };
+
   return (
     <Box sx={{ mb: 3 }}>
-      <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#000', mb: 0.5 }}>
+      <Typography
+        sx={{
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          color: '#000',
+          mb: 1,
+        }}
+      >
         Tipo de Cuenta / Rol Activo
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ border: '1px solid #333', borderRadius: '999px', px: 2, py: 0.8, fontSize: '0.85rem', width: 220, color: '#666' }}>
-          {tipo}
+
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box
+          component="button"
+          type="button"
+          onClick={() => onChange?.('cliente')}
+          sx={esCliente ? activoStyles : inactivoStyles}
+        >
+          {esCliente ? 'Cliente Comprador (Activo)' : 'Cliente Comprador'}
         </Box>
-        {esVendedor && (
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#EC3333', mr: 1 }} />
-            <Box sx={{ backgroundColor: '#EC3333', color: '#fff', px: 2, py: 0.6, borderRadius: '999px', fontSize: '0.8rem', fontWeight: 700 }}>
-              {rolActivo}
-            </Box>
-          </Box>
-        )}
+
+        <Box
+          component="button"
+          type="button"
+          onClick={() => onChange?.('vendedor')}
+          sx={esVendedor ? activoStyles : inactivoStyles}
+        >
+          {esVendedor ? 'Vendedor Comercial (Activo)' : 'Vendedor Comercial'}
+        </Box>
       </Box>
     </Box>
   );
