@@ -17,6 +17,7 @@ import CustomInput from '../../atoms/TextField/CustomInput';
  * @param {string} type         → Tipo de input (text, email, password, date...)
  * @param {string} placeholder  → Texto de ayuda dentro del campo
  * @param {React.ReactNode} endIcon → Ícono al final del campo (opcional)
+ * @param {boolean} readOnly    → Campo solo de lectura (se ve gris y no se puede editar)
  * @param {Object} sx           → Estilos extra (opcional)
  */
 export default function ProfileField({
@@ -26,6 +27,7 @@ export default function ProfileField({
   type = 'text',
   placeholder = '',
   endIcon,
+  readOnly = false,
   sx,
   ...props
 }) {
@@ -49,6 +51,7 @@ export default function ProfileField({
         onChange={onChange}
         placeholder={placeholder}
         endIcon={endIcon}
+        readOnly={readOnly}
         sx={{
           border: '1px solid #333',
           borderRadius: '999px',
@@ -56,6 +59,7 @@ export default function ProfileField({
           px: 2,
           py: 0.8,
           fontSize: '0.85rem',
+          ...(readOnly && { backgroundColor: '#f4f4f4', color: '#666' }),
         }}
         {...props}
       />
