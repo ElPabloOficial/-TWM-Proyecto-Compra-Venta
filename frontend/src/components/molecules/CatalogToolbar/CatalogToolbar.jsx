@@ -5,11 +5,12 @@ import MenuItem from "@mui/material/MenuItem";
 
 const ROJO = "#EC3333";
 
+// La categoría se elige en el menú "Categorías" del Header (llega como /catalogo?categoria=ID)
+// y se muestra como una etiqueta sobre los resultados, por eso ya no hay selector aquí.
 const campos = [
-  { nombre: "categoria", titulo: "Categoría" },
   { nombre: "precio", titulo: "Precio" },
   { nombre: "ubicacion", titulo: "Ubicación" },
-  { nombre: "estado", titulo: "Estado" },
+  { nombre: "estado", titulo: "Tipo" },
   { nombre: "orden", titulo: "Ordenar por" },
 ]; // selectores de filtros
 

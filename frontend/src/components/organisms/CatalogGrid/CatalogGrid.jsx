@@ -1,11 +1,11 @@
 import Box from "@mui/material/Box";
 import CatalogCard from "./CatalogCard";
 
-const CatalogGrid = ({ items, onVerDetalle }) => {
+const CatalogGrid = ({ items, onVerDetalle, vacio = "No se encontraron resultados con esos filtros." }) => {
   if (items.length === 0) {
     return (
       <Box sx={{ padding: 6, textAlign: "center", color: "#666" }}>
-        No se encontraron resultados con esos filtros.
+        {vacio}
       </Box>
     );
   }
@@ -19,7 +19,7 @@ const CatalogGrid = ({ items, onVerDetalle }) => {
       }}
     >
       {items.map((item) => (
-        <CatalogCard key={item.id} item={item} onVerDetalle={onVerDetalle} />
+        <CatalogCard key={item.clave ?? item.id} item={item} onVerDetalle={onVerDetalle} />
       ))}
     </Box>
   );

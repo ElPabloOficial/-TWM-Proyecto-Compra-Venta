@@ -1,23 +1,22 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../../components/organisms/Header/Header";
 import Footer from "../../components/organisms/Footer/Footer";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import CardGridSkeleton from "../../components/molecules/CardGridSkeleton/CardGridSkeleton";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import useCart from "../../context/useCart";
-import { useNavigate } from "react-router-dom";
+import { listarCatalogo, rutaDetalle } from "../../services/catalogoService";
 import "../../styles/Home.css";
 
-// TEMPORAL: datos de ejemplo hasta que se conecte el backend
-const crearItems = (prefijo) =>
-  [1, 2, 3, 4].map((n) => ({
-    id: `${prefijo}-${n}`,
-    categoria: "TECNOLOGÍA",
-    nombre: "Smartphone Galaxy S23 Ultra",
-    precio: 899990,
-    precioAnterior: 949990,
-    imagen: "",
-  }));
+const CANTIDAD_DESTACADOS = 4;
 
-const productosDestacados = crearItems("p");
-const serviciosDestacados = crearItems("s");
+// Destacados: primero lo que está en oferta (mayor descuento arriba) y después el resto
+const destacados = (items, tipo) =>
+  items
+    .filter((i) => i.tipo === tipo)
+    .sort((a, b) => b.descuentoPct - a.descuentoPct)
+    .slice(0, CANTIDAD_DESTACADOS);
 
 const formatoCLP = (n) =>
   new Intl.NumberFormat("es-CL", {
@@ -30,9 +29,42 @@ const HomeScreen = () => {
   const { addItem, user } = useCart();
   const navigate = useNavigate();
 
+  const [catalogo, setCatalogo] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  // Sube al pedir "Reintentar" para volver a ejecutar la carga
+  const [intento, setIntento] = useState(0);
+
+  useEffect(() => {
+    let activo = true; // evita actualizar el estado si la pantalla se cerró antes de que llegue la respuesta
+
+    const cargar = async () => {
+      try {
+        const lista = await listarCatalogo();
+        if (activo) setCatalogo(lista);
+      } catch (e) {
+        if (activo) setError(e.message);
+      } finally {
+        if (activo) setCargando(false);
+      }
+    };
+
+    cargar();
+    return () => {
+      activo = false;
+    };
+  }, [intento]);
+
+  const reintentar = () => {
+    setCargando(true);
+    setError("");
+    setIntento((n) => n + 1);
+  };
+
   const handleAgregarCarro = (item) => {
+    // Un producto y un servicio pueden tener el mismo id, por eso el carro usa la "clave" (p. ej. "producto-3")
     const added = addItem({
-      id: item.id,
+      id: item.clave,
       name: item.nombre,
       price: item.precio,
     });
@@ -41,43 +73,62 @@ const HomeScreen = () => {
     }
   };
 
-  const handleVerOfertas = () => {
-    console.log("[HomeScreen] handleVerOfertas()");
-  };
+  const verDetalle = (item) => navigate(rutaDetalle(item));
+
+  const handleVerOfertas = () => navigate("/catalogo?estado=oferta");
 
   // Sección con título y grilla de tarjetas (se usa para productos y servicios)
-  const renderSeccion = (etiqueta, titulo, descripcion, items) => (
+  const renderSeccion = (etiqueta, titulo, descripcion, items, textoVacio) => (
     <section className="home-section">
       {etiqueta && <span className="home-etiqueta">{etiqueta}</span>}
       <h2 className="home-titulo">{titulo}</h2>
       {descripcion && <p className="home-descripcion">{descripcion}</p>}
 
-      <div className="home-grid">
-        {items.map((item) => (
-          <article key={item.id} className="home-card">
-            <div className="home-card-img">
-              {item.imagen && <img src={item.imagen} alt={item.nombre} />}
-            </div>
-            <span className="home-card-cat">{item.categoria}</span>
-            <h3 className="home-card-nombre">{item.nombre}</h3>
-            <div className="home-card-precios">
-              <span className="home-card-precio">{formatoCLP(item.precio)}</span>
-              <span className="home-card-antes">{formatoCLP(item.precioAnterior)}</span>
-              <span className="home-card-desc">
-                -{Math.round((1 - item.precio / item.precioAnterior) * 100)}%
-              </span>
-            </div>
-            <CustomButton
-              variant="primary"
-              size="small"
-              fullWidth
-              onClick={() => handleAgregarCarro(item)}
-            >
-              Agregar al Carro
-            </CustomButton>
-          </article>
-        ))}
-      </div>
+      {cargando ? (
+        <CardGridSkeleton cantidad={CANTIDAD_DESTACADOS} />
+      ) : error ? (
+        <ErrorState titulo="No pudimos cargar esta sección" detalle={error} onReintentar={reintentar} />
+      ) : items.length === 0 ? (
+        <p className="home-descripcion">{textoVacio}</p>
+      ) : (
+        <div className="home-grid">
+          {items.map((item) => (
+            <article key={item.clave} className="home-card">
+              <div className="home-card-img" onClick={() => verDetalle(item)} style={{ cursor: "pointer" }}>
+                {item.imagen && <img src={item.imagen} alt={item.nombre} />}
+              </div>
+              <span className="home-card-cat">{item.categoria.toUpperCase()}</span>
+              <h3 className="home-card-nombre">
+                <button type="button" className="home-card-link" onClick={() => verDetalle(item)}>
+                  {item.nombre}
+                </button>
+              </h3>
+              <div className="home-card-precios">
+                {item.precio !== null ? (
+                  <span className="home-card-precio">{formatoCLP(item.precio)}</span>
+                ) : (
+                  <span className="home-card-precio">Consultar precio</span>
+                )}
+                {item.precioAnterior !== null && (
+                  <>
+                    <span className="home-card-antes">{formatoCLP(item.precioAnterior)}</span>
+                    <span className="home-card-desc">-{item.descuentoPct}%</span>
+                  </>
+                )}
+              </div>
+              {/* Un servicio sin precio no se puede agregar al carro: se ve su ficha */}
+              <CustomButton
+                variant="primary"
+                size="small"
+                fullWidth
+                onClick={() => (item.precio !== null ? handleAgregarCarro(item) : verDetalle(item))}
+              >
+                {item.precio !== null ? "Agregar al Carro" : "Ver detalle"}
+              </CustomButton>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 
@@ -109,10 +160,11 @@ const HomeScreen = () => {
           "CATÁLOGO",
           "Productos Destacados",
           "Encuentra lo que necesitas con precios increíbles y la garantía total de nuestro ratón ayudante.",
-          productosDestacados
+          destacados(catalogo, "producto"),
+          "Todavía no hay productos publicados."
         )}
 
-        {renderSeccion(null, "Servicios Destacados", null, serviciosDestacados)}
+        {renderSeccion(null, "Servicios Destacados", null, destacados(catalogo, "servicio"), "Todavía no hay servicios publicados.")}
       </main>
 
       <Footer />

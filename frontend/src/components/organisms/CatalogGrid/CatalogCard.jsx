@@ -50,7 +50,16 @@ const CatalogCard = ({ item, onVerDetalle }) => {
         </Box>
 
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", paddingTop: 1 }}>
-          <Box sx={{ fontSize: 18, fontWeight: 700 }}>{formatearPrecio(item.precio)}</Box>
+          <Box>
+            {item.precioAnterior != null && (
+              <Box sx={{ fontSize: 11, color: "#888", textDecoration: "line-through" }}>
+                {formatearPrecio(item.precioAnterior)}
+              </Box>
+            )}
+            <Box sx={{ fontSize: item.precio != null ? 18 : 13, fontWeight: 700 }}>
+              {item.precio != null ? formatearPrecio(item.precio) : "Consultar precio"}
+            </Box>
+          </Box>
           <Button
             variant="contained"
             size="small"

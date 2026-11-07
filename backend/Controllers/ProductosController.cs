@@ -71,6 +71,25 @@ public class ProductosController : ControllerBase
         try { caracteristicasJson = JsonDocument.Parse(producto.caracteristicas ?? "{}").RootElement; }
         catch { caracteristicasJson = JsonDocument.Parse("{}").RootElement; }
 
+        // La oferta guarda el DESCUENTO (0.15 = 15 %), no un precio. Solo cuenta si está activa y vigente hoy.
+        // "precio_oferta" es el precio final ya con el descuento aplicado (null si no hay oferta vigente).
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var oferta = producto.id_ofertaNavigation;
+        var ofertaVigente = oferta != null
+            && oferta.estado == true
+            && (producto.fechainicio == null || producto.fechainicio <= hoy)
+            && (producto.fechafin == null || hoy <= producto.fechafin);
+
+        int? precioOferta = null;
+        if (ofertaVigente
+            && caracteristicasJson.ValueKind == JsonValueKind.Object
+            && caracteristicasJson.TryGetProperty("precio", out var precioJson)
+            && precioJson.ValueKind == JsonValueKind.Number
+            && precioJson.TryGetDecimal(out var precioBase))
+        {
+            precioOferta = (int)Math.Round(precioBase * (1 - oferta!.preciooferta), MidpointRounding.AwayFromZero);
+        }
+
         var resultado = new
         {
             id = producto.id,
@@ -78,7 +97,8 @@ public class ProductosController : ControllerBase
             restriccionedad = producto.restriccionedad,
             caracteristicas = caracteristicasJson,
             imagen = producto.rutaimagen,
-            precio_oferta = producto.id_ofertaNavigation != null ? producto.id_ofertaNavigation.preciooferta : (decimal?)null,
+            precio_oferta = precioOferta,
+            descuento = ofertaVigente ? oferta!.preciooferta : (decimal?)null,
             categorias = producto.id_categoria.Select(c => new { c.id, c.nombre }),
             vendedor = vendedor != null ? new { rut = vendedor.id_usuario, nombre = vendedor.id_usuarioNavigation.nombre } : null
         };

@@ -1,23 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Pagination from "@mui/material/Pagination";
-import AdminTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
+import Chip from "@mui/material/Chip";
+import Header from "../../components/organisms/Header/Header";
+import Footer from "../../components/organisms/Footer/Footer";
 import CatalogToolbar from "../../components/molecules/CatalogToolbar/CatalogToolbar";
 import CatalogGrid from "../../components/organisms/CatalogGrid/CatalogGrid";
+import CardGridSkeleton from "../../components/molecules/CardGridSkeleton/CardGridSkeleton";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import { listarCatalogo, rutaDetalle } from "../../services/catalogoService";
+import { listarCategorias } from "../../services/productService";
 
 const POR_PAGINA = 12;
-
-//Temporal para probar producto y servicio.
-const productos = [
-  { id: 1, nombre: "Almacenamiento industrial", descripcion: "Estanterías modulares para depósitos y bodegas.", precio: 45000, ubicacion: "Buenos Aires", etiqueta: "Oferta", categoria: "Equipamiento" },
-  { id: 2, nombre: "Sillas ejecutivas", descripcion: "Conjunto de 12 unidades con respaldo alto y ruedas.", precio: 18500, ubicacion: "Córdoba", etiqueta: "Nuevo", categoria: "Mobiliario" },
-  { id: 3, nombre: "Kit de limpieza", descripcion: "Equipos y productos para mantenimiento diario de oficinas.", precio: 12900, ubicacion: "Mendoza", etiqueta: "Destacado", categoria: "Limpieza" },
-  { id: 4, nombre: "Cafetera automática", descripcion: "Equipo para break room con capacidad para 50 usuarios.", precio: 89000, ubicacion: "Rosario", etiqueta: "Oferta", categoria: "Equipamiento" },
-  { id: 5, nombre: "Puestos de trabajo", descripcion: "Escritorios modulares con divisores para oficinas abiertas.", precio: 56000, ubicacion: "Tucumán", etiqueta: "Nuevo", categoria: "Mobiliario" },
-  { id: 6, nombre: "Climatización de oficinas", descripcion: "Instalación de equipos split para espacios corporativos.", precio: 72000, ubicacion: "Santa Fe", etiqueta: "Destacado", categoria: "Servicios" },
-  { id: 7, nombre: "Cámaras de seguridad", descripcion: "Kit de 4 cámaras con grabación y visión nocturna.", precio: 34900, ubicacion: "Neuquén", etiqueta: "Oferta", categoria: "Seguridad" },
-  { id: 8, nombre: "Impresora multifuncional", descripcion: "Impresión, copia y escaneo para equipos de trabajo.", precio: 27500, ubicacion: "Salta", etiqueta: "Nuevo", categoria: "Tecnología" },
-];
 
 const rangosPrecio = [
   { id: "bajo", label: "Menos de $20.000", min: 0, max: 20000 },
@@ -29,61 +24,157 @@ const ordenes = [
   { value: "precioDesc", label: "Precio: mayor a menor" },
   { value: "nombre", label: "Nombre (A-Z)" },
 ];
+const tipos = [
+  { value: "producto", label: "Productos" },
+  { value: "servicio", label: "Servicios" },
+  { value: "oferta", label: "En oferta" },
+];
 
+// Un servicio sin precio va al final al ordenar por precio
 const comparadores = {
-  precioAsc: (a, b) => a.precio - b.precio,
-  precioDesc: (a, b) => b.precio - a.precio,
+  precioAsc: (a, b) => (a.precio ?? Infinity) - (b.precio ?? Infinity),
+  precioDesc: (a, b) => (b.precio ?? -Infinity) - (a.precio ?? -Infinity),
   nombre: (a, b) => a.nombre.localeCompare(b.nombre),
-};
-
-const unicos = (campo) =>
-  [...new Set(productos.map((p) => p[campo]))].sort().map((v) => ({ value: v, label: v }));
-
-const opciones = {
-  categoria: unicos("categoria"),
-  precio: rangosPrecio.map((r) => ({ value: r.id, label: r.label })),
-  ubicacion: unicos("ubicacion"),
-  estado: unicos("etiqueta"),
-  orden: ordenes,
 };
 
 const FILTROS_VACIOS = { categoria: "", precio: "", ubicacion: "", estado: "", orden: "" };
 
+// Camino de una categoría, por ejemplo "Tecnología › Computación". Se omite la raíz
+// (Productos / Servicios) para que el texto sea corto.
+const rutaCategoria = (id, categorias) => {
+  const camino = [];
+  let actual = categorias.find((c) => c.id === Number(id));
+  while (actual) {
+    camino.unshift(actual.nombre);
+    actual = categorias.find((c) => c.id === actual.padreId);
+  }
+  return (camino.length > 1 ? camino.slice(1) : camino).join(" › ");
+};
+
+// Elegir una categoría incluye también sus subcategorías
+const idsConSubcategorias = (id, categorias) => {
+  const resultado = new Set([Number(id)]);
+  let hayNuevas = true;
+  while (hayNuevas) {
+    hayNuevas = false;
+    categorias.forEach((c) => {
+      if (c.padreId !== null && resultado.has(c.padreId) && !resultado.has(c.id)) {
+        resultado.add(c.id);
+        hayNuevas = true;
+      }
+    });
+  }
+  return resultado;
+};
+
 const CatalogScreen = () => {
-  const [filtros, setFiltros] = useState(FILTROS_VACIOS);//Filtros
-  const [aplicados, setAplicados] = useState(FILTROS_VACIOS);
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  // El menú de categorías del Header llega aquí como /catalogo?categoria=ID; "Ver ofertas" del Home como ?estado=oferta
+  const categoriaUrl = params.get("categoria") ?? "";
+  const estadoInicial = params.get("estado") ?? "";
+
+  const [items, setItems] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  // Sube al pedir "Reintentar" para volver a ejecutar la carga
+  const [intento, setIntento] = useState(0);
+
+  const [filtros, setFiltros] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoInicial }); //Filtros
+  const [aplicados, setAplicados] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoInicial });
   const [pagina, setPagina] = useState(1);
+  const [categoriaVista, setCategoriaVista] = useState(categoriaUrl);
+
+  // Si la categoría de la URL cambia estando en el catálogo (se elige otra en el menú), el filtro la sigue
+  if (categoriaVista !== categoriaUrl) {
+    setCategoriaVista(categoriaUrl);
+    setFiltros((f) => ({ ...f, categoria: categoriaUrl }));
+    setAplicados((a) => ({ ...a, categoria: categoriaUrl }));
+    setPagina(1);
+  }
+
+  useEffect(() => {
+    let activo = true; // evita actualizar el estado si la pantalla se cerró antes de que llegue la respuesta
+
+    const cargar = async () => {
+      try {
+        const [lista, listaCategorias] = await Promise.all([
+          listarCatalogo(),
+          // Sin categorías el catálogo igual se ve; solo queda vacío el selector de categoría
+          listarCategorias().catch(() => []),
+        ]);
+        if (!activo) return;
+        setItems(lista);
+        setCategorias(listaCategorias);
+      } catch (e) {
+        if (activo) setError(e.message);
+      } finally {
+        if (activo) setCargando(false);
+      }
+    };
+
+    cargar();
+    return () => {
+      activo = false;
+    };
+  }, [intento]);
+
+  const reintentar = () => {
+    setCargando(true);
+    setError("");
+    setIntento((n) => n + 1);
+  };
 
   const cambiarFiltro = (campo, valor) => setFiltros({ ...filtros, [campo]: valor });
 
   const aplicarFiltros = () => {
     setAplicados(filtros);
     setPagina(1);
+    // La categoría queda en la URL, así volver a elegirla en el menú del Header funciona
+    setParams(filtros.categoria ? { categoria: filtros.categoria } : {});
   };
 
   const limpiarFiltros = () => {
     setFiltros(FILTROS_VACIOS);
     setAplicados(FILTROS_VACIOS);
     setPagina(1);
+    setParams({});
   };
 
-  const verDetalle = (producto) => {
-    // Esto debe dar los detalles del producto despues
+  const verDetalle = (item) => navigate(rutaDetalle(item));
+
+  // Quita la categoría elegida en el menú del Header (la URL queda sin ?categoria)
+  const quitarCategoria = () => {
+    setFiltros((f) => ({ ...f, categoria: "" }));
+    setAplicados((a) => ({ ...a, categoria: "" }));
+    setPagina(1);
+    setParams({});
   };
 
+  // Opciones de los selectores (salen de lo que hay en el catálogo)
+  const ubicaciones = [...new Set(items.map((i) => i.ubicacion).filter(Boolean))].sort();
+  const opciones = {
+    precio: rangosPrecio.map((r) => ({ value: r.id, label: r.label })),
+    ubicacion: ubicaciones.map((u) => ({ value: u, label: u })),
+    estado: tipos,
+    orden: ordenes,
+  };
+
+  // ---------- Filtros ----------
   const rango = rangosPrecio.find((r) => r.id === aplicados.precio); //Filtro de precios
+  const categoriasPermitidas = aplicados.categoria ? idsConSubcategorias(aplicados.categoria, categorias) : null;
 
-  const filtrados = productos.filter(
-    (p) =>
-      (aplicados.categoria === "" || p.categoria === aplicados.categoria) &&
-      (aplicados.ubicacion === "" || p.ubicacion === aplicados.ubicacion) &&
-      (aplicados.estado === "" || p.etiqueta === aplicados.estado) &&
-      (!rango || (p.precio >= rango.min && p.precio < rango.max))
+  const filtrados = items.filter(
+    (i) =>
+      (!categoriasPermitidas || i.categorias.some((c) => categoriasPermitidas.has(c.id))) &&
+      (aplicados.ubicacion === "" || i.ubicacion === aplicados.ubicacion) &&
+      (aplicados.estado === "" ||
+        (aplicados.estado === "oferta" ? i.descuentoPct > 0 : i.tipo === aplicados.estado)) &&
+      (!rango || (i.precio !== null && i.precio >= rango.min && i.precio < rango.max))
   );
 
-  const ordenados = aplicados.orden
-    ? [...filtrados].sort(comparadores[aplicados.orden])
-    : filtrados;
+  const ordenados = aplicados.orden ? [...filtrados].sort(comparadores[aplicados.orden]) : filtrados;
 
   // Paginación
   const totalPaginas = Math.max(1, Math.ceil(ordenados.length / POR_PAGINA));
@@ -94,7 +185,13 @@ const CatalogScreen = () => {
   const hasta = inicio + visibles.length;
 
   return (
-    <AdminTemplate>
+    <>
+      <Header />
+
+      <Box
+        component="main"
+        sx={{ maxWidth: 1200, width: "calc(100% - 48px)", margin: "0 auto", padding: "32px 0 64px" }}
+      >
       <Box component="h1" sx={{ margin: 0, fontSize: 28 }}>
         Catálogo de productos y servicios
       </Box>
@@ -102,33 +199,66 @@ const CatalogScreen = () => {
         Explora ofertas, compará precios y encontrá lo mejor para tu negocio.
       </Box>
 
-      <CatalogToolbar
-        filtros={filtros}
-        opciones={opciones}
-        onCambio={cambiarFiltro}
-        onAplicar={aplicarFiltros}
-        onLimpiar={limpiarFiltros}
-      />
+      {cargando ? (
+        <CardGridSkeleton cantidad={8} />
+      ) : error ? (
+        <ErrorState titulo="No pudimos cargar el catálogo" detalle={error} onReintentar={reintentar} />
+      ) : (
+        <>
+          <CatalogToolbar
+            filtros={filtros}
+            opciones={opciones}
+            onCambio={cambiarFiltro}
+            onAplicar={aplicarFiltros}
+            onLimpiar={limpiarFiltros}
+          />
 
-      <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", marginY: 2 }}>
-        <Box>Mostrando {desde}-{hasta} de {ordenados.length} resultados</Box>
-        <Box>Vista: Cuadrícula</Box>
+          {aplicados.categoria && (
+            <Box sx={{ marginTop: 2, display: "flex", alignItems: "center", gap: 1, fontSize: 13, color: "#666" }}>
+              Categoría:
+              <Chip
+                label={rutaCategoria(aplicados.categoria, categorias) || "Categoría seleccionada"}
+                onDelete={quitarCategoria}
+                variant="outlined"
+                size="small"
+                sx={{
+                  borderColor: "#EC3333",
+                  color: "#000",
+                  fontWeight: 600,
+                  "& .MuiChip-deleteIcon": { color: "#EC3333" },
+                }}
+              />
+            </Box>
+          )}
+
+          <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", marginY: 2 }}>
+            <Box>Mostrando {desde}-{hasta} de {ordenados.length} resultados</Box>
+            <Box>Vista: Cuadrícula</Box>
+          </Box>
+
+          <CatalogGrid
+            items={visibles}
+            onVerDetalle={verDetalle}
+            vacio={items.length === 0 ? "Todavía no hay productos ni servicios publicados." : undefined}
+          />
+
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3, fontSize: 12, color: "#666" }}>
+            <Box>Página {paginaActual} de {totalPaginas}</Box>
+            <Pagination
+              count={totalPaginas}
+              page={paginaActual}
+              onChange={(_, valor) => setPagina(valor)}
+              size="small"
+              shape="rounded"
+              sx={{ "& .Mui-selected": { backgroundColor: "#EC3333 !important", color: "#fff" } }}
+            />
+          </Box>
+        </>
+      )}
       </Box>
 
-      <CatalogGrid items={visibles} onVerDetalle={verDetalle} />
-
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3, fontSize: 12, color: "#666" }}>
-        <Box>Página {paginaActual} de {totalPaginas}</Box>
-        <Pagination
-          count={totalPaginas}
-          page={paginaActual}
-          onChange={(_, valor) => setPagina(valor)}
-          size="small"
-          shape="rounded"
-          sx={{ "& .Mui-selected": { backgroundColor: "#EC3333 !important", color: "#fff" } }}
-        />
-      </Box>
-    </AdminTemplate>
+      <Footer />
+    </>
   );
 };
 
