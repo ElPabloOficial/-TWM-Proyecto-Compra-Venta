@@ -75,7 +75,7 @@ const App = () => {
                 <Route path="/resenas" element={<ReviewsScreen />} />
                 <Route path="/mis-resenas" element={<MyReviewsScreen />} />
                 <Route path="/pedidos" element={<OrdersScreen />} />
-                <Route path="/recibo" element={<ReceiptScreen />} />
+                <Route path="/boleta/:id" element={<ReceiptScreen />} />
                 <Route path="/reportes" element={<ReportsScreen />} />
                 <Route path="/transacciones" element={<AdminRoute><TransHistoryScreen /></AdminRoute>} />
                 <Route path="/envios" element={<ShippingCostsScreen />} />
