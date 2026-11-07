@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Box, Typography } from "@mui/material";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import { urlImagen } from "../../../services/carritoService";
 
 export default function RelatedProducts({
   products = [],
@@ -24,13 +25,12 @@ export default function RelatedProducts({
           items.map((item) => (
             <Box
               key={`${tipo}-${item.id}`}
-              onClick={() =>
-                navigate(
-                  isService
-                    ? `/servicepage/${item.id}`
-                    : `/productpage/${item.id}`
-                )
-              }
+              onClick={() => {
+                // Las fichas están en /servicio/:id y /producto/:id
+                navigate(isService ? `/servicio/${item.id}` : `/producto/${item.id}`);
+                // La lista de relacionados está al final de la página: se vuelve arriba para ver la ficha nueva
+                window.scrollTo({ top: 0 });
+              }}
               sx={{
                 flex: "0 0 160px",
                 cursor: "pointer",
@@ -74,7 +74,7 @@ export default function RelatedProducts({
                 {item.imagen && (
                   <Box
                     component="img"
-                    src={item.imagen}
+                    src={urlImagen(item.imagen)}
                     alt={item.nombre}
                     onError={(e) => {
                       e.currentTarget.style.display = "none";

@@ -1,115 +1,122 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Navigate } from "react-router-dom";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import Header from "../../components/organisms/Header/Header";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import { authService } from "../../services/authService";
+import {
+  obtenerDirecciones,
+  crearDireccion,
+  actualizarDireccion,
+  obtenerComunas,
+} from "../../services/direccionService";
 import "../../styles/Addresses.css";
 
-// TEMPORAL: las regiones y comunas vendrán de la base de datos cuando se conecte el backend.
-const regiones = {
-  "Los Lagos": ["Osorno", "Puerto Montt", "Puerto Varas", "Castro"],
-  "Los Ríos": ["Valdivia", "La Unión"],
-  "La Araucanía": ["Temuco", "Villarrica"],
-  "Biobío": ["Concepción", "Los Ángeles"],
-  Metropolitana: ["Santiago", "Providencia", "Las Condes", "Ñuñoa"],
-};
-
-const alias = ["Casa", "Trabajo", "Otro"];
-
-// TEMPORAL: estas direcciones son de ejemplo y viven solo en memoria (se pierden al recargar).
-// Con el backend se cargan desde la API (las direcciones del usuario que inició sesión).
-const direccionesIniciales = [
-  {
-    id: 1,
-    alias: "Casa",
-    destinatario: "Juan Pérez",
-    telefono: "+56 9 1234 5678",
-    calle: "Mackenna",
-    numero: "850",
-    complemento: "Depto 302",
-    region: "Los Lagos",
-    comuna: "Osorno",
-    referencias: "Portón negro, tocar el timbre.",
-    principal: true,
-  },
-  {
-    id: 2,
-    alias: "Trabajo",
-    destinatario: "Juan Pérez",
-    telefono: "+56 9 8765 4321",
-    calle: "Av. Diego Portales",
-    numero: "1200",
-    complemento: "Oficina 5",
-    region: "Los Lagos",
-    comuna: "Puerto Montt",
-    referencias: "",
-    principal: false,
-  },
-];
+// Direcciones de despacho del usuario, guardadas en la base de datos.
+// - La primera dirección que se guarda es la principal (la misma que se edita en el perfil).
+// - Se pueden crear y editar, pero no eliminar (permisos del rol Cliente).
+// - La región y la provincia salen de la comuna: se elige la región y después una de sus comunas.
 
 const formVacio = {
-  alias: "Casa",
-  destinatario: "",
-  telefono: "",
   calle: "",
   numero: "",
-  complemento: "",
+  pasaje: "",
+  sector: "",
   region: "",
-  comuna: "",
-  referencias: "",
-  principal: false,
+  idComuna: "",
+  descripcion: "",
 };
 
 const AddressesScreen = () => {
-  const [direcciones, setDirecciones] = useState(direccionesIniciales);
+  const haySesion = Boolean(authService.getCurrentUser());
+
+  const [direcciones, setDirecciones] = useState([]);
+  const [comunas, setComunas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState("");
+  // Sube para volver a pedir las direcciones (al pedir "Reintentar" y después de guardar)
+  const [version, setVersion] = useState(0);
+
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(formVacio);
   const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [aviso, setAviso] = useState("");
   const formRef = useRef(null);
 
   const editando = editandoId !== null;
-  // Si la dirección que se edita ya es la principal, no se puede quitar esa marca desde aquí
-  const esLaPrincipal = editando && direcciones.find((d) => d.id === editandoId)?.principal;
+
+  useEffect(() => {
+    if (!haySesion) return;
+    let activo = true; // evita actualizar el estado si la pantalla se cerró antes de que llegue la respuesta
+
+    const cargar = async () => {
+      try {
+        const [lista, listaComunas] = await Promise.all([obtenerDirecciones(), obtenerComunas()]);
+        if (!activo) return;
+        setDirecciones(lista);
+        setComunas(listaComunas);
+      } catch (e) {
+        if (activo) setErrorCarga(e.message);
+      } finally {
+        if (activo) setCargando(false);
+      }
+    };
+
+    cargar();
+    return () => {
+      activo = false;
+    };
+  }, [haySesion, version]);
+
+  const reintentar = () => {
+    setCargando(true);
+    setErrorCarga("");
+    setVersion((n) => n + 1);
+  };
+
+  const regiones = [...new Set(comunas.map((c) => c.region))].sort((a, b) => a.localeCompare(b));
+  const comunasDeLaRegion = comunas.filter((c) => c.region === form.region);
 
   const handleChange = (campo) => (e) => {
     setForm({ ...form, [campo]: e.target.value });
   };
 
+  // El número solo admite dígitos (la base de datos lo guarda como entero)
+  const cambiarNumero = (e) => {
+    setForm({ ...form, numero: e.target.value.replace(/\D/g, "") });
+  };
+
   // Al cambiar de región, la comuna se vuelve a elegir
   const cambiarRegion = (e) => {
-    setForm({ ...form, region: e.target.value, comuna: "" });
+    setForm({ ...form, region: e.target.value, idComuna: "" });
   };
 
   const abrirForm = () => {
     setMostrarForm(true);
     setError("");
+    setAviso("");
     // Espera a que el formulario aparezca para bajar hasta él
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
-  // ---------- Acciones ----------
-  // TEMPORAL: crear, editar y marcar como principal solo modifican el estado local.
-  // Con el backend pasan a ser llamadas a la API (POST, PUT).
-  // El cliente no puede eliminar direcciones (permisos del rol Cliente: Perfil y Direcciones).
   const abrirNueva = () => {
     setEditandoId(null);
-    // La primera dirección que se guarda queda como principal
-    setForm({ ...formVacio, principal: direcciones.length === 0 });
+    setForm(formVacio);
     abrirForm();
   };
 
   const abrirEditar = (d) => {
     setEditandoId(d.id);
     setForm({
-      alias: d.alias,
-      destinatario: d.destinatario,
-      telefono: d.telefono,
       calle: d.calle,
       numero: d.numero,
-      complemento: d.complemento,
+      pasaje: d.pasaje,
+      sector: d.sector,
       region: d.region,
-      comuna: d.comuna,
-      referencias: d.referencias,
-      principal: d.principal,
+      idComuna: String(d.idComuna),
+      descripcion: d.descripcion,
     });
     abrirForm();
   };
@@ -121,71 +128,36 @@ const AddressesScreen = () => {
     setError("");
   };
 
-  const guardar = (e) => {
+  const guardar = async (e) => {
     e.preventDefault();
 
-    if (
-      !form.destinatario.trim() ||
-      !form.telefono.trim() ||
-      !form.calle.trim() ||
-      !form.numero.trim() ||
-      !form.region ||
-      !form.comuna
-    ) {
+    if (!form.calle.trim() || !form.numero || !form.region || !form.idComuna) {
       setError("Completa todos los campos obligatorios (*).");
       return;
     }
-
-    // Acepta "+56 9 1234 5678", "56912345678" o "912345678"
-    const telefonoLimpio = form.telefono.replace(/[\s-]/g, "");
-    if (!/^(\+?56)?9\d{8}$/.test(telefonoLimpio)) {
-      setError("Ingresa un teléfono móvil válido, por ejemplo +56 9 1234 5678.");
+    if (Number(form.numero) <= 0) {
+      setError("El número de la dirección debe ser mayor a 0.");
       return;
     }
 
-    const datos = {
-      alias: form.alias,
-      destinatario: form.destinatario.trim(),
-      telefono: form.telefono.trim(),
-      calle: form.calle.trim(),
-      numero: form.numero.trim(),
-      complemento: form.complemento.trim(),
-      region: form.region,
-      comuna: form.comuna,
-      referencias: form.referencias.trim(),
-      principal: form.principal || esLaPrincipal || direcciones.length === 0,
-    };
+    try {
+      setGuardando(true);
+      setError("");
 
-    // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados.
-    // Con el backend esto se reemplaza por la llamada a la API (POST al crear, PUT al editar).
-    console.log(
-      editando ? "[Direcciones] Actualizar dirección:" : "[Direcciones] Crear dirección:",
-      editando ? { id: editandoId, ...datos } : datos
-    );
+      if (editando) await actualizarDireccion(editandoId, form);
+      else await crearDireccion(form);
 
-    // TEMPORAL: el id de una dirección nueva lo genera la base de datos, no Date.now()
-    const guardada = { ...datos, id: editando ? editandoId : Date.now() };
-    const lista = editando
-      ? direcciones.map((d) => (d.id === editandoId ? guardada : d))
-      : [...direcciones, guardada];
-
-    // Solo puede haber una dirección principal
-    setDirecciones(
-      guardada.principal
-        ? lista.map((d) => (d.id === guardada.id ? d : { ...d, principal: false }))
-        : lista
-    );
-    cerrarForm();
+      cerrarForm();
+      setAviso(editando ? "Dirección actualizada." : "Dirección guardada.");
+      setVersion((n) => n + 1); // vuelve a pedir la lista para mostrar lo guardado
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGuardando(false);
+    }
   };
 
-  const marcarPrincipal = (direccion) => {
-    // SIMULACIÓN (solo frontend): con el backend pasa a ser una llamada PUT
-    console.log("[Direcciones] Marcar como principal:", direccion);
-    setDirecciones(direcciones.map((d) => ({ ...d, principal: d.id === direccion.id })));
-  };
-
-  // La principal siempre aparece primero
-  const ordenadas = [...direcciones].sort((a, b) => Number(b.principal) - Number(a.principal));
+  if (!haySesion) return <Navigate to="/login" replace />;
 
   return (
     <>
@@ -197,56 +169,22 @@ const AddressesScreen = () => {
             <div>
               <h1 className="dir-title">Mis direcciones</h1>
               <div className="dir-subtitle">
-                Guarda tus direcciones de despacho para comprar más rápido.
+                Guarda tus direcciones de despacho para comprar más rápido. La primera que guardes es tu dirección
+                principal.
               </div>
             </div>
 
-            <button type="button" className="dir-btn" onClick={abrirNueva}>
+            <button type="button" className="dir-btn" onClick={abrirNueva} disabled={cargando || Boolean(errorCarga)}>
               + Nueva dirección
             </button>
           </div>
 
+          {aviso && <div className="dir-ok">{aviso}</div>}
+
           {/* ---------- Formulario: crear o editar ---------- */}
           {mostrarForm && (
             <form className="dir-form" ref={formRef} onSubmit={guardar}>
-              <div className="dir-form-titulo">
-                {editando ? "Editar dirección" : "Nueva dirección"}
-              </div>
-
-              <div className="dir-fila">
-                <label className="dir-campo">
-                  <span className="dir-label">Nombre de la dirección</span>
-                  <select className="dir-input" value={form.alias} onChange={handleChange("alias")}>
-                    {alias.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="dir-campo">
-                  <span className="dir-label">Quién recibe *</span>
-                  <input
-                    type="text"
-                    className="dir-input"
-                    placeholder="Nombre completo"
-                    value={form.destinatario}
-                    onChange={handleChange("destinatario")}
-                  />
-                </label>
-
-                <label className="dir-campo">
-                  <span className="dir-label">Teléfono de contacto *</span>
-                  <input
-                    type="tel"
-                    className="dir-input"
-                    placeholder="+56 9 1234 5678"
-                    value={form.telefono}
-                    onChange={handleChange("telefono")}
-                  />
-                </label>
-              </div>
+              <div className="dir-form-titulo">{editando ? "Editar dirección" : "Nueva dirección"}</div>
 
               <div className="dir-fila">
                 <label className="dir-campo dir-ancho">
@@ -255,6 +193,7 @@ const AddressesScreen = () => {
                     type="text"
                     className="dir-input"
                     placeholder="Ej. Av. Real"
+                    maxLength={100}
                     value={form.calle}
                     onChange={handleChange("calle")}
                   />
@@ -264,21 +203,37 @@ const AddressesScreen = () => {
                   <span className="dir-label">Número *</span>
                   <input
                     type="text"
+                    inputMode="numeric"
                     className="dir-input"
                     placeholder="Ej. 1234"
                     value={form.numero}
-                    onChange={handleChange("numero")}
+                    onChange={cambiarNumero}
+                  />
+                </label>
+              </div>
+
+              <div className="dir-fila">
+                <label className="dir-campo">
+                  <span className="dir-label">Pasaje / Depto</span>
+                  <input
+                    type="text"
+                    className="dir-input"
+                    placeholder="Ej. Pasaje Los Aromos, Depto 302"
+                    maxLength={100}
+                    value={form.pasaje}
+                    onChange={handleChange("pasaje")}
                   />
                 </label>
 
                 <label className="dir-campo">
-                  <span className="dir-label">Depto / Casa / Oficina</span>
+                  <span className="dir-label">Sector / Villa</span>
                   <input
                     type="text"
                     className="dir-input"
-                    placeholder="Ej. Depto 302"
-                    value={form.complemento}
-                    onChange={handleChange("complemento")}
+                    placeholder="Ej. Villa Los Lagos"
+                    maxLength={100}
+                    value={form.sector}
+                    onChange={handleChange("sector")}
                   />
                 </label>
               </div>
@@ -288,7 +243,7 @@ const AddressesScreen = () => {
                   <span className="dir-label">Región *</span>
                   <select className="dir-input" value={form.region} onChange={cambiarRegion}>
                     <option value="">Seleccionar región</option>
-                    {Object.keys(regiones).map((r) => (
+                    {regiones.map((r) => (
                       <option key={r} value={r}>
                         {r}
                       </option>
@@ -300,16 +255,14 @@ const AddressesScreen = () => {
                   <span className="dir-label">Comuna *</span>
                   <select
                     className="dir-input"
-                    value={form.comuna}
-                    onChange={handleChange("comuna")}
+                    value={form.idComuna}
+                    onChange={handleChange("idComuna")}
                     disabled={!form.region}
                   >
-                    <option value="">
-                      {form.region ? "Seleccionar comuna" : "Primero elige la región"}
-                    </option>
-                    {(regiones[form.region] ?? []).map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                    <option value="">{form.region ? "Seleccionar comuna" : "Primero elige la región"}</option>
+                    {comunasDeLaRegion.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
                       </option>
                     ))}
                   </select>
@@ -321,82 +274,62 @@ const AddressesScreen = () => {
                 <textarea
                   className="dir-input"
                   rows={2}
+                  maxLength={100}
                   placeholder="Ej. Portón negro, dejar con conserjería."
-                  value={form.referencias}
-                  onChange={handleChange("referencias")}
+                  value={form.descripcion}
+                  onChange={handleChange("descripcion")}
                 />
-              </label>
-
-              <label className="dir-check">
-                <input
-                  type="checkbox"
-                  checked={form.principal || Boolean(esLaPrincipal)}
-                  disabled={Boolean(esLaPrincipal)}
-                  onChange={(e) => setForm({ ...form, principal: e.target.checked })}
-                />
-                <span>
-                  Usar como dirección principal
-                  {esLaPrincipal && " (para cambiarla, marca otra dirección como principal)"}
-                </span>
               </label>
 
               {error && <div className="dir-error">{error}</div>}
 
               <div className="dir-acciones-form">
-                <button type="button" className="dir-btn-secundario" onClick={cerrarForm}>
+                <button type="button" className="dir-btn-secundario" onClick={cerrarForm} disabled={guardando}>
                   Cancelar
                 </button>
-                <button type="submit" className="dir-btn">
-                  {editando ? "Guardar cambios" : "Guardar dirección"}
+                <button type="submit" className="dir-btn" disabled={guardando}>
+                  {guardando ? "Guardando..." : editando ? "Guardar cambios" : "Guardar dirección"}
                 </button>
               </div>
             </form>
           )}
 
           {/* ---------- Lista de direcciones ---------- */}
-          <div className="dir-lista">
-            {ordenadas.length === 0 && (
-              <div className="dir-vacio">Aún no tienes direcciones guardadas.</div>
-            )}
+          {cargando ? (
+            <div className="dir-vacio">Cargando tus direcciones...</div>
+          ) : errorCarga ? (
+            <ErrorState titulo="No pudimos cargar tus direcciones" detalle={errorCarga} onReintentar={reintentar} />
+          ) : (
+            <div className="dir-lista">
+              {direcciones.length === 0 && <div className="dir-vacio">Aún no tienes direcciones guardadas.</div>}
 
-            {ordenadas.map((d) => (
-              <article key={d.id} className={`dir-card ${d.principal ? "principal" : ""}`}>
-                <div className="dir-card-head">
-                  <div className="dir-alias">
-                    <LocationOnIcon fontSize="small" />
-                    {d.alias}
+              {direcciones.map((d, i) => (
+                <article key={d.id} className={`dir-card ${i === 0 ? "principal" : ""}`}>
+                  <div className="dir-card-head">
+                    <div className="dir-alias">
+                      <LocationOnIcon fontSize="small" />
+                      {d.calle} {d.numero}
+                    </div>
+                    {i === 0 && <span className="dir-badge">Principal</span>}
                   </div>
-                  {d.principal && <span className="dir-badge">Principal</span>}
-                </div>
 
-                <div className="dir-nombre">
-                  {d.destinatario} · {d.telefono}
-                </div>
-                <div className="dir-linea">
-                  {d.calle} {d.numero}
-                  {d.complemento ? `, ${d.complemento}` : ""}
-                </div>
-                <div className="dir-linea">
-                  {d.comuna}, {d.region}
-                </div>
-                {d.referencias && <div className="dir-ref">{d.referencias}</div>}
-
-                <div className="dir-acciones">
-                  <button type="button" className="dir-link" onClick={() => abrirEditar(d)}>
-                    Editar
-                  </button>
-                  {!d.principal && (
-                    <button type="button" className="dir-link" onClick={() => marcarPrincipal(d)}>
-                      Marcar como principal
-                    </button>
+                  {(d.pasaje || d.sector) && (
+                    <div className="dir-linea">{[d.pasaje, d.sector].filter(Boolean).join(", ")}</div>
                   )}
-                </div>
-              </article>
-            ))}
-          </div>
+                  <div className="dir-linea">{[d.comuna, d.region].filter(Boolean).join(", ")}</div>
+                  {d.descripcion && <div className="dir-ref">{d.descripcion}</div>}
+
+                  <div className="dir-acciones">
+                    <button type="button" className="dir-link" onClick={() => abrirEditar(d)}>
+                      Editar
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
     </>
   );
 };

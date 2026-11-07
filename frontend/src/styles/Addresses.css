@@ -251,3 +251,13 @@ textarea.dir-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* Aviso de que la dirección se guardó */
+.dir-ok {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #def7ec;
+  color: #03543f;
+  font-size: 13px;
+}

@@ -1,14 +1,29 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import { urlImagen } from "../../../services/carritoService";
 
 const ROJO = "#EC3333";
 const formatearPrecio = (numero) => `$${numero.toLocaleString("es-CL")}`;
 
-const CatalogCard = ({ item, onVerDetalle }) => {
+const CatalogCard = ({ item, onVerDetalle, onAgregar }) => {
+  // Un producto con precio se agrega directo al carro. Un servicio se agenda (fecha y horario) en su ficha.
+  const puedeAgregar = item.tipo === "producto" && item.precio != null && Boolean(onAgregar);
+
   return (
+    // Toda la tarjeta lleva al detalle del producto o servicio
     <Box
+      role="link"
+      tabIndex={0}
+      aria-label={`Ver ${item.nombre}`}
+      onClick={() => onVerDetalle(item)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target === e.currentTarget) onVerDetalle(item);
+      }}
       sx={{
+        cursor: "pointer",
+        transition: "box-shadow 0.2s, transform 0.2s",
+        "&:hover": { boxShadow: "0 4px 14px rgba(0,0,0,0.12)", transform: "translateY(-2px)" },
         display: "flex",
         flexDirection: "column",
         border: "1px solid #E0E0E0",
@@ -18,7 +33,7 @@ const CatalogCard = ({ item, onVerDetalle }) => {
       }}
     >
       {item.imagen ? (
-        <Box component="img" src={item.imagen} alt={item.nombre} sx={{ width: "100%", height: 160, objectFit: "cover" }} />
+        <Box component="img" src={urlImagen(item.imagen)} alt={item.nombre} sx={{ width: "100%", height: 160, objectFit: "cover" }} />
       ) : (
         <Box sx={{ width: "100%", height: 160, backgroundColor: "#E5E7EB" }} />
       )}
@@ -64,10 +79,14 @@ const CatalogCard = ({ item, onVerDetalle }) => {
             variant="contained"
             size="small"
             disableElevation
-            onClick={() => onVerDetalle(item)}
+            onClick={(e) => {
+              e.stopPropagation(); // el botón no debe abrir también el detalle de la tarjeta
+              if (puedeAgregar) onAgregar(item);
+              else onVerDetalle(item);
+            }}
             sx={{ backgroundColor: ROJO, "&:hover": { backgroundColor: "#D42B2B" } }}
           >
-            Ver detalle
+            {puedeAgregar ? "Agregar al carro" : "Ver detalle"}
           </Button>
         </Box>
       </Box>

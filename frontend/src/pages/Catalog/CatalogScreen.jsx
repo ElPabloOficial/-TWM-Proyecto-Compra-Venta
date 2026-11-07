@@ -10,6 +10,8 @@ import CatalogGrid from "../../components/organisms/CatalogGrid/CatalogGrid";
 import CardGridSkeleton from "../../components/molecules/CardGridSkeleton/CardGridSkeleton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import { listarCatalogo, rutaDetalle } from "../../services/catalogoService";
+import useCart from "../../context/useCart";
+import { useToast } from "../../context/ToastContext";
 import { listarCategorias } from "../../services/productService";
 
 const POR_PAGINA = 12;
@@ -69,6 +71,8 @@ const idsConSubcategorias = (id, categorias) => {
 
 const CatalogScreen = () => {
   const navigate = useNavigate();
+  const { addItem, user } = useCart();
+  const { mostrarToast } = useToast();
   const [params, setParams] = useSearchParams();
   // Desde el Header se llega aquí como /catalogo?categoria=ID (menú de categorías) o
   // /catalogo?estado=oferta|producto|servicio (Ofertas, Productos y Servicios; también "Ver ofertas" del Home)
@@ -149,6 +153,20 @@ const CatalogScreen = () => {
   };
 
   const verDetalle = (item) => navigate(rutaDetalle(item));
+
+  const agregarAlCarro = async (item) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    try {
+      // El carrito guarda tipo + id (un producto y un servicio pueden tener el mismo id)
+      await addItem({ tipo: item.tipo, id: item.id }, 1);
+      mostrarToast(`${item.nombre} se agregó al carrito`);
+    } catch (e) {
+      mostrarToast(e.message, "error");
+    }
+  };
 
   // Quita la categoría elegida en el menú del Header (la URL queda sin ?categoria)
   const quitarCategoria = () => {
@@ -242,6 +260,7 @@ const CatalogScreen = () => {
           <CatalogGrid
             items={visibles}
             onVerDetalle={verDetalle}
+            onAgregar={agregarAlCarro}
             vacio={items.length === 0 ? "Todavía no hay productos ni servicios publicados." : undefined}
           />
 

@@ -10,4 +10,5 @@ public class DireccionDto
     public string? sector { get; set; }
     public int id_comuna { get; set; }
     public string? nombre_comuna { get; set; } // Para mostrar en el frontend
+    public string? nombre_region { get; set; } // Para mostrar en el frontend
 }
