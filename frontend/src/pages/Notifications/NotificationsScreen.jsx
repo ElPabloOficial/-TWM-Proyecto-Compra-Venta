@@ -51,7 +51,7 @@ export default function NotificationsScreen() {
         {/* Título */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-            <span style={{ backgroundColor: '#FFD54F', padding: '0 4px' }}>Notificaciones</span>
+            Notificaciones
           </Typography>
           <Typography sx={{ fontSize: '0.85rem', color: '#555' }}>
             *Mantente al día con todas tus novedades, respuestas, chats y compras.
