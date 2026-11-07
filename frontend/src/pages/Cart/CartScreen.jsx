@@ -1,21 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
-import ComputerIcon from '@mui/icons-material/Computer';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
-import HeadphonesIcon from '@mui/icons-material/Headphones';
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
-import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined';
-import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
-import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import RemoveIcon from '@mui/icons-material/Remove';
-import ScaleOutlinedIcon from '@mui/icons-material/ScaleOutlined';
 import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined';
-import SpeakerOutlinedIcon from '@mui/icons-material/SpeakerOutlined';
-import WatchOutlinedIcon from '@mui/icons-material/WatchOutlined';
 import Header from '../../components/organisms/Header/Header';
+import ErrorState from '../../components/molecules/ErrorState/ErrorState';
 import useCart from '../../context/useCart';
+import { useToast } from '../../context/ToastContext';
+import { listarCatalogo, rutaDetalle } from '../../services/catalogoService';
+import { calcularTotales, urlImagen } from '../../services/carritoService';
 import '../../styles/Cart.css';
 
 const formatPrice = (amount) =>
@@ -25,56 +20,56 @@ const formatPrice = (amount) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
-const icons = {
-  phone: PhoneAndroidIcon,
-  headphones: HeadphonesIcon,
-  charger: LocalOfferOutlinedIcon,
-  laptop: ComputerIcon,
-  scanner: Inventory2OutlinedIcon,
-  watch: WatchOutlinedIcon,
-  powerbank: LocalOfferOutlinedIcon,
-  case: PhoneAndroidIcon,
-  speaker: SpeakerOutlinedIcon,
-  printer: PrintOutlinedIcon,
-  scale: ScaleOutlinedIcon,
-  shelves: Inventory2OutlinedIcon,
-  labels: LocalOfferOutlinedIcon,
-};
-
-const CartProductIcon = ({ icon }) => {
-  const Icon = icons[icon] ?? ShoppingBagOutlinedIcon;
-  return <Icon aria-hidden="true" />;
-};
+// Imagen del producto, o una bolsa si no tiene
+const CartImage = ({ src, alt }) =>
+  src ? <img src={src} alt={alt} loading="lazy" /> : <ShoppingBagOutlinedIcon aria-hidden="true" />;
 
 const CartScreen = () => {
   const navigate = useNavigate();
-  const { cart, cartCount, recommendations, addItem, setQuantity, removeItem, user } =
-    useCart();
-  const [checkoutMessage, setCheckoutMessage] = useState('');
-  const subtotal = cart.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0,
-  );
-  const shipping = 0;
+  const { cart, cartCount, cargando, error, refrescar, addItem, setQuantity, removeItem, user } = useCart();
+  const { mostrarToast } = useToast();
+  const [catalogo, setCatalogo] = useState([]);
 
-  const handleAdd = (item) => {
-    addItem(item);
-    setCheckoutMessage('');
-  };
-
-  const handleCheckout = () => {
-    const purchase = {
-      usuario: user ? { id: user.id, nombre: user.name, rol: user.role } : null,
-      productos: cart,
-      subtotal,
-      envio: shipping,
-      total: subtotal + shipping,
+  useEffect(() => {
+    if (!user) return undefined;
+    let activo = true;
+    listarCatalogo()
+      .then((lista) => activo && setCatalogo(lista))
+      .catch(() => {}); // sin catálogo el carrito igual funciona; solo no hay recomendaciones
+    return () => {
+      activo = false;
     };
-    console.log('[CartScreen] Datos de compra:', purchase);
-    setCheckoutMessage(
-      'Compra de demostración lista. No se ha realizado ningún pago.',
+  }, [user]);
+
+  const { neto, iva, total } = calcularTotales(cart);
+  const sinPrecio = cart.some((item) => item.precio === null);
+
+  // Recomendaciones: lo que no está en el carrito, empezando por lo que comparte categoría con él
+  const recomendados = useMemo(() => {
+    const categoriasCarrito = new Set(
+      catalogo.filter((i) => cart.some((c) => c.clave === i.clave)).flatMap((i) => i.categorias.map((c) => c.id)),
     );
+    return catalogo
+      .filter((i) => i.precio !== null && !cart.some((c) => c.clave === i.clave))
+      .map((i) => ({ ...i, afinidad: i.categorias.some((c) => categoriasCarrito.has(c.id)) ? 1 : 0 }))
+      .sort((a, b) => b.afinidad - a.afinidad || b.descuentoPct - a.descuentoPct)
+      .slice(0, 4);
+  }, [catalogo, cart]);
+
+  // Cualquier acción del carrito puede fallar (sin conexión, producto retirado...)
+  const intentar = async (accion) => {
+    try {
+      await accion();
+    } catch (e) {
+      mostrarToast(e.message, 'error');
+    }
   };
+
+  const handleAdd = (item) =>
+    intentar(async () => {
+      await addItem({ tipo: item.tipo, id: item.id });
+      mostrarToast(`${item.nombre} se agregó al carrito`);
+    });
 
   return (
     <div className="cart-layout">
@@ -94,146 +89,187 @@ const CartScreen = () => {
           </section>
         ) : (
           <>
-        <div className="cart-heading">
-          <div>
-            <h1>Carrito de compra</h1>
-            <p>
-              {user
-                ? `Revisa tus productos, ${user.name}, y completa tu compra.`
-                : 'Revisa tus productos y completa tu compra.'}
-            </p>
-          </div>
-          <span className="cart-item-count">
-            {cartCount} {cartCount === 1 ? 'artículo' : 'artículos'}
-          </span>
-        </div>
-
-        {checkoutMessage && (
-          <div className="cart-feedback" role="status">
-            {checkoutMessage}
-          </div>
-        )}
-
-        <div className="cart-content">
-          <section className="cart-products" aria-labelledby="cart-products-title">
-            <h2 id="cart-products-title">Productos en tu carrito</h2>
-            {cart.length === 0 ? (
-              <div className="cart-empty">
-                <ShoppingBagOutlinedIcon />
-                <p>Tu carrito está vacío.</p>
-                <button type="button" onClick={() => navigate('/inicio')}>
-                  Explorar productos
-                </button>
+            <div className="cart-heading">
+              <div>
+                <h1>Carrito de compra</h1>
+                <p>Revisa tus productos, {user.name}, y completa tu compra.</p>
               </div>
-            ) : (
-              <ul className="cart-product-list">
-                {cart.map((item) => (
-                  <li className="cart-product" key={item.id}>
-                    <div className={`cart-product-image cart-icon-${item.icon}`}>
-                      <CartProductIcon icon={item.icon} />
-                    </div>
-                    <div className="cart-product-info">
-                      <h3>{item.name}</h3>
-                      <span>Cantidad: {item.quantity}</span>
-                      <span>{item.description}</span>
-                      <div className="cart-quantity-controls">
-                        <button
-                          type="button"
-                          onClick={() => setQuantity(item.id, item.quantity - 1)}
-                          disabled={item.quantity <= 1}
-                          aria-label={`Disminuir cantidad de ${item.name}`}
-                        >
-                          <RemoveIcon fontSize="small" />
-                        </button>
-                        <span aria-live="polite">{item.quantity}</span>
-                        <button
-                          type="button"
-                          onClick={() => setQuantity(item.id, item.quantity + 1)}
-                          aria-label={`Aumentar cantidad de ${item.name}`}
-                        >
-                          <AddIcon fontSize="small" />
-                        </button>
-                        <button
-                          type="button"
-                          className="cart-remove-button"
-                          onClick={() => removeItem(item.id)}
-                          aria-label={`Eliminar ${item.name} del carrito`}
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                          <span>Eliminar</span>
-                        </button>
-                      </div>
-                    </div>
-                    <strong className="cart-product-price">
-                      {formatPrice(item.price * item.quantity)}
-                    </strong>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <aside className="cart-summary" aria-labelledby="cart-summary-title">
-            <h2 id="cart-summary-title">Resumen de compra</h2>
-            <div className="cart-summary-row">
-              <span>Subtotal</span>
-              <span>{formatPrice(subtotal)}</span>
-            </div>
-            <div className="cart-summary-row">
-              <span className="cart-shipping-label">
-                <LocalShippingOutlinedIcon fontSize="small" />
-                Envío
+              <span className="cart-item-count">
+                {cartCount} {cartCount === 1 ? 'artículo' : 'artículos'}
               </span>
-              <span>{formatPrice(shipping)}</span>
             </div>
-            <div className="cart-summary-total">
-              <span>Total</span>
-              <strong>{formatPrice(subtotal + shipping)}</strong>
-            </div>
-            <button
-              type="button"
-              className="cart-checkout-button"
-              onClick={handleCheckout}
-              disabled={cart.length === 0}
-            >
-              Pagar ahora
-            </button>
-            <p className="cart-summary-note">
-              Puedes editar la cantidad o eliminar productos antes de confirmar
-              tu compra.
-            </p>
-          </aside>
-        </div>
 
-        <section className="cart-recommendations" aria-labelledby="cart-recommendations-title">
-          <div className="cart-recommendations-heading">
-            <h2 id="cart-recommendations-title">Recomendaciones para añadir al carrito</h2>
-            <button type="button" onClick={() => navigate('/inicio')}>
-              Ver todo
-            </button>
-          </div>
-          <div className="cart-recommendations-grid">
-            {recommendations.map((item) => (
-              <article className="cart-recommendation" key={item.id}>
-                <div className={`cart-recommendation-image cart-icon-${item.icon}`}>
-                  <CartProductIcon icon={item.icon} />
-                </div>
-                <h3>{item.name}</h3>
-                <p>{item.description}</p>
-                <div className="cart-recommendation-footer">
-                  <strong>{formatPrice(item.price)}</strong>
+            {error ? (
+              <ErrorState titulo="No pudimos cargar tu carrito" detalle={error} onReintentar={refrescar} />
+            ) : (
+              <div className="cart-content">
+                <section className="cart-products" aria-labelledby="cart-products-title">
+                  <h2 id="cart-products-title">Productos en tu carrito</h2>
+                  {cargando ? (
+                    <p className="cart-status">Cargando tu carrito...</p>
+                  ) : cart.length === 0 ? (
+                    <div className="cart-empty">
+                      <ShoppingBagOutlinedIcon />
+                      <p>Tu carrito está vacío.</p>
+                      <button type="button" onClick={() => navigate('/catalogo')}>
+                        Explorar productos
+                      </button>
+                    </div>
+                  ) : (
+                    <ul className="cart-product-list">
+                      {cart.map((item) => (
+                        <li className="cart-product" key={item.clave}>
+                          <div className="cart-product-image">
+                            <CartImage src={item.imagen} alt={item.nombre} />
+                          </div>
+                          <div className="cart-product-info">
+                            <h3>
+                              <button
+                                type="button"
+                                className="cart-product-link"
+                                onClick={() => navigate(rutaDetalle(item))}
+                              >
+                                {item.nombre}
+                              </button>
+                            </h3>
+                            <span>
+                              {item.tipo === 'servicio' ? 'Servicio' : 'Producto'}
+                              {item.vendedor && ` · Vendido por ${item.vendedor}`}
+                            </span>
+                            {item.restriccionEdad && (
+                              <span className="cart-age">Solo para mayores de 18 años</span>
+                            )}
+                            <span className="cart-unit-price">
+                              {item.precio === null ? (
+                                'Precio por definir'
+                              ) : (
+                                <>
+                                  {formatPrice(item.precio)} c/u
+                                  {item.precioAnterior && (
+                                    <>
+                                      {' '}
+                                      <s>{formatPrice(item.precioAnterior)}</s>{' '}
+                                      <b className="cart-offer">-{item.descuentoPct}%</b>
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </span>
+                            <div className="cart-quantity-controls">
+                              <button
+                                type="button"
+                                onClick={() => intentar(() => setQuantity(item, item.cantidad - 1))}
+                                disabled={item.cantidad <= 1}
+                                aria-label={`Disminuir cantidad de ${item.nombre}`}
+                              >
+                                <RemoveIcon fontSize="small" />
+                              </button>
+                              <span aria-live="polite">{item.cantidad}</span>
+                              <button
+                                type="button"
+                                onClick={() => intentar(() => setQuantity(item, item.cantidad + 1))}
+                                aria-label={`Aumentar cantidad de ${item.nombre}`}
+                              >
+                                <AddIcon fontSize="small" />
+                              </button>
+                              <button
+                                type="button"
+                                className="cart-remove-button"
+                                onClick={() =>
+                                  intentar(async () => {
+                                    await removeItem(item);
+                                    mostrarToast(`${item.nombre} se quitó del carrito`);
+                                  })
+                                }
+                                aria-label={`Eliminar ${item.nombre} del carrito`}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                                <span>Eliminar</span>
+                              </button>
+                            </div>
+                          </div>
+                          <strong className="cart-product-price">
+                            {item.precio === null ? '—' : formatPrice(item.precio * item.cantidad)}
+                          </strong>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+
+                <aside className="cart-summary" aria-labelledby="cart-summary-title">
+                  <h2 id="cart-summary-title">Resumen de compra</h2>
+                  <div className="cart-summary-row">
+                    <span>Subtotal (neto)</span>
+                    <span>{formatPrice(neto)}</span>
+                  </div>
+                  <div className="cart-summary-row">
+                    <span>IVA (19%)</span>
+                    <span>{formatPrice(iva)}</span>
+                  </div>
+                  <div className="cart-summary-row">
+                    <span className="cart-shipping-label">
+                      <LocalShippingOutlinedIcon fontSize="small" />
+                      Envío
+                    </span>
+                    <span>Se calcula al despachar</span>
+                  </div>
+                  <div className="cart-summary-total">
+                    <span>Total</span>
+                    <strong>{formatPrice(total)}</strong>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => handleAdd(item)}
-                    aria-label={`Añadir ${item.name} al carrito`}
+                    className="cart-checkout-button"
+                    onClick={() => navigate('/confirmarcompra')}
+                    disabled={cargando || cart.length === 0 || sinPrecio}
                   >
-                    Agregar
+                    Continuar con la compra
+                  </button>
+                  {sinPrecio && (
+                    <p className="cart-summary-note cart-summary-warning">
+                      Hay un servicio sin precio definido. Quítalo o pide una cotización para continuar.
+                    </p>
+                  )}
+                  <p className="cart-summary-note">
+                    Puedes editar la cantidad o eliminar productos antes de confirmar tu compra. El costo de
+                    envío se calcula con el tamaño del paquete cuando el vendedor despacha tu pedido.
+                  </p>
+                </aside>
+              </div>
+            )}
+
+            {recomendados.length > 0 && (
+              <section className="cart-recommendations" aria-labelledby="cart-recommendations-title">
+                <div className="cart-recommendations-heading">
+                  <h2 id="cart-recommendations-title">Recomendaciones para añadir al carrito</h2>
+                  <button type="button" onClick={() => navigate('/catalogo')}>
+                    Ver todo
                   </button>
                 </div>
-              </article>
-            ))}
-          </div>
-        </section>
+                <div className="cart-recommendations-grid">
+                  {recomendados.map((item) => (
+                    <article className="cart-recommendation" key={item.clave}>
+                      <div className="cart-recommendation-image">
+                        <CartImage src={urlImagen(item.imagen)} alt={item.nombre} />
+                      </div>
+                      <h3>{item.nombre}</h3>
+                      <p>{item.descripcion}</p>
+                      <div className="cart-recommendation-footer">
+                        <strong>{formatPrice(item.precio)}</strong>
+                        <button
+                          type="button"
+                          onClick={() => handleAdd(item)}
+                          aria-label={`Añadir ${item.nombre} al carrito`}
+                        >
+                          Agregar
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
           </>
         )}
       </main>

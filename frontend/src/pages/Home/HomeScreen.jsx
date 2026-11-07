@@ -6,6 +6,7 @@ import CustomButton from "../../components/atoms/Button/CustomButton";
 import CardGridSkeleton from "../../components/molecules/CardGridSkeleton/CardGridSkeleton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import useCart from "../../context/useCart";
+import { useToast } from "../../context/ToastContext";
 import { listarCatalogo, rutaDetalle } from "../../services/catalogoService";
 import "../../styles/Home.css";
 
@@ -27,6 +28,7 @@ const formatoCLP = (n) =>
 
 const HomeScreen = () => {
   const { addItem, user } = useCart();
+  const { mostrarToast } = useToast();
   const navigate = useNavigate();
 
   const [catalogo, setCatalogo] = useState([]);
@@ -61,15 +63,17 @@ const HomeScreen = () => {
     setIntento((n) => n + 1);
   };
 
-  const handleAgregarCarro = (item) => {
-    // Un producto y un servicio pueden tener el mismo id, por eso el carro usa la "clave" (p. ej. "producto-3")
-    const added = addItem({
-      id: item.clave,
-      name: item.nombre,
-      price: item.precio,
-    });
-    if (!added && !user) {
+  const handleAgregarCarro = async (item) => {
+    if (!user) {
       navigate("/login");
+      return;
+    }
+    try {
+      // El carrito guarda tipo + id (un producto y un servicio pueden tener el mismo id)
+      await addItem({ tipo: item.tipo, id: item.id });
+      mostrarToast(`${item.nombre} se agregó al carrito`);
+    } catch (e) {
+      mostrarToast(e.message, "error");
     }
   };
 

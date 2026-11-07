@@ -6,7 +6,8 @@
 // TEMPORAL: la API todavía no tiene un endpoint que liste los despachos del vendedor ni uno que
 // cambie el estado (solo existe GET /despachos/venta/{id}). Mientras tanto se usan datos de ejemplo
 // en memoria, con la misma forma que devolvería la API, y se pierden al recargar la página.
-// Al crear los endpoints, solo hay que cambiar estas tres funciones:
+// El costo de envío no existe hasta que el vendedor despacha: la BD lo calcula con las medidas del
+// paquete (DatosLogisticos.costo_envio). Al crear los endpoints, solo hay que cambiar estas tres funciones:
 //   listarDespachosVendedor  -> GET  /despachos/mis-despachos
 //   obtenerDespacho          -> GET  /despachos/venta/{idVenta}
 //   avanzarDespacho          -> PUT  /despachos/{id}/estado
@@ -22,6 +23,11 @@ export const ETIQUETA_ESTADO = {
 };
 
 export const TRANSPORTISTAS = ['Chilexpress', 'Starken', 'Correos de Chile', 'Otros'];
+
+// Mismo cálculo que el trigger "calculo_costo_envio_proyectado" de la BD: el costo de envío sale del
+// volumen del paquete que indica el vendedor al despachar (ancho × alto × fondo, en cm).
+export const calcularCostoEnvio = ({ ancho, alto, fondo }) =>
+    Math.round(((Number(ancho) * Number(alto) * Number(fondo)) / 5000) * 1555);
 
 const aFecha = (offsetDias) => new Date(Date.now() + offsetDias * 86400000).toLocaleDateString('sv-SE'); // aaaa-mm-dd
 
@@ -60,6 +66,8 @@ const almacen = [
         direccion: { calle: 'Bilbao', numero: '320', comuna: 'Puerto Montt' },
         transportista: 'Chilexpress',
         seguimiento: 'CH-4821763',
+        paquete: { ancho: 32, alto: 25, fondo: 15 },
+        costoEnvio: 3732,
         fechaEstimada: aFecha(0),
         productos: [
             { nombre: 'Teclado mecánico RGB', cantidad: 1 },
@@ -78,6 +86,8 @@ const almacen = [
         direccion: { calle: 'Errázuriz', numero: '640', comuna: 'Valdivia' },
         transportista: 'Starken',
         seguimiento: 'ST-3390412',
+        paquete: { ancho: 20, alto: 10, fondo: 10 },
+        costoEnvio: 622,
         fechaEstimada: aFecha(2),
         productos: [{ nombre: 'Webcam HD', cantidad: 1 }],
         eventos: eventosHasta('Despachado', 'Starken', [aFechaHora(-1, '15:30'), aFechaHora(0, '09:10')]),
@@ -89,6 +99,8 @@ const almacen = [
         direccion: { calle: 'Av. Buschmann', numero: '1450', comuna: 'Osorno' },
         transportista: null,
         seguimiento: null,
+        paquete: null,
+        costoEnvio: null,
         fechaEstimada: aFecha(4),
         productos: [
             { nombre: 'Monitor Ultra HD 32"', cantidad: 1 },
@@ -103,6 +115,8 @@ const almacen = [
         direccion: { calle: 'Mackenna', numero: '850', comuna: 'Osorno' },
         transportista: null,
         seguimiento: null,
+        paquete: null,
+        costoEnvio: null,
         fechaEstimada: aFecha(5),
         productos: [{ nombre: 'Impresora láser color', cantidad: 1 }],
         eventos: eventosHasta('En Preparación', null, [aFechaHora(0, '12:40')]),
@@ -114,6 +128,8 @@ const almacen = [
         direccion: { calle: 'Los Leones', numero: '1200', comuna: 'Providencia' },
         transportista: 'Chilexpress',
         seguimiento: 'CH-4790021',
+        paquete: { ancho: 32, alto: 25, fondo: 15 },
+        costoEnvio: 3732,
         fechaEstimada: aFecha(-3),
         productos: [{ nombre: 'Tóner negro', cantidad: 2 }],
         eventos: eventosHasta('Entregado', 'Chilexpress', [
@@ -142,6 +158,8 @@ const buscar = (idVenta) => {
             direccion: { calle: 'Tu dirección de despacho', numero: '', comuna: '' },
             transportista: enviado ? 'Chilexpress' : null,
             seguimiento: enviado ? `CH-${100000 + idVenta}` : null,
+            paquete: enviado ? { ancho: 30, alto: 20, fondo: 10 } : null,
+            costoEnvio: enviado ? calcularCostoEnvio({ ancho: 30, alto: 20, fondo: 10 }) : null,
             fechaEstimada: aFecha(estado === 'Entregado' ? -1 : 3 - idx),
             productos: [],
             eventos: eventosHasta(
@@ -165,7 +183,7 @@ export async function obtenerDespacho(idVenta) {
 
 // Pasa el despacho a la etapa siguiente. Para pasar a "Despachado" el vendedor indica la empresa de
 // transporte y el número de seguimiento.
-export async function avanzarDespacho(idVenta, { transportista, seguimiento } = {}) {
+export async function avanzarDespacho(idVenta, { transportista, seguimiento, ancho, alto, fondo } = {}) {
     const despacho = buscar(Number(idVenta));
     const indice = ETAPAS_DESPACHO.indexOf(despacho.estado);
 
@@ -179,8 +197,13 @@ export async function avanzarDespacho(idVenta, { transportista, seguimiento } = 
         if (!transportista || !String(seguimiento ?? '').trim()) {
             throw new Error('Indica la empresa de transporte y el número de seguimiento.');
         }
+        if (![ancho, alto, fondo].every((medida) => Number(medida) > 0)) {
+            throw new Error('Indica el ancho, alto y fondo del paquete en centímetros.');
+        }
         despacho.transportista = transportista;
         despacho.seguimiento = String(seguimiento).trim();
+        despacho.paquete = { ancho: Number(ancho), alto: Number(alto), fondo: Number(fondo) };
+        despacho.costoEnvio = calcularCostoEnvio(despacho.paquete); // en la BD lo calcula el trigger
         despacho.fechaEstimada = aFecha(3);
     }
 

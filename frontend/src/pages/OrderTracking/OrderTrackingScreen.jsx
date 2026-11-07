@@ -181,6 +181,14 @@ const OrderTrackingScreen = () => {
                     </dd>
                   </div>
                   <div>
+                    <dt>Costo de envío</dt>
+                    <dd>
+                      {despacho.costoEnvio != null
+                        ? `$${despacho.costoEnvio.toLocaleString("es-CL")}`
+                        : "Se calcula cuando el vendedor despache tu pedido"}
+                    </dd>
+                  </div>
+                  <div>
                     <dt>Dirección de entrega</dt>
                     <dd>
                       {[`${dir.calle} ${dir.numero}`.trim(), dir.comuna].filter(Boolean).join(", ")}

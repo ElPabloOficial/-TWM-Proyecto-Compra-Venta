@@ -13,21 +13,30 @@ const Fila = ({ etiqueta, valor, negrita }) => (
 );
 
 // Muestra la sección que reciba por props:
-//   items   -> tarjetas de producto
-//   resumen -> resumen del pedido + medio de pago
-const ConfirmPurchaseTable = ({ items, resumen, mediosPago, medioPago, onMedioPago }) => {
+//   items   -> tarjetas de producto (nombre, vendedor, cantidad, precio, imagen)
+//   resumen -> resumen del pedido (neto, IVA, total) + medio de pago
+//   detallePago -> campos extra del medio de pago elegido (últimos 4 dígitos o código de transferencia)
+const ConfirmPurchaseTable = ({ items, resumen, mediosPago, medioPago, onMedioPago, detallePago }) => {
   return (
     <>
       {items &&
         items.map((i) => (
-          <Box key={i.id} sx={{ ...tarjeta, display: "flex", gap: 2, alignItems: "flex-start" }}>
-            {/* TEMPORAL: reemplazar por la imagen real del producto */}
-            <Box sx={{ width: 80, height: 80, backgroundColor: "#D9D9D9", flexShrink: 0 }} />
+          <Box key={i.clave ?? i.id} sx={{ ...tarjeta, display: "flex", gap: 2, alignItems: "flex-start" }}>
+            {i.imagen ? (
+              <Box
+                component="img"
+                src={i.imagen}
+                alt={i.nombre}
+                sx={{ width: 80, height: 80, objectFit: "cover", borderRadius: 1, flexShrink: 0 }}
+              />
+            ) : (
+              <Box sx={{ width: 80, height: 80, backgroundColor: "#D9D9D9", borderRadius: 1, flexShrink: 0 }} />
+            )}
 
             <Box sx={{ flexGrow: 1 }}>
               <Box sx={{ fontSize: 16 }}>{i.nombre}</Box>
               <Box sx={{ fontSize: 12, color: "#666", marginTop: 0.5 }}>
-                Vendido por {i.vendedor} · Cantidad: {i.cantidad}
+                {i.vendedor ? `Vendido por ${i.vendedor} · ` : ""}Cantidad: {i.cantidad}
               </Box>
             </Box>
 
@@ -41,7 +50,6 @@ const ConfirmPurchaseTable = ({ items, resumen, mediosPago, medioPago, onMedioPa
 
           <Fila etiqueta="Subtotal (neto)" valor={formatearPrecio(resumen.neto)} />
           <Fila etiqueta="IVA (19%)" valor={formatearPrecio(resumen.iva)} />
-          <Fila etiqueta="Costo de envío" valor={formatearPrecio(resumen.envio)} />
 
           <Box sx={{ borderTop: "1px solid #E0E0E0", marginY: 1 }} />
           <Fila etiqueta="Total a pagar" valor={formatearPrecio(resumen.total)} negrita />
@@ -73,6 +81,8 @@ const ConfirmPurchaseTable = ({ items, resumen, mediosPago, medioPago, onMedioPa
               );
             })}
           </Box>
+
+          {detallePago && <Box sx={{ marginTop: 2 }}>{detallePago}</Box>}
         </Box>
       )}
     </>

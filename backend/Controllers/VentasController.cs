@@ -22,6 +22,45 @@ public class VentasController : ControllerBase
         _context = context;
     }
 
+    // Precio de un producto tal como lo muestra el catálogo: el de Caracteristicas ("precio") menos el
+    // descuento de la oferta, si está activa y hoy está dentro de sus fechas.
+    private static int PrecioProducto(producto p)
+    {
+        decimal precio = 0;
+        if (!string.IsNullOrWhiteSpace(p.caracteristicas))
+        {
+            try
+            {
+                using var json = JsonDocument.Parse(p.caracteristicas);
+                if (json.RootElement.TryGetProperty("precio", out var elemento) && elemento.TryGetDecimal(out var valor))
+                    precio = valor;
+            }
+            catch (JsonException) { }
+        }
+
+        var hoy = DateOnly.FromDateTime(DateTime.Today);
+        var oferta = p.id_ofertaNavigation;
+        var vigente = oferta != null
+            && oferta.estado == true
+            && (p.fechainicio == null || p.fechainicio <= hoy)
+            && (p.fechafin == null || hoy <= p.fechafin);
+
+        if (vigente)
+            precio *= 1 - (decimal)oferta!.preciooferta; // PrecioOferta guarda el descuento (0.15 = 15 %)
+
+        return (int)Math.Round(precio, MidpointRounding.AwayFromZero);
+    }
+
+    // Precio de un servicio: lo pone cada vendedor en la tabla Valorar.
+    private static int PrecioServicio(servicio s, List<valorar> precios)
+    {
+        var vendedor = s.ofrecer2s.FirstOrDefault()?.id_usuario;
+        var propio = precios.FirstOrDefault(v => v.id_servicio == s.id && v.id_usuario == vendedor);
+        if (propio != null) return propio.precio;
+
+        return precios.FirstOrDefault(v => v.id_servicio == s.id)?.precio ?? 0;
+    }
+
     // POST: api/ventas (Checkout)
     [HttpPost]
     public async Task<IActionResult> CrearVenta([FromBody] VentaCreateDto dto)
@@ -30,52 +69,59 @@ public class VentasController : ControllerBase
         if (string.IsNullOrEmpty(rutCliente))
             return Unauthorized(new { success = false, message = "Usuario no autenticado." });
 
-        // 1. Buscar el carrito del usuario
+        // 1. Buscar el carrito del usuario (con la oferta y el vendedor de cada producto/servicio)
         var itemsProductos = await _context.crear3s
-            .Include(c => c.id_productoNavigation)
+            .Include(c => c.id_productoNavigation).ThenInclude(p => p.id_ofertaNavigation)
+            .Include(c => c.id_productoNavigation).ThenInclude(p => p.ofrecer1s)
             .Where(c => c.id_usuario == rutCliente)
             .ToListAsync();
 
         var itemsServicios = await _context.crear4s
-            .Include(c => c.id_servicioNavigation)
+            .Include(c => c.id_servicioNavigation).ThenInclude(s => s.ofrecer2s)
             .Where(c => c.id_usuario == rutCliente)
             .ToListAsync();
 
         if (!itemsProductos.Any() && !itemsServicios.Any())
             return BadRequest(new { success = false, message = "El carrito está vacío." });
 
+        // Restricción de edad: si algún producto o servicio es solo para mayores de 18, se valida con la
+        // fecha de nacimiento del cliente
+        var tieneRestriccion = itemsProductos.Any(i => i.id_productoNavigation.restriccionedad == true)
+                               || itemsServicios.Any(i => i.id_servicioNavigation.restriccionedad == true);
+        if (tieneRestriccion)
+        {
+            var cliente = await _context.usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.rut == rutCliente);
+            DateOnly? nacimiento = cliente?.fechanacimiento;
+            var hoy = DateOnly.FromDateTime(DateTime.Today);
+            var edad = 0;
+            if (nacimiento is DateOnly nac)
+            {
+                edad = hoy.Year - nac.Year;
+                if (hoy < nac.AddYears(edad)) edad--;
+            }
+            if (edad < 18)
+                return BadRequest(new { success = false, message = "Tu carrito incluye productos o servicios solo para mayores de 18 años." });
+        }
+
+        // Precios de los servicios: los pone cada vendedor en la tabla Valorar (igual que en el catálogo)
+        var idsServicios = itemsServicios.Select(i => i.id_servicio).ToList();
+        var preciosServicio = await _context.valorars
+            .AsNoTracking()
+            .Where(v => idsServicios.Contains(v.id_servicio))
+            .ToListAsync();
+
         using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-            // 2. Calcular Totales (Extrayendo el precio del JSON)
+            // 2. Calcular Totales con el mismo precio que muestra el catálogo (con la oferta vigente aplicada)
             int netoTotal = 0;
 
             foreach (var item in itemsProductos)
-            {
-                var caracteristicasStr = item.id_productoNavigation.caracteristicas;
-                if (!string.IsNullOrWhiteSpace(caracteristicasStr))
-                {
-                    using var json = JsonDocument.Parse(caracteristicasStr);
-                    if (json.RootElement.TryGetProperty("precio", out var precioElement))
-                    {
-                        netoTotal += (precioElement.GetInt32() * item.cantidad);
-                    }
-                }
-            }
+                netoTotal += PrecioProducto(item.id_productoNavigation) * item.cantidad;
 
             foreach (var item in itemsServicios)
-            {
-                var caracteristicasStr = item.id_servicioNavigation.caracteristicas;
-                if (!string.IsNullOrWhiteSpace(caracteristicasStr))
-                {
-                    using var json = JsonDocument.Parse(caracteristicasStr);
-                    if (json.RootElement.TryGetProperty("precio", out var precioElement))
-                    {
-                        netoTotal += (precioElement.GetInt32() * item.cantidad);
-                    }
-                }
-            }
+                netoTotal += PrecioServicio(item.id_servicioNavigation, preciosServicio) * item.cantidad;
 
             // El IVA en Chile es 19% (0.19). El precio asumimos que es NETO.
             decimal ivaDecimal = 0.19m;
@@ -111,21 +157,7 @@ public class VentasController : ControllerBase
             // 5. Mover Productos a Generar3
             foreach (var item in itemsProductos)
             {
-                var caracteristicasStr = item.id_productoNavigation.caracteristicas;
-                int precio = 0;
-
-                if (!string.IsNullOrWhiteSpace(caracteristicasStr))
-                {
-                    try
-                    {
-                        using var json = JsonDocument.Parse(caracteristicasStr);
-                        if (json.RootElement.TryGetProperty("precio", out var p))
-                        {
-                            precio = p.GetInt32();
-                        }
-                    }
-                    catch (JsonException) { }
-                }
+                var precio = PrecioProducto(item.id_productoNavigation);
 
                 var detalle = new generar3
                 {
@@ -141,25 +173,7 @@ public class VentasController : ControllerBase
             // 6. Mover Servicios a Generar4
             foreach (var item in itemsServicios)
             {
-                // Validar que caracteristicas no sea nulo ni vacío
-                var caracteristicasStr = item.id_servicioNavigation.caracteristicas;
-                int precio = 0;
-
-                if (!string.IsNullOrWhiteSpace(caracteristicasStr))
-                {
-                    try
-                    {
-                        using var json = JsonDocument.Parse(caracteristicasStr);
-                        if (json.RootElement.TryGetProperty("precio", out var p))
-                        {
-                            precio = p.GetInt32();
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        // Si el JSON está mal formado, dejamos precio en 0
-                    }
-                }
+                var precio = PrecioServicio(item.id_servicioNavigation, preciosServicio);
 
                 var detalle = new generar4
                 {

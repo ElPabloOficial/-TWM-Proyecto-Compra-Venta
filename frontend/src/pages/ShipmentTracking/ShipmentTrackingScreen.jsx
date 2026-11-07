@@ -114,6 +114,7 @@ const ShipmentTrackingScreen = () => {
                   <th>Transportista</th>
                   <th>N.º de seguimiento</th>
                   <th>Estado</th>
+                  <th>Costo de envío</th>
                   <th>Entrega</th>
                   <th>Acción</th>
                 </tr>
@@ -137,6 +138,7 @@ const ShipmentTrackingScreen = () => {
                     <td>
                       <span className={`st-estado st-estado-${clase(d.estado)}`}>{ETIQUETA_ESTADO[d.estado]}</span>
                     </td>
+                    <td>{d.costoEnvio != null ? `$${d.costoEnvio.toLocaleString("es-CL")}` : "—"}</td>
                     <td>
                       {d.estado === "Entregado"
                         ? `Entregado el ${fechaCorta(d.eventos[0].fecha)}`
@@ -155,7 +157,7 @@ const ShipmentTrackingScreen = () => {
                 ))}
                 {visibles.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="st-vacio">
+                    <td colSpan={8} className="st-vacio">
                       No hay despachos en este estado.
                     </td>
                   </tr>

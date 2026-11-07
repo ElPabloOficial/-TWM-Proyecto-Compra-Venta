@@ -1,9 +1,12 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
 import { Box } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 import CustomButton from "../../atoms/Button/CustomButton";
 import CustomIconButton from "../../atoms/IconButton/CustomIconButton";
+import useCart from "../../../context/useCart";
+import { useToast } from "../../../context/ToastContext";
 
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import AddIcon from "@mui/icons-material/Add";
@@ -21,6 +24,26 @@ export default function ProductInfo({
   setTime,
 }) {
   const isService = type === "service";
+  const navigate = useNavigate();
+  const { addItem, user } = useCart();
+  const { mostrarToast } = useToast();
+
+  const agregarAlCarrito = async () => {
+    if (isService && (!date || !time)) {
+      mostrarToast("Selecciona la fecha y el horario del servicio.", "error");
+      return;
+    }
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    try {
+      await addItem({ tipo: isService ? "servicio" : "producto", id: product.id }, quantity);
+      mostrarToast(`${product.nombre ?? "El artículo"} se agregó al carrito`);
+    } catch (e) {
+      mostrarToast(e.message, "error");
+    }
+  };
 
   const imagenUrl = product.imagen
   ? product.imagen.startsWith("http")
@@ -269,20 +292,7 @@ export default function ProductInfo({
         >
           <CustomButton
             sx={{ flex: "1 1 130px" }}
-            onClick={() => {
-              if (isService && (!date || !time)) {
-                console.log("Selecciona la fecha y el horario.");
-                return;
-              }
-
-              console.log("Agregar al carrito:", {
-                tipo: type,
-                id: product.id,
-                cantidad: quantity,
-                fecha: isService ? date : null,
-                horario: isService ? time : null,
-              });
-            }}
+            onClick={agregarAlCarrito}
           >
             Agregar al Carrito
           </CustomButton>

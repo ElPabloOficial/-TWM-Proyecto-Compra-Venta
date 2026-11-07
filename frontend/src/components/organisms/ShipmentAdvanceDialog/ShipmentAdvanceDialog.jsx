@@ -6,22 +6,30 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import CustomButton from "../../atoms/Button/CustomButton";
-import { ETAPAS_DESPACHO, ETIQUETA_ESTADO, TRANSPORTISTAS } from "../../../services/despachoService";
+import {
+  ETAPAS_DESPACHO,
+  ETIQUETA_ESTADO,
+  TRANSPORTISTAS,
+  calcularCostoEnvio,
+} from "../../../services/despachoService";
 
 /*
  * Ventana del vendedor para pasar un despacho a la etapa siguiente.
- * Para pasar a "Despachado" pide la empresa de transporte y el número de seguimiento.
+ * Para pasar a "Despachado" pide la empresa de transporte, el número de seguimiento y las medidas del
+ * paquete: con ellas la base de datos calcula el costo de envío (ancho × alto × fondo / 5000 × 1555).
  * `onConfirmar` debe devolver una promesa; si se rechaza, el mensaje se muestra en la ventana.
  */
 const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
   const [transportista, setTransportista] = useState("");
   const [seguimiento, setSeguimiento] = useState("");
+  const [medidas, setMedidas] = useState({ ancho: "", alto: "", fondo: "" });
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     setTransportista(despacho?.transportista ?? "");
     setSeguimiento(despacho?.seguimiento ?? "");
+    setMedidas({ ancho: "", alto: "", fondo: "" });
     setError("");
     setGuardando(false);
   }, [despacho]);
@@ -31,15 +39,24 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
   const siguiente = ETAPAS_DESPACHO[ETAPAS_DESPACHO.indexOf(despacho.estado) + 1];
   const pideDatos = siguiente === "Despachado";
 
+  const medidasValidas = ["ancho", "alto", "fondo"].every((k) => Number(medidas[k]) > 0);
+  const costo = medidasValidas ? calcularCostoEnvio(medidas) : null;
+  const cambiarMedida = (campo) => (e) =>
+    setMedidas({ ...medidas, [campo]: e.target.value.replace(/\D/g, "").slice(0, 3) });
+
   const confirmar = async () => {
     if (pideDatos && (!transportista || !seguimiento.trim())) {
       setError("Elige la empresa de transporte e indica el número de seguimiento.");
       return;
     }
+    if (pideDatos && !medidasValidas) {
+      setError("Indica el ancho, alto y fondo del paquete en centímetros.");
+      return;
+    }
     setGuardando(true);
     setError("");
     try {
-      await onConfirmar({ transportista, seguimiento });
+      await onConfirmar({ transportista, seguimiento, ...medidas });
     } catch (e) {
       setError(e.message);
       setGuardando(false);
@@ -77,7 +94,28 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
               value={seguimiento}
               onChange={(e) => setSeguimiento(e.target.value)}
             />
-            <div style={{ fontSize: 12, color: "#777" }}>El cliente verá este número en el seguimiento de su pedido.</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                ["ancho", "Ancho (cm)"],
+                ["alto", "Alto (cm)"],
+                ["fondo", "Fondo (cm)"],
+              ].map(([campo, etiqueta]) => (
+                <TextField
+                  key={campo}
+                  label={etiqueta}
+                  size="small"
+                  value={medidas[campo]}
+                  onChange={cambiarMedida(campo)}
+                  slotProps={{ htmlInput: { inputMode: "numeric" } }}
+                />
+              ))}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>
+              Costo de envío: {costo === null ? "—" : `$${costo.toLocaleString("es-CL")}`}
+            </div>
+            <div style={{ fontSize: 12, color: "#777" }}>
+              Se calcula con el volumen del paquete. El cliente verá el costo y el número de seguimiento en su pedido.
+            </div>
           </>
         ) : (
           <div style={{ fontSize: 14 }}>
