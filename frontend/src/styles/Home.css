@@ -37,12 +37,37 @@
   cursor: pointer;
 }
 .home-hero-link:hover { text-decoration: underline; }
-.home-hero-img {
-  flex: 0 0 220px;
-  height: 130px;
+/* Recuadro de la oferta del día (a la derecha del banner) */
+.home-hero-oferta {
+  flex: 0 0 280px;
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
   background: #fff;
+  color: #000;
+  border: none;
   border-radius: 8px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+.home-hero-oferta:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); }
+.home-hero-oferta-img { width: 88px; height: 88px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.home-hero-oferta-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.home-hero-oferta-nombre {
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.home-hero-oferta-precios { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.home-hero-oferta-precios strong { font-size: 1.1rem; color: #ec3333; }
+.home-hero-oferta-precios s { font-size: 0.75rem; color: #888; }
+.home-hero-oferta-precios em { font-size: 0.75rem; font-style: normal; font-weight: 700; color: #fff; background: #ec3333; padding: 1px 6px; border-radius: 4px; }
 
 /* ---------- Secciones ---------- */
 .home-section {
@@ -83,5 +108,5 @@
 @media (max-width: 700px) {
   .home-hero { flex-direction: column; align-items: flex-start; padding: 20px 16px; }
   .home-hero h1 { font-size: 1.4rem; }
-  .home-hero-img { display: none; }
+  .home-hero-oferta { display: none; }
 }

@@ -5,6 +5,8 @@
 // (GET /wishlist solo devuelve los productos y servicios). Mientras tanto se usan
 // datos de ejemplo; al crear el endpoint, solo hay que cambiar esta función por pedir('/wishlist/listas').
 
+import { pedir } from './apiClient';
+
 const LISTAS_EJEMPLO = [
     { id: 1, nombre: 'Mis Favoritos', descripcion: 'Lista por defecto', publica: false, cantidad: 3 },
     { id: 2, nombre: 'Regalos de cumpleaños', descripcion: 'Ideas para regalar este año', publica: true, cantidad: 5 },
@@ -39,4 +41,18 @@ export async function eliminarListaDeseos(id) {
     const indice = LISTAS_EJEMPLO.findIndex((l) => l.id === id);
     if (indice === -1) throw new Error('La lista no existe.');
     LISTAS_EJEMPLO.splice(indice, 1);
+}
+
+// ---------- Con la API (GET /wishlist y POST /wishlist/agregar) ----------
+
+// Lo que el usuario guardó: { productos: [{ id, nombre }], servicios: [{ id, nombre }] }
+export async function obtenerMiWishlist() {
+    const datos = await pedir('/wishlist');
+    return { productos: datos?.productos ?? [], servicios: datos?.servicios ?? [] };
+}
+
+// Guarda un producto o servicio en la lista de deseos. tipo: "producto" | "servicio".
+// La API responde 400 ("ya está en tu lista") si ya estaba guardado.
+export async function agregarAWishlist(tipo, id) {
+    await pedir('/wishlist/agregar', { method: 'POST', body: { tipo, id_item: id } });
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Header from '../../components/organisms/Header/Header';
@@ -10,23 +10,21 @@ import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-// Datos de prueba para que se vea igual a Figma
-const itemsIniciales = [
-  { id: 1, nombre: 'Laptop Lenovo 14" - gris', categoria: 'Tecnología', precio: 389990, tipo: 'unidad' },
-  { id: 2, nombre: 'Instalación de red interna', categoria: 'TecnoOsono', precio: 0, tipo: 'servicio' },
-];
-
 export default function CreateQuoteScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addQuote } = useQuotes();
   const { mostrarToast } = useToast();
-  const [items, setItems] = useState(itemsIniciales.map((item) => ({ ...item, cantidad: 1 })));
+
+  // La solicitud parte con el producto o servicio desde el que se presionó "Solicitar cotización" en su ficha
+  const itemDeLaFicha = location.state?.item;
+  const [items, setItems] = useState(itemDeLaFicha ? [{ ...itemDeLaFicha, cantidad: itemDeLaFicha.cantidad ?? 1 }] : []);
 
   const total = items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
 
-  const cambiarCantidad = (id, cambio) => {
+  const cambiarCantidad = (clave, cambio) => {
     setItems(items.map((item) =>
-      item.id === id ? { ...item, cantidad: Math.max(1, item.cantidad + cambio) } : item,
+      item.clave === clave ? { ...item, cantidad: Math.max(1, item.cantidad + cambio) } : item,
     ));
   };
 
@@ -38,8 +36,8 @@ export default function CreateQuoteScreen() {
     navigate('/mis-cotizaciones');
   };
 
-  const eliminarItem = (id) => {
-    setItems(items.filter((item) => item.id !== id));
+  const eliminarItem = (clave) => {
+    setItems(items.filter((item) => item.clave !== clave));
   };
 
   const formatoCLP = (n) =>
@@ -59,7 +57,7 @@ export default function CreateQuoteScreen() {
         {/* Título */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-            <span style={{ backgroundColor: '#FFD54F', padding: '0 4px' }}>Solicitar</span> cotización
+            Solicitar cotización
           </Typography>
           <Typography sx={{ fontSize: '0.85rem', color: '#555' }}>
             *Selecciona uno o varios productos/servicios. Valores vigentes por 15 días.
@@ -68,9 +66,20 @@ export default function CreateQuoteScreen() {
 
         {/* Lista de Items */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+          {items.length === 0 && (
+            <Box sx={{ backgroundColor: '#fff', border: '1px dashed #bbb', borderRadius: 2, p: 3, textAlign: 'center' }}>
+              <Typography sx={{ color: '#555', fontSize: '0.9rem' }}>
+                Esta solicitud no tiene artículos. Busca un producto o servicio en el catálogo y presiona
+                «Solicitar cotización» en su ficha.
+              </Typography>
+              <CustomButton variant="primary" sx={{ mt: 2 }} onClick={() => navigate('/catalogo')}>
+                Ir al catálogo
+              </CustomButton>
+            </Box>
+          )}
           {items.map((item) => (
             <Box
-              key={item.id}
+              key={item.clave}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -92,11 +101,11 @@ export default function CreateQuoteScreen() {
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid #000', borderRadius: 1 }}>
-                  <CustomButton variant="text" size="small" onClick={() => cambiarCantidad(item.id, -1)} sx={{ minWidth: 30, padding: 0 }}><RemoveIcon fontSize="small" /></CustomButton>
+                  <CustomButton variant="text" size="small" onClick={() => cambiarCantidad(item.clave, -1)} sx={{ minWidth: 30, padding: 0 }}><RemoveIcon fontSize="small" /></CustomButton>
                   <Typography sx={{ px: 2, fontWeight: 600 }}>{item.cantidad}</Typography>
-                  <CustomButton variant="text" size="small" onClick={() => cambiarCantidad(item.id, 1)} sx={{ minWidth: 30, padding: 0 }}><AddIcon fontSize="small" /></CustomButton>
+                  <CustomButton variant="text" size="small" onClick={() => cambiarCantidad(item.clave, 1)} sx={{ minWidth: 30, padding: 0 }}><AddIcon fontSize="small" /></CustomButton>
                 </Box>
-                <CustomButton variant="text" size="small" onClick={() => eliminarItem(item.id)} sx={{ color: '#000' }}>
+                <CustomButton variant="text" size="small" onClick={() => eliminarItem(item.clave)} sx={{ color: '#000' }}>
                   <DeleteIcon />
                 </CustomButton>
               </Box>

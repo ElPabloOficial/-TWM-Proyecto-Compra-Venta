@@ -8,6 +8,7 @@ import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import useCart from "../../context/useCart";
 import { useToast } from "../../context/ToastContext";
 import { listarCatalogo, rutaDetalle } from "../../services/catalogoService";
+import { urlImagen } from "../../services/carritoService";
 import "../../styles/Home.css";
 
 const CANTIDAD_DESTACADOS = 4;
@@ -81,6 +82,11 @@ const HomeScreen = () => {
 
   const handleVerOfertas = () => navigate("/catalogo?estado=oferta");
 
+  // Oferta del día: la oferta vigente con el mayor descuento. Si no hay ninguna, el banner muestra un texto general.
+  const ofertaDelDia = [...catalogo]
+    .filter((i) => i.descuentoPct > 0 && i.precio !== null && i.precioAnterior !== null)
+    .sort((a, b) => b.descuentoPct - a.descuentoPct)[0] ?? null;
+
   // Sección con título y grilla de tarjetas (se usa para productos y servicios)
   const renderSeccion = (etiqueta, titulo, descripcion, items, textoVacio) => (
     <section className="home-section">
@@ -99,7 +105,7 @@ const HomeScreen = () => {
           {items.map((item) => (
             <article key={item.clave} className="home-card">
               <div className="home-card-img" onClick={() => verDetalle(item)} style={{ cursor: "pointer" }}>
-                {item.imagen && <img src={item.imagen} alt={item.nombre} />}
+                {item.imagen && <img src={urlImagen(item.imagen)} alt={item.nombre} />}
               </div>
               <span className="home-card-cat">{item.categoria.toUpperCase()}</span>
               <h3 className="home-card-nombre">
@@ -143,21 +149,55 @@ const HomeScreen = () => {
       <main className="home-main">
         <section className="home-hero">
           <div className="home-hero-texto">
-            <span className="home-hero-badge">OFERTA DEL DÍA</span>
-            <h1>
-              ¡Comprá con la mejor oferta del día!
-              <br />
-              Envío gratis y hasta 40% OFF
-            </h1>
-            <p>
-              Descubrí productos destacados, ofertas flash y beneficios
-              exclusivos para compradores inteligentes.
-            </p>
-            <button type="button" className="home-hero-link" onClick={handleVerOfertas}>
-              Ver ofertas
+            <span className="home-hero-badge">{ofertaDelDia ? "OFERTA DEL DÍA" : "TU TIENDA DE LA COMUNIDAD"}</span>
+            {ofertaDelDia ? (
+              <>
+                <h1>
+                  ¡Aprovecha la mejor oferta del día!
+                  <br />
+                  Hasta {ofertaDelDia.descuentoPct}% OFF
+                </h1>
+                <p>
+                  {ofertaDelDia.nombre}: ahora {formatoCLP(ofertaDelDia.precio)} en vez de{" "}
+                  {formatoCLP(ofertaDelDia.precioAnterior)}.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1>Productos y servicios de emprendedores de tu comunidad</h1>
+                <p>Explora el catálogo y encuentra lo que necesitas, con compra segura.</p>
+              </>
+            )}
+            <button
+              type="button"
+              className="home-hero-link"
+              onClick={ofertaDelDia ? handleVerOfertas : () => navigate("/catalogo")}
+            >
+              {ofertaDelDia ? "Ver ofertas" : "Ver catálogo"}
             </button>
           </div>
-          <div className="home-hero-img" aria-hidden="true" />
+
+          {/* Recuadro de la oferta del día: abre la ficha del producto */}
+          {ofertaDelDia && (
+            <button
+              type="button"
+              className="home-hero-oferta"
+              onClick={() => verDetalle(ofertaDelDia)}
+              aria-label={`Ver ${ofertaDelDia.nombre}`}
+            >
+              {ofertaDelDia.imagen && (
+                <img src={urlImagen(ofertaDelDia.imagen)} alt="" className="home-hero-oferta-img" />
+              )}
+              <span className="home-hero-oferta-info">
+                <span className="home-hero-oferta-nombre">{ofertaDelDia.nombre}</span>
+                <span className="home-hero-oferta-precios">
+                  <strong>{formatoCLP(ofertaDelDia.precio)}</strong>
+                  <s>{formatoCLP(ofertaDelDia.precioAnterior)}</s>
+                  <em>-{ofertaDelDia.descuentoPct}%</em>
+                </span>
+              </span>
+            </button>
+          )}
         </section>
 
         {renderSeccion(

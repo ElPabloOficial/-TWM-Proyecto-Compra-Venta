@@ -19,6 +19,12 @@ const Header = () => {
   const { cartCount, user } = useCart();
   const [categoriasAbiertas, setCategoriasAbiertas] = useState(false);
 
+  // Ofertas, Productos y Servicios abren el catálogo ya filtrado por ese tipo
+  const irACatalogo = (tipo) => {
+    setCategoriasAbiertas(false);
+    navigate(`/catalogo?estado=${tipo}`);
+  };
+
   return (
     <Box>
       <Box
@@ -168,6 +174,7 @@ const Header = () => {
           <CustomButton
             variant="secondary"
             size="small"
+            onClick={() => irACatalogo('oferta')}
             sx={{
               border: 'none',
               borderRadius: 0,
@@ -179,6 +186,7 @@ const Header = () => {
           <CustomButton
             variant="secondary"
             size="small"
+            onClick={() => irACatalogo('producto')}
             sx={{
               border: 'none',
               borderRadius: 0,
@@ -190,6 +198,7 @@ const Header = () => {
           <CustomButton
             variant="secondary"
             size="small"
+            onClick={() => irACatalogo('servicio')}
             sx={{
               border: 'none',
               borderRadius: 0,

@@ -9,7 +9,6 @@ const ROJO = "#EC3333";
 // y se muestra como una etiqueta sobre los resultados, por eso ya no hay selector aquí.
 const campos = [
   { nombre: "precio", titulo: "Precio" },
-  { nombre: "ubicacion", titulo: "Ubicación" },
   { nombre: "estado", titulo: "Tipo" },
   { nombre: "orden", titulo: "Ordenar por" },
 ]; // selectores de filtros

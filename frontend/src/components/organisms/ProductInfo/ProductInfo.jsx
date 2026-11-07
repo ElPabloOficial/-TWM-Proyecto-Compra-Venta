@@ -1,5 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
+import { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
@@ -7,8 +8,10 @@ import CustomButton from "../../atoms/Button/CustomButton";
 import CustomIconButton from "../../atoms/IconButton/CustomIconButton";
 import useCart from "../../../context/useCart";
 import { useToast } from "../../../context/ToastContext";
+import { agregarAWishlist, obtenerMiWishlist } from "../../../services/wishlistService";
 
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 
@@ -27,6 +30,76 @@ export default function ProductInfo({
   const navigate = useNavigate();
   const { addItem, user } = useCart();
   const { mostrarToast } = useToast();
+
+  const tipoItem = isService ? "servicio" : "producto";
+  const haySesion = Boolean(user);
+
+  // Corazón: lleno si el producto o servicio ya está en la lista de deseos del usuario
+  const [enLista, setEnLista] = useState(false);
+  const [guardandoFavorito, setGuardandoFavorito] = useState(false);
+
+  useEffect(() => {
+    if (!haySesion) return;
+    let activo = true; // evita actualizar el estado si la ficha se cerró antes de que llegue la respuesta
+
+    const revisar = async () => {
+      try {
+        const lista = await obtenerMiWishlist();
+        const guardados = isService ? lista.servicios : lista.productos;
+        if (activo) setEnLista(guardados.some((g) => g.id === product.id));
+      } catch {
+        // Si no se puede consultar, el corazón queda vacío; al presionarlo la API dirá si ya estaba
+      }
+    };
+
+    revisar();
+    return () => {
+      activo = false;
+    };
+  }, [haySesion, isService, product.id]);
+
+  const agregarAFavoritos = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    if (enLista) {
+      mostrarToast("Ya está en tu lista de deseos.");
+      return;
+    }
+    try {
+      setGuardandoFavorito(true);
+      await agregarAWishlist(tipoItem, product.id);
+      setEnLista(true);
+      mostrarToast(`${product.nombre ?? "El artículo"} se agregó a tu lista de deseos`);
+    } catch (e) {
+      if (/ya está/i.test(e.message)) setEnLista(true); // la API avisa si ya estaba guardado
+      mostrarToast(e.message, "error");
+    } finally {
+      setGuardandoFavorito(false);
+    }
+  };
+
+  // Lleva a "Solicitar cotización" con este producto o servicio ya cargado, con la cantidad elegida
+  const solicitarCotizacion = () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    navigate("/cotizaciones/nueva", {
+      state: {
+        item: {
+          clave: `${tipoItem}-${product.id}`,
+          id: product.id,
+          nombre: product.nombre,
+          categoria: product.categoria,
+          precio: Number(product.precio) || 0,
+          tipo: isService ? "servicio" : "unidad",
+          cantidad: quantity,
+        },
+      },
+    });
+  };
 
   const agregarAlCarrito = async () => {
     if (isService && (!date || !time)) {
@@ -300,24 +373,17 @@ export default function ProductInfo({
           <CustomButton
             variant="tertiary"
             sx={{ flex: "1 1 145px" }}
-            onClick={() => {
-              console.log("Solicitar cotización:", {
-                tipo: type,
-                id: product.id,
-                cantidad: quantity,
-              });
-            }}
+            onClick={solicitarCotizacion}
           >
             Solicitar Cotización
           </CustomButton>
 
           <CustomIconButton
-            ariaLabel="Agregar a favoritos"
-            onClick={() => {
-              console.log("Agregar a favoritos:", product.id);
-            }}
+            ariaLabel={enLista ? "Ya está en tu lista de deseos" : "Agregar a favoritos"}
+            disabled={guardandoFavorito}
+            onClick={agregarAFavoritos}
           >
-            <FavoriteBorderIcon />
+            {enLista ? <FavoriteIcon sx={{ color: "#EC3333" }} /> : <FavoriteBorderIcon />}
           </CustomIconButton>
         </Box>
       </Box>

@@ -37,7 +37,7 @@ const comparadores = {
   nombre: (a, b) => a.nombre.localeCompare(b.nombre),
 };
 
-const FILTROS_VACIOS = { categoria: "", precio: "", ubicacion: "", estado: "", orden: "" };
+const FILTROS_VACIOS = { categoria: "", precio: "", estado: "", orden: "" };
 
 // Camino de una categoría, por ejemplo "Tecnología › Computación". Se omite la raíz
 // (Productos / Servicios) para que el texto sea corto.
@@ -70,9 +70,10 @@ const idsConSubcategorias = (id, categorias) => {
 const CatalogScreen = () => {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  // El menú de categorías del Header llega aquí como /catalogo?categoria=ID; "Ver ofertas" del Home como ?estado=oferta
+  // Desde el Header se llega aquí como /catalogo?categoria=ID (menú de categorías) o
+  // /catalogo?estado=oferta|producto|servicio (Ofertas, Productos y Servicios; también "Ver ofertas" del Home)
   const categoriaUrl = params.get("categoria") ?? "";
-  const estadoInicial = params.get("estado") ?? "";
+  const estadoUrl = params.get("estado") ?? "";
 
   const [items, setItems] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -81,16 +82,16 @@ const CatalogScreen = () => {
   // Sube al pedir "Reintentar" para volver a ejecutar la carga
   const [intento, setIntento] = useState(0);
 
-  const [filtros, setFiltros] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoInicial }); //Filtros
-  const [aplicados, setAplicados] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoInicial });
+  const [filtros, setFiltros] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoUrl }); //Filtros
+  const [aplicados, setAplicados] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoUrl });
   const [pagina, setPagina] = useState(1);
-  const [categoriaVista, setCategoriaVista] = useState(categoriaUrl);
+  const [urlVista, setUrlVista] = useState(`${categoriaUrl}|${estadoUrl}`);
 
-  // Si la categoría de la URL cambia estando en el catálogo (se elige otra en el menú), el filtro la sigue
-  if (categoriaVista !== categoriaUrl) {
-    setCategoriaVista(categoriaUrl);
-    setFiltros((f) => ({ ...f, categoria: categoriaUrl }));
-    setAplicados((a) => ({ ...a, categoria: categoriaUrl }));
+  // Si la URL cambia estando ya en el catálogo (se elige otra categoría u "Ofertas" en el Header), los filtros la siguen
+  if (urlVista !== `${categoriaUrl}|${estadoUrl}`) {
+    setUrlVista(`${categoriaUrl}|${estadoUrl}`);
+    setFiltros((f) => ({ ...f, categoria: categoriaUrl, estado: estadoUrl }));
+    setAplicados((a) => ({ ...a, categoria: categoriaUrl, estado: estadoUrl }));
     setPagina(1);
   }
 
@@ -126,13 +127,18 @@ const CatalogScreen = () => {
     setIntento((n) => n + 1);
   };
 
+  // La categoría y el tipo elegidos quedan en la URL, así volver a elegirlos en el Header siempre funciona
+  const paramsDe = (f) => ({
+    ...(f.categoria ? { categoria: f.categoria } : {}),
+    ...(f.estado ? { estado: f.estado } : {}),
+  });
+
   const cambiarFiltro = (campo, valor) => setFiltros({ ...filtros, [campo]: valor });
 
   const aplicarFiltros = () => {
     setAplicados(filtros);
     setPagina(1);
-    // La categoría queda en la URL, así volver a elegirla en el menú del Header funciona
-    setParams(filtros.categoria ? { categoria: filtros.categoria } : {});
+    setParams(paramsDe(filtros));
   };
 
   const limpiarFiltros = () => {
@@ -149,14 +155,12 @@ const CatalogScreen = () => {
     setFiltros((f) => ({ ...f, categoria: "" }));
     setAplicados((a) => ({ ...a, categoria: "" }));
     setPagina(1);
-    setParams({});
+    setParams(paramsDe({ ...aplicados, categoria: "" }));
   };
 
   // Opciones de los selectores (salen de lo que hay en el catálogo)
-  const ubicaciones = [...new Set(items.map((i) => i.ubicacion).filter(Boolean))].sort();
   const opciones = {
     precio: rangosPrecio.map((r) => ({ value: r.id, label: r.label })),
-    ubicacion: ubicaciones.map((u) => ({ value: u, label: u })),
     estado: tipos,
     orden: ordenes,
   };
@@ -168,7 +172,6 @@ const CatalogScreen = () => {
   const filtrados = items.filter(
     (i) =>
       (!categoriasPermitidas || i.categorias.some((c) => categoriasPermitidas.has(c.id))) &&
-      (aplicados.ubicacion === "" || i.ubicacion === aplicados.ubicacion) &&
       (aplicados.estado === "" ||
         (aplicados.estado === "oferta" ? i.descuentoPct > 0 : i.tipo === aplicados.estado)) &&
       (!rango || (i.precio !== null && i.precio >= rango.min && i.precio < rango.max))
