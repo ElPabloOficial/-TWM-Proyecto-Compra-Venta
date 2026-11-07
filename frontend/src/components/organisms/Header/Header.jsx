@@ -117,6 +117,7 @@ const Header = () => {
             variant="primary"
             size="small"
             startIcon={<NotificationsIcon />}
+            onClick={() => navigate(user ? '/notificaciones' : '/login')}
           >
             Notificaciones
           </CustomButton>
