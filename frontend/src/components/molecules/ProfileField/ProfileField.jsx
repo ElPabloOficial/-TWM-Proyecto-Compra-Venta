@@ -1,6 +1,8 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CustomInput from '../../atoms/TextField/CustomInput';
+import { useTextoFecha, hoyISO } from '../../atoms/DateField/fechaUtils';
+import SelectorCalendario from '../../atoms/DateField/SelectorCalendario';
 
 /*
  * ProfileField
@@ -31,6 +33,15 @@ export default function ProfileField({
   sx,
   ...props
 }) {
+  // type="date": se escribe y se ve como dd/mm/aaaa. "onChange" recibe un evento con la fecha ISO
+  // (AAAA-MM-DD) en target.value, igual que los demás campos. Límites: nacimiento desde 1940 hasta hoy.
+  const esFecha = type === 'date';
+  const fecha = useTextoFecha(
+    esFecha ? value : '',
+    (iso) => onChange?.({ target: { value: iso } }),
+    { min: '1940-01-01', max: hoyISO() },
+  );
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, ...sx }}>
       {label && (
@@ -46,11 +57,18 @@ export default function ProfileField({
       )}
 
       <CustomInput
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        endIcon={endIcon}
+        type={esFecha ? 'text' : type}
+        value={esFecha ? fecha.texto : value}
+        onChange={esFecha ? fecha.escribir : onChange}
+        placeholder={esFecha ? 'dd/mm/aaaa' : placeholder}
+        inputProps={esFecha ? { inputMode: 'numeric', maxLength: 10 } : undefined}
+        endIcon={
+          esFecha ? (
+            <SelectorCalendario value={value} min="1940-01-01" max={hoyISO()} onElegir={fecha.elegir} />
+          ) : (
+            endIcon
+          )
+        }
         readOnly={readOnly}
         sx={{
           border: '1px solid #333',

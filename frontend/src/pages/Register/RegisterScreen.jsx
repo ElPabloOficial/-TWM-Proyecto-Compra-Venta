@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import DateTextField from '../../components/molecules/DateTextField/DateTextField';
+import { hoyISO } from '../../components/atoms/DateField/fechaUtils';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import FormHelperText from '@mui/material/FormHelperText';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import InputLabel from '@mui/material/InputLabel';
@@ -17,152 +21,304 @@ import Typography from '@mui/material/Typography';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import formatRut, { isValidRut } from '../../services/format';
+import { pedir } from '../../services/apiClient';
+import { authService, limpiarRut } from '../../services/authService';
+import { obtenerComunas } from '../../services/addressService';
 import logo from '../../assets/logo.png';
 import '../../styles/Register.css';
 
 const initialFormData = {
-  nombres: '',
-  apellidos: '',
+  // Usuario
+  nombre: '',
   rut: '',
-  rutEmpresa: '',
+  telefono: '',
   fechaNacimiento: '',
   email: '',
-  telefono: '',
+  // Empresa (solo vendedor)
+  nombreEmpresa: '',
+  rutEmpresa: '',
+  giro: '',
+  paginaWeb: '',
+  // Dirección
+  calle: '',
   numero: '',
-  direccion: '',
-  ciudad: '',
-  nombreTienda: '',
-  categoria: '',
-  descripcionTienda: '',
+  pasaje: '',
+  sector: '',
+  descripcion: '',
+  region: '', // nombre de la región (solo sirve para filtrar)
+  provincia: '', // nombre de la provincia (solo sirve para filtrar)
+  comuna: '', // id de la comuna: es lo único que guarda la base de datos
+  // Seguridad
   contrasena: '',
   confirmaContrasena: '',
   terminosAceptados: false,
 };
 
-const categories = [
-  'Alimentos y bebidas',
-  'Hogar y decoración',
-  'Moda y accesorios',
-  'Tecnología',
-  'Servicios',
-  'Otro',
-];
+const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-const isValidEmail = (email) =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+// Lista de nombres sin repetir, ordenada, en el formato { id, nombre } que usa el <Select>
+const unicos = (nombres) =>
+  [...new Set(nombres)]
+    .sort((a, b) => a.localeCompare(b, 'es'))
+    .map((nombre) => ({ id: nombre, nombre }));
 
 export default function RegisterScreen() {
-  const [userType, setUserType] = useState(0);
+  const navigate = useNavigate();
+  const [userType, setUserType] = useState(0); // 0 = cliente, 1 = vendedor
   const [formData, setFormData] = useState(initialFormData);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [apiWarning, setApiWarning] = useState('');
+
+  const [todasLasComunas, setTodasLasComunas] = useState([]);
+  const [ubicacionError, setUbicacionError] = useState(false);
+
+  const isVendor = userType === 1;
+
+  /* ---------- Región → Provincia → Comuna ----------
+     La API solo tiene GET /comunas, que devuelve [{ id, nombre, provincia, region }].
+     De esa lista única se arman los tres selectores dependientes. */
+  useEffect(() => {
+    let activo = true;
+    obtenerComunas()
+      .then((lista) => activo && setTodasLasComunas(lista))
+      .catch(() => activo && setUbicacionError(true));
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const regiones = useMemo(
+    () => unicos(todasLasComunas.map((c) => c.region)),
+    [todasLasComunas],
+  );
+
+  const provincias = useMemo(
+    () =>
+      unicos(
+        todasLasComunas.filter((c) => c.region === formData.region).map((c) => c.provincia),
+      ),
+    [todasLasComunas, formData.region],
+  );
+
+  const comunas = useMemo(
+    () =>
+      todasLasComunas.filter(
+        (c) => c.region === formData.region && c.provincia === formData.provincia,
+      ),
+    [todasLasComunas, formData.region, formData.provincia],
+  );
+
+  /* ---------- Handlers ---------- */
+  const update = (name, value) => {
+    setFormData((previous) => ({ ...previous, [name]: value }));
+    setSuccess(false);
+    setApiError('');
+  };
 
   const handleChange = (event) => {
     const { name, value, checked, type } = event.target;
-    setFormData((previous) => ({
-      ...previous,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-    setSuccess(false);
+    update(name, type === 'checkbox' ? checked : value);
   };
 
-  const handleRutChange = (event) => {
-    const { name, value } = event.target;
+  const handleRutChange = (event) => update(event.target.name, formatRut(event.target.value));
+
+  const handleDigitsChange = (maxLength) => (event) =>
+    update(event.target.name, event.target.value.replace(/\D/g, '').slice(0, maxLength));
+
+  const handleLettersChange = (event) =>
+    update(event.target.name, event.target.value.replace(/[^\p{L}\s'-]/gu, ''));
+
+  const handleRegionChange = (event) => {
     setFormData((previous) => ({
       ...previous,
-      [name]: formatRut(value),
+      region: event.target.value,
+      provincia: '',
+      comuna: '',
     }));
-    setSuccess(false);
+    setApiError('');
   };
 
-  const handleDigitsChange = (event) => {
-    const { name, value } = event.target;
+  const handleProvinciaChange = (event) => {
     setFormData((previous) => ({
       ...previous,
-      [name]: value.replace(/\D/g, ''),
+      provincia: event.target.value,
+      comuna: '',
     }));
-    setSuccess(false);
-  };
-
-  const handleLettersChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value.replace(/[^\p{L}\s]/gu, ''),
-    }));
-    setSuccess(false);
+    setApiError('');
   };
 
   const handleTabChange = (_event, newValue) => {
     setUserType(newValue);
     setSubmitted(false);
     setSuccess(false);
+    setApiError('');
   };
 
-  const passwordsMatch =
-    formData.contrasena === formData.confirmaContrasena;
-  const passwordIsLongEnough = formData.contrasena.length >= 8;
-  const rutField = userType === 0 ? 'rut' : 'rutEmpresa';
-  const currentRutIsValid = isValidRut(formData[rutField] || '');
-  const emailIsValid = isValidEmail(formData.email);
+  /* ---------- Validación (mismos límites que la base de datos) ---------- */
+  const errors = useMemo(() => {
+    const f = formData;
+    const e = {};
 
-  const handleSubmit = (event) => {
+    if (f.nombre.trim().length < 3) e.nombre = 'Ingresa tu nombre completo.';
+    if (!isValidRut(f.rut)) e.rut = 'Ingresa un RUT válido, ej: 12.345.678-5.';
+    if (!/^\d{9}$/.test(f.telefono)) e.telefono = 'Ingresa 9 dígitos, ej: 912345678.';
+    if (!f.fechaNacimiento) e.fechaNacimiento = 'Selecciona tu fecha de nacimiento.';
+    else if (f.fechaNacimiento < '1940-01-01' || f.fechaNacimiento > hoyISO())
+      e.fechaNacimiento = 'La fecha no es válida.';
+    if (!isValidEmail(f.email)) e.email = 'Ingresa un correo válido, ej: nombre@dominio.cl.';
+
+    if (isVendor) {
+      if (!f.nombreEmpresa.trim()) e.nombreEmpresa = 'Ingresa el nombre de la empresa.';
+      if (!isValidRut(f.rutEmpresa)) e.rutEmpresa = 'Ingresa un RUT válido, ej: 76.123.456-7.';
+      if (f.paginaWeb && !/^https?:\/\/\S+\.\S+$/i.test(f.paginaWeb.trim()))
+        e.paginaWeb = 'Incluye http:// o https://, ej: https://mitienda.cl';
+    }
+
+    if (!f.calle.trim()) e.calle = 'Ingresa la calle.';
+    if (!f.numero || Number(f.numero) <= 0) e.numero = 'Ingresa un número mayor a 0.';
+    if (!f.region) e.region = 'Selecciona una región.';
+    if (!f.provincia) e.provincia = 'Selecciona una provincia.';
+    if (!f.comuna) e.comuna = 'Selecciona una comuna.';
+
+    if (f.contrasena.length < 8) e.contrasena = 'Usa al menos 8 caracteres.';
+    if (f.contrasena !== f.confirmaContrasena)
+      e.confirmaContrasena = 'Las contraseñas no coinciden.';
+    if (!f.terminosAceptados) e.terminosAceptados = 'Debes aceptar los términos para continuar.';
+
+    return e;
+  }, [formData, isVendor]);
+
+  const hasError = (name) => submitted && Boolean(errors[name]);
+  // ' ' reserva el espacio del mensaje para que todas las filas queden alineadas
+  const help = (name) => (submitted && errors[name]) || ' ';
+
+  /* ---------- Envío ----------
+     1) POST /usuarios      -> crea el usuario (Usuario)
+     2) POST /usuarios/login -> la API necesita un token para el paso siguiente
+     3) PUT  /perfil         -> guarda correo, teléfono, dirección y (vendedor) empresa */
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitted(true);
     setSuccess(false);
+    setApiError('');
+    setApiWarning('');
 
-    // Las contraseñas nunca se imprimen: solo se confirma que se capturaron
-    console.log('Datos de registro:', {
-      tipoCuenta: userType === 0 ? 'cliente' : 'vendedor',
-      ...formData,
-      contrasena: '[oculta]',
-      confirmaContrasena: '[oculta]',
-    });
+    if (Object.keys(errors).length > 0 || submitting) return;
 
-    if (
-      !event.currentTarget.reportValidity() ||
-      !currentRutIsValid ||
-      !emailIsValid ||
-      !passwordsMatch ||
-      !passwordIsLongEnough ||
-      !formData.terminosAceptados
-    ) {
+    const f = formData;
+    const rut = limpiarRut(f.rut);
+    setSubmitting(true);
+
+    // ---- Paso 1: crear el usuario ----
+    try {
+      await pedir('/usuarios', {
+        method: 'POST',
+        body: {
+          rut,
+          nombre: f.nombre.trim(),
+          clave: f.contrasena,
+          fechanacimiento: f.fechaNacimiento, // "YYYY-MM-DD"
+          tipousuario: isVendor ? 'vendedor' : 'cliente',
+        },
+      });
+    } catch (error) {
+      setApiError(error.message);
+      setSubmitting(false);
       return;
     }
 
+    // ---- Pasos 2 y 3: iniciar sesión y completar el perfil ----
+    try {
+      await authService.login(rut, f.contrasena);
+
+      await pedir('/perfil', {
+        method: 'PUT',
+        body: {
+          correo: f.email.trim().toLowerCase(),
+          telefonos: [f.telefono],
+          direccion: {
+            calle: f.calle.trim(),
+            numero: Number(f.numero),
+            pasaje: f.pasaje.trim(),
+            descripcion: f.descripcion.trim(),
+            sector: f.sector.trim(),
+            id_comuna: Number(f.comuna),
+          },
+          empresa: isVendor
+            ? {
+                rut: limpiarRut(f.rutEmpresa),
+                nombre: f.nombreEmpresa.trim(),
+                giro: f.giro.trim(),
+                paginaweb: f.paginaWeb.trim(),
+              }
+            : undefined,
+        },
+      });
+    } catch (error) {
+      // El usuario ya existe: si repitiera el formulario, la API respondería "RUT ya registrado".
+      // Por eso se le lleva a su perfil para terminar de completar los datos.
+      setApiWarning(
+        `Tu cuenta se creó, pero no se pudieron guardar todos tus datos: ${error.message} ` +
+          'Te llevamos a tu perfil para que los completes.',
+      );
+      setSubmitting(false);
+      setTimeout(() => navigate('/perfil'), 3500);
+      return;
+    }
+
+    // Todo salió bien: se cierra la sesión local y se envía a iniciar sesión
+    await authService.logout();
     setSuccess(true);
+    setSubmitting(false);
+    setTimeout(() => navigate('/login'), 1500);
   };
 
-  const passwordField = (name, label, visible, onToggle) => (
+  /* ---------- Piezas reutilizables ---------- */
+  const field = (name, label, props = {}) => (
     <TextField
       fullWidth
-      required
       name={name}
       label={label}
-      type={visible ? 'text' : 'password'}
       value={formData[name]}
       onChange={handleChange}
-      autoComplete="new-password"
-      inputProps={{ minLength: 8 }}
-      error={
-        submitted &&
-        ((name === 'contrasena' && !passwordIsLongEnough) ||
-          (name === 'confirmaContrasena' && !passwordsMatch))
-      }
-      helperText={
-        submitted &&
-        name === 'contrasena' &&
-        !passwordIsLongEnough
-          ? 'Usa al menos 8 caracteres.'
-          : submitted &&
-              name === 'confirmaContrasena' &&
-              !passwordsMatch
-            ? 'Las contraseñas no coinciden.'
-            : ' '
-      }
-      InputProps={{
+      error={hasError(name)}
+      helperText={help(name)}
+      {...props}
+    />
+  );
+
+  const selectField = (name, label, options, onChange, disabled = false) => (
+    <FormControl fullWidth required disabled={disabled} error={hasError(name)}>
+      <InputLabel id={`${name}-label`}>{label}</InputLabel>
+      <Select
+        labelId={`${name}-label`}
+        name={name}
+        value={formData[name]}
+        label={label}
+        onChange={onChange}
+        MenuProps={{ PaperProps: { style: { maxHeight: 280 } } }}
+      >
+        {options.map((option) => (
+          <MenuItem key={option.id} value={option.id}>
+            {option.nombre}
+          </MenuItem>
+        ))}
+      </Select>
+      <FormHelperText>{help(name)}</FormHelperText>
+    </FormControl>
+  );
+
+  const passwordField = (name, label, visible, onToggle) =>
+    field(name, label, {
+      required: true,
+      type: visible ? 'text' : 'password',
+      autoComplete: 'new-password',
+      InputProps: {
         endAdornment: (
           <InputAdornment position="end">
             <IconButton
@@ -174,18 +330,17 @@ export default function RegisterScreen() {
             </IconButton>
           </InputAdornment>
         ),
-      }}
-    />
-  );
+      },
+    });
 
+  /* ---------- Render ---------- */
   return (
     <main className="register-page">
       <section className="register-card" aria-labelledby="register-title">
-        <a className="register-back" href="/" aria-label="Volver al inicio de sesión">
-          ← Volver al inicio de sesión
-        </a>
         <div className="register-brand">
-          <img src={logo} alt="Ahorraton" className="register-logo" />
+          <Link to="/inicio" aria-label="Ir al inicio">
+            <img src={logo} alt="Ahorraton" className="register-logo" />
+          </Link>
           <Typography component="h1" id="register-title" className="register-title">
             Crear cuenta
           </Typography>
@@ -213,254 +368,131 @@ export default function RegisterScreen() {
           onSubmit={handleSubmit}
           noValidate
         >
+          {/* ---- Datos personales ---- */}
           <Typography component="h2" className="register-section-title">
-            {userType === 0 ? 'Datos personales' : 'Datos del vendedor'}
-          </Typography>
-
-          <div className="register-fields">
-            {userType === 0 ? (
-              <>
-                <TextField
-                  fullWidth
-                  required
-                  name="nombres"
-                  label="Nombre"
-                  value={formData.nombres}
-                  onChange={handleLettersChange}
-                  autoComplete="given-name"
-                />
-              </>
-            ) : (
-              <>
-                <TextField
-                  fullWidth
-                  required
-                  name="nombreTienda"
-                  label="Nombre de la tienda"
-                  value={formData.nombreTienda}
-                  onChange={handleLettersChange}
-                  autoComplete="organization"
-                />
-                <TextField
-                  fullWidth
-                  required
-                  name="rutEmpresa"
-                  label="RUT de la empresa"
-                  placeholder="12.345.678-5"
-                  value={formData.rutEmpresa}
-                  onChange={handleRutChange}
-                  error={submitted && !isValidRut(formData.rutEmpresa || '')}
-                  helperText={
-                    submitted && !isValidRut(formData.rutEmpresa || '')
-                      ? 'Ingresa un RUT válido, por ejemplo 12.345.678-5.'
-                      : ' '
-                  }
-                />
-                <FormControl fullWidth required>
-                  <InputLabel id="category-label">Categoría</InputLabel>
-                  <Select
-                    labelId="category-label"
-                    name="categoria"
-                    value={formData.categoria}
-                    label="Categoría"
-                    onChange={handleChange}
-                  >
-                    {categories.map((category) => (
-                      <MenuItem key={category} value={category}>
-                        {category}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <TextField
-                  fullWidth
-                  required
-                  name="nombres"
-                  label="Nombre de contacto"
-                  value={formData.nombres}
-                  onChange={handleLettersChange}
-                  autoComplete="name"
-                />
-                <TextField
-                  fullWidth
-                  required
-                  name="email"
-                  label="Correo electrónico"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  autoComplete="email"
-                  error={submitted && !emailIsValid}
-                  helperText={
-                    submitted && !emailIsValid
-                      ? 'Ingresa un correo válido, por ejemplo nombre@dominio.cl.'
-                      : ' '
-                  }
-                />
-                <TextField
-                  fullWidth
-                  required
-                  name="telefono"
-                  label="Teléfono"
-                  type="tel"
-                  value={formData.telefono}
-                  onChange={handleDigitsChange}
-                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
-                  autoComplete="tel"
-                />
-                <TextField
-                  fullWidth
-                  required
-                  name="descripcionTienda"
-                  label="Descripción de la tienda"
-                  value={formData.descripcionTienda}
-                  onChange={handleChange}
-                  multiline
-                  minRows={3}
-                  className="register-full-width"
-                />
-              </>
-            )}
-
-            {userType === 0 && (
-              <>
-                <TextField
-                  fullWidth
-                  required
-                  name="rut"
-                  label="RUT"
-                  placeholder="12.345.678-5"
-                  value={formData.rut}
-                  onChange={handleRutChange}
-                  error={submitted && !isValidRut(formData.rut || '')}
-                  helperText={
-                    submitted && !isValidRut(formData.rut || '')
-                      ? 'Ingresa un RUT válido, por ejemplo 12.345.678-5.'
-                      : ' '
-                  }
-                />
-                <TextField
-                  fullWidth
-                  required
-                  name="telefono"
-                  label="Teléfono"
-                  type="tel"
-                  value={formData.telefono}
-                  onChange={handleDigitsChange}
-                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
-                  autoComplete="tel"
-                />
-                <TextField
-                  fullWidth
-                  required
-                  name="fechaNacimiento"
-                  label="Fecha de nacimiento"
-                  type="date"
-                  value={formData.fechaNacimiento || ''}
-                  onChange={handleChange}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                />
-                <TextField
-                  fullWidth
-                  required
-                  name="email"
-                  label="Correo electrónico"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  autoComplete="email"
-                  error={submitted && !emailIsValid}
-                  helperText={
-                    submitted && !emailIsValid
-                      ? 'Ingresa un correo válido, por ejemplo nombre@dominio.cl.'
-                      : ' '
-                  }
-                />
-              </>
-            )}
-          </div>
-
-          <Typography component="h2" className="register-section-title">
-            Dirección y Número
+            {isVendor ? 'Datos del responsable' : 'Datos personales'}
           </Typography>
           <div className="register-fields">
-            
-            <TextField
-              fullWidth
-              required
-              name="calle"
-              label="Calle"
-              value={formData.calle}
-              onChange={handleChange}
-              autoComplete="calle"
-            />
-            <TextField
-              fullWidth
-              required
-              name="numero"
-              label="Número"
-              value={formData.numero}
-              onChange={handleDigitsChange}
-              inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
-              autoComplete="numero"
-            />
-            <TextField
-              fullWidth
-              name="Pasaje"
-              label="Pasaje"
-              value={formData.Pasaje}
-              onChange={handleChange}
-              autoComplete="pasaje"
-            />
-            <TextField
-              fullWidth
-              name="descripcion"
-              label="Descripción"
-              value={formData.descripcion}
-              onChange={handleChange}
-              autoComplete="descripcion"
-            />
-            <TextField
-              fullWidth
-              name="sector"
-              label="Sector"
-              value={formData.sector}
-              onChange={handleChange}
-              autoComplete="sector"
-            />
-            <TextField
-              fullWidth
-              required
-              name="comuna"
-              label="Comuna"
-              value={formData.comuna}
-              onChange={handleChange}
-              autoComplete="comuna"
-            />
-            <TextField
-              fullWidth
-              required
-              name="region"
-              label="Región"
-              value={formData.region}
-              onChange={handleChange}
-              autoComplete="region"
-            />
-            <TextField
-              fullWidth
-              required
-              name="provincia"
-              label="Provincia"
-              value={formData.provincia}
-              onChange={handleChange}
-              autoComplete="provincia"
-            />
+            {field('nombre', 'Nombre completo', {
+              required: true,
+              onChange: handleLettersChange,
+              autoComplete: 'name',
+              inputProps: { maxLength: 100 },
+            })}
+            {field('rut', 'RUT', {
+              required: true,
+              placeholder: '12.345.678-5',
+              onChange: handleRutChange,
+              inputProps: { maxLength: 12 },
+            })}
+            {field('telefono', 'Teléfono', {
+              required: true,
+              type: 'tel',
+              placeholder: '912345678',
+              onChange: handleDigitsChange(9),
+              autoComplete: 'tel-national',
+              inputProps: { inputMode: 'numeric' },
+            })}
+            <div>
+              <DateTextField
+                fullWidth
+                required
+                name="fechaNacimiento"
+                label="Fecha de nacimiento"
+                value={formData.fechaNacimiento}
+                onChange={(iso) => update('fechaNacimiento', iso)}
+                min="1940-01-01"
+                max={hoyISO()}
+              />
+              <FormHelperText error>{help('fechaNacimiento')}</FormHelperText>
+            </div>
+            {field('email', 'Correo electrónico', {
+              required: true,
+              type: 'email',
+              autoComplete: 'email',
+              className: 'register-full-width',
+              inputProps: { maxLength: 100 },
+            })}
           </div>
 
+          {/* ---- Datos de la empresa (solo vendedor) ---- */}
+          {isVendor && (
+            <>
+              <Typography component="h2" className="register-section-title">
+                Datos de la empresa
+              </Typography>
+              <div className="register-fields">
+                {field('nombreEmpresa', 'Nombre de la empresa o tienda', {
+                  required: true,
+                  autoComplete: 'organization',
+                  inputProps: { maxLength: 100 },
+                })}
+                {field('rutEmpresa', 'RUT de la empresa', {
+                  required: true,
+                  placeholder: '76.123.456-7',
+                  onChange: handleRutChange,
+                  inputProps: { maxLength: 12 },
+                })}
+                {field('giro', 'Giro (opcional)', {
+                  placeholder: 'Ej: Venta al por menor de alimentos',
+                  inputProps: { maxLength: 100 },
+                })}
+                {field('paginaWeb', 'Página web (opcional)', {
+                  type: 'url',
+                  placeholder: 'https://mitienda.cl',
+                  autoComplete: 'url',
+                  inputProps: { maxLength: 100 },
+                })}
+              </div>
+            </>
+          )}
+
+          {/* ---- Dirección ---- */}
+          <Typography component="h2" className="register-section-title">
+            {isVendor ? 'Dirección de la empresa' : 'Dirección'}
+          </Typography>
+          <div className="register-fields">
+            {field('calle', 'Calle', {
+              required: true,
+              autoComplete: 'address-line1',
+              inputProps: { maxLength: 100 },
+            })}
+            {field('numero', 'Número', {
+              required: true,
+              onChange: handleDigitsChange(6),
+              inputProps: { inputMode: 'numeric' },
+            })}
+            {field('pasaje', 'Pasaje (opcional)', { inputProps: { maxLength: 100 } })}
+            {field('sector', 'Sector (opcional)', { inputProps: { maxLength: 100 } })}
+            {field('descripcion', 'Descripción o referencia (opcional)', {
+              placeholder: 'Ej: Depto 402, casa esquina portón negro',
+              className: 'register-full-width',
+              inputProps: { maxLength: 100 },
+            })}
+            {selectField('region', 'Región', regiones, handleRegionChange)}
+            {selectField(
+              'provincia',
+              'Provincia',
+              provincias,
+              handleProvinciaChange,
+              !formData.region,
+            )}
+            <div className="register-full-width">
+              {selectField('comuna', 'Comuna', comunas, handleChange, !formData.provincia)}
+            </div>
+          </div>
+          {ubicacionError && (
+            <Alert severity="warning" className="register-alert">
+              No pudimos cargar las comunas. Revisa que la API esté encendida y recarga la
+              página.
+            </Alert>
+          )}
+
+          {/* ---- Seguridad ---- */}
           <Typography component="h2" className="register-section-title">
             Seguridad de la cuenta
           </Typography>
-          <div className="register-fields register-password-fields">
+          <div className="register-fields">
             {passwordField('contrasena', 'Contraseña', showPassword, () =>
               setShowPassword((visible) => !visible),
             )}
@@ -484,15 +516,25 @@ export default function RegisterScreen() {
             }
             label="Acepto los términos y condiciones"
           />
-          {submitted && !formData.terminosAceptados && (
+          {hasError('terminosAceptados') && (
             <Typography className="register-error" role="alert">
-              Debes aceptar los términos para continuar.
+              {errors.terminosAceptados}
             </Typography>
           )}
 
+          {apiError && (
+            <Alert severity="error" className="register-alert">
+              {apiError}
+            </Alert>
+          )}
+          {apiWarning && (
+            <Alert severity="warning" className="register-alert">
+              {apiWarning}
+            </Alert>
+          )}
           {success && (
-            <Alert severity="success" className="register-success">
-              Cuenta creada exitosamente
+            <Alert severity="success" className="register-alert">
+              Cuenta creada exitosamente. Te llevamos al inicio de sesión…
             </Alert>
           )}
 
@@ -501,11 +543,13 @@ export default function RegisterScreen() {
             variant="contained"
             className="register-submit"
             disableElevation
+            disabled={submitting || success}
           >
-            Crear cuenta
+            {submitting ? 'Creando cuenta…' : 'Crear cuenta'}
           </Button>
+
           <Typography className="register-login-link">
-            ¿Ya tienes una cuenta? <a href="/">Inicia sesión</a>
+            ¿Ya tienes una cuenta? <Link to="/login">Inicia sesión</Link>
           </Typography>
         </Box>
       </section>

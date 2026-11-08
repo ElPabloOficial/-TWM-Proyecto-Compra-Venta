@@ -1,5 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
+import DateField from "../../atoms/DateField/DateField";
 import { useEffect, useState } from "react";
 import { Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
@@ -325,13 +326,11 @@ export default function ProductInfo({
                   Fecha
                 </Box>
 
-                <Box
-                  component="input"
-                  type="date"
+                <DateField
                   value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                  sx={inputSx}
-                  aria-label="Fecha del servicio"
+                  onChange={setDate}
+                  inputStyle={inputSx}
+                  ariaLabel="Fecha del servicio"
                 />
               </Box>
 
