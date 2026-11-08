@@ -79,6 +79,76 @@ export async function eliminarUsuario(rut) {
     await pedir(`/admin/usuarios/${encodeURIComponent(rut)}`, { method: 'DELETE' });
 }
 
+// ---------- Ficha completa de un usuario (AdminController: /admin/usuarios/{rut}) ----------
+
+// Años cumplidos a partir de una fecha "YYYY-MM-DD"
+const calcularEdad = (fechaNacimiento) => {
+    if (!fechaNacimiento) return null;
+    const [anio, mes, dia] = String(fechaNacimiento).slice(0, 10).split('-').map(Number);
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - anio;
+    if (hoy.getMonth() + 1 < mes || (hoy.getMonth() + 1 === mes && hoy.getDate() < dia)) edad -= 1;
+    return edad;
+};
+
+// Compras o ventas del usuario: totales y las más recientes
+const aResumenVentas = (r) => ({
+    cantidad: r?.cantidad ?? 0,
+    monto: r?.monto ?? 0,
+    enProceso: r?.en_proceso ?? 0,
+    porDespachar: r?.por_despachar ?? 0,
+    ultima: r?.ultima ?? null,
+    recientes: (r?.recientes ?? []).map((v) => ({
+        id: v.id,
+        codigo: `VEN-${String(v.id).padStart(4, '0')}`,
+        fecha: v.fecha ?? null,
+        estado: String(v.estado ?? '').trim(),
+        tipoEstado: v.tipo_estado, // "completada" | "anulada" | "pendiente"
+        total: v.total ?? 0,
+        contraparte: v.contraparte ?? '',
+    })),
+});
+
+export async function obtenerUsuarioDetalle(rut) {
+    const d = await pedir(`/admin/usuarios/${encodeURIComponent(rut)}`);
+
+    return {
+        rut: d.rut,
+        nombre: d.nombre,
+        tipo: d.tipo,
+        fechaNacimiento: d.fechanacimiento ?? null,
+        edad: calcularEdad(d.fechanacimiento),
+        registro: d.registro ?? null,
+        sesionIniciada: Boolean(d.sesion_iniciada),
+        correos: d.correos ?? [],
+        telefonos: d.telefonos ?? [],
+        direcciones: (d.direcciones ?? []).map((x) => ({
+            id: x.id,
+            texto: [`${x.calle} ${x.numero}`, x.pasaje, x.sector].filter(Boolean).join(', '),
+            lugar: [x.comuna, x.region].filter(Boolean).join(', '),
+        })),
+        empresas: (d.empresas ?? []).map((e) => ({
+            rut: e.rut,
+            nombre: e.nombre,
+            giro: e.giro ?? '',
+            paginaWeb: e.paginaweb ?? '',
+        })),
+        compras: aResumenVentas(d.compras),
+        ventas: aResumenVentas(d.ventas),
+        actividad: {
+            cotizaciones: d.actividad?.cotizaciones ?? 0,
+            devoluciones: d.actividad?.devoluciones ?? 0,
+            resenias: d.actividad?.resenias ?? 0,
+            preguntas: d.actividad?.preguntas ?? 0,
+            favoritos: d.actividad?.favoritos ?? 0,
+        },
+        publicaciones: {
+            productos: d.publicaciones?.productos ?? 0,
+            servicios: d.publicaciones?.servicios ?? 0,
+        },
+    };
+}
+
 // ---------- Ventas / transacciones (AdminController: /admin/ventas) ----------
 
 // La BD guarda el estado como texto libre ("Completada", "Anulado", "Pendiente"...).

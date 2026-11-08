@@ -28,6 +28,7 @@ import WishlistListsScreen from "./pages/WishlistLists/WishlistListsScreen";
 import WishlistScreen from "./pages/Wishlist/WishlistScreen";
 import CategoryManagementScreen from "./pages/Category/CategoryManagementScreen";
 import AdminUserManagementScreen from "./pages/AdminUser/AdminUserAdministrationScreen";
+import AdminUserDetailScreen from "./pages/AdminUser/AdminUserDetailScreen";
 import ConfirmPurchaseScreen from "./pages/ConfirmPurchase/ConfirmPurchaseScreen";
 import CartScreen from "./pages/Cart/CartScreen";
 import CatalogScreen from "./pages/Catalog/CatalogScreen";
@@ -84,6 +85,7 @@ const App = () => {
                 <Route path="/categorias" element={<AdminRoute><CategoryManagementScreen /></AdminRoute>} />
                 <Route path="/carrito" element={<CartScreen />} />
                 <Route path="/usuarios" element={<AdminRoute><AdminUserManagementScreen /></AdminRoute>} />
+                <Route path="/usuarios/:rut" element={<AdminRoute><AdminUserDetailScreen /></AdminRoute>} />
                 <Route path="/confirmarcompra" element={<ConfirmPurchaseScreen />} />
                 <Route path="/catalogo" element={<CatalogScreen />} />
                 <Route path="/admin" element={<AdminRoute><AdminScreen /></AdminRoute>} />

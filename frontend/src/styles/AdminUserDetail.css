@@ -1,0 +1,115 @@
+/* Ficha de un usuario (panel de administración).
+   Colores del proyecto: rojo #EC3333, negro, blanco y grises (#F4F4F4, #E5E7EB, #6B7280). */
+
+/* Migas de pan: Gestión de Usuarios › Nombre */
+.ud-migas {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.ud-miga-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: #6b7280;
+  cursor: pointer;
+}
+.ud-miga-link:hover { color: #ec3333; text-decoration: underline; }
+.ud-migas strong { color: #000; font-weight: 600; }
+
+.ud-cabecera { margin: 14px 0 20px; }
+.ud-cabecera h1 { margin: 0; font-size: 28px; font-weight: 700; color: #000; }
+.ud-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.ud-chip {
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: #e5e7eb;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Respuestas rápidas: ¿ha comprado? ¿ha vendido? ¿tiene algo en proceso? */
+.ud-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.ud-resumen-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #d9d9d9;
+  border-radius: 6px;
+}
+.ud-resumen-item.si { border-left-color: #16a34a; }
+.ud-resumen-item.alerta { border-left-color: #ec3333; }
+.ud-resumen-titulo { font-size: 12px; color: #6b7280; }
+.ud-resumen-valor { font-size: 15px; font-weight: 700; color: #000; }
+.ud-resumen-item.alerta .ud-resumen-valor { color: #ec3333; }
+
+.ud-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.ud-card {
+  padding: 16px;
+  background: #fff;
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+.ud-grid .ud-card { margin-bottom: 0; }
+.ud-card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; color: #000; }
+
+.ud-datos { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+.ud-datos dt { color: #6b7280; }
+.ud-datos dd { margin: 0; font-weight: 500; color: #000; overflow-wrap: anywhere; }
+
+.ud-lista { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+.ud-lista small { display: block; color: #6b7280; line-height: 1.3; margin-bottom: 4px; }
+.ud-vacio { font-size: 13px; color: #6b7280; }
+
+.ud-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ud-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: #f4f4f4;
+  border-radius: 6px;
+}
+.ud-tile.destacada { background: rgba(236, 51, 51, 0.08); }
+.ud-tile.destacada .ud-tile-valor { color: #ec3333; }
+.ud-tile-valor { font-size: 18px; font-weight: 700; color: #000; }
+.ud-tile-titulo { font-size: 11px; color: #6b7280; }
+
+.ud-scroll { overflow-x: auto; }
+.ud-tabla { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+.ud-tabla th { padding: 8px 10px; border-bottom: 2px solid #e5e7eb; font-weight: 600; color: #1f2937; white-space: nowrap; }
+.ud-tabla td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.ud-tabla .num { text-align: right; }
+.ud-subtitulo { margin: 4px 0 8px; font-size: 12px; font-weight: 600; color: #6b7280; }

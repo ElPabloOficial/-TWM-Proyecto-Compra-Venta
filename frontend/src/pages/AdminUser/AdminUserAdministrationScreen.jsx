@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Pagination from "@mui/material/Pagination";
 import Alert from "@mui/material/Alert";
@@ -20,6 +21,7 @@ const limpiarRut = (rut) => rut.replace(/[.-]/g, ""); //rut sin puntos ni guion
 
 const AdminUserAdministrationScreen = () => {
   const { mostrarToast } = useToast();
+  const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState("");
@@ -57,8 +59,9 @@ const AdminUserAdministrationScreen = () => {
     setDialogoAbierto(false);
   };
 
+  // El ojo abre la ficha completa del usuario
   const verUsuario = (usuario) => {
-    //... Pendiente (Conectar con otra pantalla)
+    navigate(`/usuarios/${encodeURIComponent(usuario.rut)}`);
   };
 
   const eliminarUsuario = async (usuario) => {

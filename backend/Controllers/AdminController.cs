@@ -44,6 +44,135 @@ public class AdminController : ControllerBase
         return Ok(new { success = true, message = "Usuarios obtenidos.", data = usuarios, errors = (object?)null });
     }
 
+    // Los estados de una venta se guardan como texto libre ("Pagado", "En Preparación", "Entregado", "Anulado"...).
+    // Se agrupan en tres tipos: completada, anulada y pendiente (es decir, en proceso).
+    private static string TipoEstadoVenta(string? estado)
+    {
+        var e = (estado ?? "").Trim().ToLowerInvariant();
+        if (e is "completada" or "entregado" or "entregada") return "completada";
+        if (e is "anulado" or "anulada" or "cancelado" or "cancelada") return "anulada";
+        return "pendiente";
+    }
+
+    // Una venta vista desde un usuario: "Contraparte" es el vendedor si él compró, o el cliente si él vendió
+    private sealed record VentaFila(int Id, DateTime? Fecha, string Estado, int Neto, decimal Iva, bool RequiereDespacho, string Contraparte)
+    {
+        public int Total => (int)Math.Round(Neto + Neto * Iva, MidpointRounding.AwayFromZero);
+        public string Tipo => TipoEstadoVenta(Estado);
+    }
+
+    private static object ResumenVentas(List<VentaFila> filas) => new
+    {
+        cantidad = filas.Count,
+        monto = filas.Where(f => f.Tipo != "anulada").Sum(f => f.Total), // las anuladas no suman
+        en_proceso = filas.Count(f => f.Tipo == "pendiente"),
+        por_despachar = filas.Count(f => f.Tipo == "pendiente" && f.RequiereDespacho),
+        ultima = filas.Select(f => f.Fecha).Max(),
+        recientes = filas.Take(5).Select(f => new { f.Id, f.Fecha, f.Estado, tipo_estado = f.Tipo, f.Total, f.Contraparte }).ToList()
+    };
+
+    // GET: api/admin/usuarios/{rut}
+    // Ficha completa de un usuario: cuenta, contacto, cuánto compró y vendió, y qué tiene en proceso.
+    // (No incluye la última sesión: la base de datos solo guarda si el usuario ha iniciado sesión alguna vez.)
+    [HttpGet("usuarios/{rut}")]
+    public async Task<IActionResult> GetUsuarioDetalle(string rut)
+    {
+        var usuario = await _context.usuarios
+            .AsNoTracking()
+            .Where(u => u.rut == rut)
+            .Select(u => new { u.rut, u.nombre, u.tipousuario, u.fechanacimiento, u.fechacreacion, u.secioniniciada })
+            .FirstOrDefaultAsync();
+
+        if (usuario == null)
+            return NotFound(Error("Usuario no encontrado."));
+
+        // ---------- Contacto, direcciones y empresas ----------
+        var correos = await _context.correos.AsNoTracking()
+            .Where(c => c.id_usuario == rut)
+            .OrderBy(c => c.correo1)
+            .Select(c => c.correo1)
+            .ToListAsync();
+
+        var telefonos = await _context.telefonos.AsNoTracking()
+            .Where(t => t.id_usuario == rut)
+            .OrderBy(t => t.numero)
+            .Select(t => t.numero)
+            .ToListAsync();
+
+        var direcciones = await _context.usuarios.AsNoTracking()
+            .Where(u => u.rut == rut)
+            .SelectMany(u => u.id_direccions)
+            .OrderBy(d => d.id)
+            .Select(d => new
+            {
+                d.id,
+                d.calle,
+                d.numero,
+                d.pasaje,
+                d.sector,
+                comuna = d.id_comunaNavigation.nombre,
+                region = d.id_comunaNavigation.id_provinciaNavigation.id_regionNavigation.nombre
+            })
+            .ToListAsync();
+
+        var empresas = await _context.usuarios.AsNoTracking()
+            .Where(u => u.rut == rut)
+            .SelectMany(u => u.id_empresas)
+            .OrderBy(e => e.rut)
+            .Select(e => new { e.rut, e.nombre, e.giro, e.paginaweb })
+            .ToListAsync();
+
+        // ---------- Compras y ventas ----------
+        var compras = await _context.venta.AsNoTracking()
+            .Where(v => v.id_cliente == rut)
+            .OrderByDescending(v => v.fecha)
+            .ThenByDescending(v => v.id)
+            .Select(v => new VentaFila(v.id, v.fecha, v.estado, v.neto, v.iva, v.requieredespacho, v.id_vendedorNavigation.nombre))
+            .ToListAsync();
+
+        var ventas = await _context.venta.AsNoTracking()
+            .Where(v => v.id_vendedor == rut)
+            .OrderByDescending(v => v.fecha)
+            .ThenByDescending(v => v.id)
+            .Select(v => new VentaFila(v.id, v.fecha, v.estado, v.neto, v.iva, v.requieredespacho, v.id_clienteNavigation.nombre))
+            .ToListAsync();
+
+        // ---------- Resto de la actividad ----------
+        var cotizaciones = (await _context.solicitar1s.Where(s => s.id_usuario == rut).Select(s => s.id_cotizacion).ToListAsync())
+            .Union(await _context.solicitar2s.Where(s => s.id_usuario == rut).Select(s => s.id_cotizacion).ToListAsync())
+            .Count();
+
+        var devoluciones = await _context.generar1s.CountAsync(g => g.id_usuario == rut);
+        var resenias = await _context.escribir1s.CountAsync(e => e.id_usuario == rut)
+                     + await _context.escribir2s.CountAsync(e => e.id_usuario == rut);
+        var preguntas = await _context.hacer1s.CountAsync(h => h.id_usuario == rut)
+                      + await _context.hacer2s.CountAsync(h => h.id_usuario == rut);
+        var favoritos = await _context.crear1s.CountAsync(c => c.id_usuario == rut)
+                      + await _context.crear2s.CountAsync(c => c.id_usuario == rut);
+        var productosPublicados = await _context.ofrecer1s.CountAsync(o => o.id_usuario == rut);
+        var serviciosPublicados = await _context.ofrecer2s.CountAsync(o => o.id_usuario == rut);
+
+        var data = new
+        {
+            usuario.rut,
+            usuario.nombre,
+            tipo = usuario.tipousuario,
+            usuario.fechanacimiento,
+            registro = usuario.fechacreacion,
+            sesion_iniciada = usuario.secioniniciada,
+            correos,
+            telefonos = telefonos.Select(t => t.ToString()).ToList(),
+            direcciones,
+            empresas,
+            compras = ResumenVentas(compras),
+            ventas = ResumenVentas(ventas),
+            actividad = new { cotizaciones, devoluciones, resenias, preguntas, favoritos },
+            publicaciones = new { productos = productosPublicados, servicios = serviciosPublicados }
+        };
+
+        return Ok(new { success = true, message = "Usuario obtenido.", data, errors = (object?)null });
+    }
+
     // POST: api/admin/usuarios
     // Crea un usuario con su correo. La contraseña se guarda con hash BCrypt, igual que en el registro.
     [HttpPost("usuarios")]

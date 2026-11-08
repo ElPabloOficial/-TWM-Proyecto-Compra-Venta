@@ -5,7 +5,8 @@ import Sidebar from "../../organisms/Sidebar/Sidebar";
 import AdminSidebar from "../../organisms/AdminSidebar/AdminSidebar";
 import { authService } from "../../../services/authService";
 
-const SellerTemplate = ({ children }) => {
+// sinMenu: oculta el botón ☰ (para páginas de detalle que se recorren con migas de pan)
+const SellerTemplate = ({ children, sinMenu = false }) => {
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   useEffect(() => {
@@ -37,14 +38,16 @@ const SellerTemplate = ({ children }) => {
       </aside>
 
       <main className="inv-main">
-        <button
-          type="button"
-          className="inv-menu-btn"
-          onClick={() => setMenuAbierto(true)}
-          aria-label="Abrir menú"
-        >
-          <MenuIcon />
-        </button>
+        {!sinMenu && (
+          <button
+            type="button"
+            className="inv-menu-btn"
+            onClick={() => setMenuAbierto(true)}
+            aria-label="Abrir menú"
+          >
+            <MenuIcon />
+          </button>
+        )}
 
         <div className="inv-main-content">{children}</div>
       </main>
