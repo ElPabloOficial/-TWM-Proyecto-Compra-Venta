@@ -53,6 +53,10 @@ const WishlistListsScreen = () => {
 
   // Crea o edita según el formulario; si falla, el formulario muestra el error
   const guardarLista = async (datos) => {
+    console.log(listaEditando ? "[Listas de deseos] Actualizar lista:" : "[Listas de deseos] Crear lista:", {
+      ...(listaEditando && { id: listaEditando.id }),
+      ...datos,
+    });
     if (listaEditando) {
       const actualizada = await actualizarListaDeseos(listaEditando.id, datos);
       setListas((actuales) => actuales.map((l) => (l.id === actualizada.id ? { ...actualizada } : l)));
@@ -66,6 +70,7 @@ const WishlistListsScreen = () => {
   };
 
   const confirmarEliminar = async () => {
+    console.log("[Listas de deseos] Eliminar lista:", { id: listaAEliminar.id, nombre: listaAEliminar.nombre });
     try {
       await eliminarListaDeseos(listaAEliminar.id);
       setListas((actuales) => actuales.filter((l) => l.id !== listaAEliminar.id));

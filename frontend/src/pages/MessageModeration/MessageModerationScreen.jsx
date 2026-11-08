@@ -34,6 +34,7 @@ const MessageModerationScreen = ()=> {
 
   const eliminarMensaje = (mensaje) => {
     if (window.confirm("¿Eliminar este mensaje?")) {
+      console.log("[Moderación] Eliminar mensaje:", { id: mensaje.id });
       setMensajes(mensajes.map((m) =>
         m.id === mensaje.id ? { ...m, estado: "eliminado" } : m
       ));

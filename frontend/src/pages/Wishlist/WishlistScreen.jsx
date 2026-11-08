@@ -63,6 +63,7 @@ const WishlistScreen = () => {
 
     // Remove a product from the wishlist.
     const handleRemove = (productId) => {
+        console.log("[Lista de deseos] Quitar producto:", { productId });
         setWishlist((currentWishlist) =>
         currentWishlist.filter(
             (product) => product.id !== productId

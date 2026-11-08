@@ -75,6 +75,15 @@ const ConfirmPurchaseScreen = () => {
   const pagar = async () => {
     setPagando(true);
     setError("");
+    // Los datos de pago (últimos dígitos, código de transferencia) no se imprimen
+    console.log("[Compra] Pagar:", {
+      medioPago,
+      requiereDespacho,
+      id_direccion: requiereDespacho ? direccionId : null,
+      articulos: cart.map((item) => ({ tipo: item.tipo, id: item.id, cantidad: item.cantidad })),
+      total: resumen.total,
+    });
+
     try {
       // Pago simulado: no hay pasarela, solo se registra el medio de pago y sus datos de referencia
       await crearVenta({

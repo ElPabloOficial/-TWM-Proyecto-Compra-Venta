@@ -54,6 +54,7 @@ export function CartProvider({ children }) {
 
   const addItem = async (item, cantidad = 1) => {
     if (!user) return false;
+    console.log('[Carrito] Agregar al carrito:', { tipo: item.tipo, id: item.id, cantidad });
     await agregarAlCarrito(item.tipo, item.id, cantidad);
     await refrescar();
     return true;
@@ -61,6 +62,7 @@ export function CartProvider({ children }) {
 
   const setQuantity = async (item, cantidad) => {
     if (!user || !Number.isInteger(cantidad) || cantidad < 1) return;
+    console.log('[Carrito] Cambiar cantidad:', { tipo: item.tipo, id: item.id, cantidad });
     const anterior = cart;
     setCart((actual) => actual.map((i) => (i.clave === item.clave ? { ...i, cantidad } : i)));
     try {
@@ -73,6 +75,7 @@ export function CartProvider({ children }) {
 
   const removeItem = async (item) => {
     if (!user) return;
+    console.log('[Carrito] Quitar del carrito:', { tipo: item.tipo, id: item.id });
     const anterior = cart;
     setCart((actual) => actual.filter((i) => i.clave !== item.clave));
     try {

@@ -81,6 +81,12 @@ export default function ProductReviews({
             setErrorQuestions("");
             setSuccessQuestion("");
 
+            console.log("[Preguntas] Publicar pregunta:", {
+                tipo: isService ? "servicio" : "producto",
+                id: product.id,
+                pregunta: question.trim(),
+            });
+
             await questionService.crearPregunta(
                 isService ? "servicio" : "producto",
                 product.id,

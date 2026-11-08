@@ -73,6 +73,7 @@ const QuotesScreen = () => {
   );
 
   const handleSend = (response) => {
+    console.log("[Cotizaciones] Responder cotización:", { id: selected.id, ...response });
     respondQuote(selected.id, response);
     setSelectedId(null);
     mostrarToast('Cotización respondida correctamente');

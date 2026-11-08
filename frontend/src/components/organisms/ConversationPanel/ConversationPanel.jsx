@@ -57,6 +57,7 @@ const ConversationPanel = ({
     e.preventDefault();
     const mensaje = texto.trim();
     if (!mensaje) return;
+    console.log("[Mensajes] Enviar mensaje:", { conversacion: seleccionada.id, mensaje });
     onEnviar?.(seleccionada.id, mensaje);
     setTexto("");
   };

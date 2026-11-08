@@ -144,6 +144,11 @@ const AddressesScreen = () => {
       setGuardando(true);
       setError("");
 
+      console.log(editando ? "[Direcciones] Actualizar dirección:" : "[Direcciones] Crear dirección:", {
+        ...(editando && { id: editandoId }),
+        ...form,
+      });
+
       if (editando) await actualizarDireccion(editandoId, form);
       else await crearDireccion(form);
 

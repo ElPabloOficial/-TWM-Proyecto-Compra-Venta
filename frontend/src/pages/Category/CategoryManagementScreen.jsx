@@ -101,6 +101,12 @@ const CategoryManagementScreen = () => {
 
     // Crea o renombra; si la API rechaza el cambio, el formulario muestra el mensaje
     const handleSave = async (name) => {
+        console.log(
+            dialog.modo === "editar" ? "[Categorías] Editar categoría:" : "[Categorías] Crear categoría:",
+            dialog.modo === "editar"
+                ? { id: dialog.categoria.id, nombre: name, padreId: dialog.categoria.parentId }
+                : { nombre: name, padreId: dialog.padre?.id ?? null }
+        );
         if (dialog.modo === "editar") {
             await actualizarCategoria(dialog.categoria.id, { nombre: name, padreId: dialog.categoria.parentId });
             mostrarToast("Categoría actualizada correctamente");
@@ -126,6 +132,7 @@ const CategoryManagementScreen = () => {
     };
 
     const confirmDelete = async () => {
+        console.log("[Categorías] Eliminar categoría:", { id: toDelete.id, nombre: toDelete.name });
         try {
             await eliminarCategoria(toDelete.id);
             mostrarToast("Categoría eliminada correctamente");

@@ -210,12 +210,14 @@ const OrdersScreen = () => {
   // ---------- Acciones ----------
   // Si la API rechaza el cambio lanza un Error: el diálogo lo muestra y queda abierto.
   const guardarCambios = async ({ id, estado, seguimiento }) => {
+    console.log("[Pedidos] Actualizar estado del pedido:", { id, estado, seguimiento });
     await actualizarEstadoPedido({ id, estado, seguimiento });
     setPedidoEditando(null);
     await recargar({ silencioso: true });
   };
 
   const confirmarCancelar = async () => {
+    console.log("[Pedidos] Cancelar pedido:", { id: pedidoACancelar.id });
     try {
       await actualizarEstadoPedido({ id: pedidoACancelar.id, estado: "cancelado" });
       await recargar({ silencioso: true });

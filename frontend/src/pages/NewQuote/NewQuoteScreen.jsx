@@ -31,6 +31,7 @@ export default function CreateQuoteScreen() {
   // TEMPORAL: la cotización se guarda en memoria; con el backend es POST /cotizaciones
   const enviarSolicitud = () => {
     if (items.length === 0) return;
+    console.log("[Cotizaciones] Solicitar cotización:", items.map((item) => ({ id: item.id, nombre: item.nombre, cantidad: item.cantidad })));
     addQuote(items.map((item) => ({ name: item.nombre, unitPrice: item.precio, quantity: item.cantidad })));
     mostrarToast('Cotización solicitada correctamente');
     navigate('/mis-cotizaciones');

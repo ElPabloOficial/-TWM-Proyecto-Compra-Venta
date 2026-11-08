@@ -35,6 +35,7 @@ const AddProductScreen = () => {
   // Si la API rechaza el guardado, el error llega hasta ProductForm, que lo muestra
   // bajo el formulario, y no se navega.
   const guardar = async (datos) => {
+    console.log(editando ? "[Inventario] Actualizar producto:" : "[Inventario] Crear producto:", datos);
     if (editando) {
       await actualizarProducto({ ...datos, id: producto.id });
     } else {

@@ -70,6 +70,7 @@ const QuestionsPanel = ({ preguntas, rol, ahora, onResponder, onVerProducto }) =
     e.preventDefault();
     const texto = (borradores[pregunta.id] ?? "").trim();
     if (!texto) return;
+    console.log("[Preguntas] Responder pregunta:", { id: pregunta.id, respuesta: texto });
     onResponder?.(pregunta.id, texto);
     setBorradores((anterior) => ({ ...anterior, [pregunta.id]: "" }));
   };

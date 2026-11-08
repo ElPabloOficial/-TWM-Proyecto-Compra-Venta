@@ -214,6 +214,15 @@ export default function RegisterScreen() {
     const rut = limpiarRut(f.rut);
     setSubmitting(true);
 
+    // La contraseña nunca se imprime: solo se confirma que se capturó
+    console.log('[Registro] Registrar usuario:', {
+      rut,
+      nombre: f.nombre.trim(),
+      fechanacimiento: f.fechaNacimiento,
+      tipousuario: isVendor ? 'vendedor' : 'cliente',
+      contrasena: '[oculta]',
+    });
+
     // ---- Paso 1: crear el usuario ----
     try {
       await pedir('/usuarios', {

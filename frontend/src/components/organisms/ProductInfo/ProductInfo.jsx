@@ -111,6 +111,7 @@ export default function ProductInfo({
       navigate("/login");
       return;
     }
+    console.log("[Carrito] Agregar desde la ficha:", { tipo: isService ? "servicio" : "producto", id: product.id, cantidad: quantity });
     try {
       await addItem({ tipo: isService ? "servicio" : "producto", id: product.id }, quantity);
       mostrarToast(`${product.nombre ?? "El artículo"} se agregó al carrito`);

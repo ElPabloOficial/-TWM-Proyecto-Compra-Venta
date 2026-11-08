@@ -62,6 +62,7 @@ const ShipmentTrackingScreen = () => {
     .sort((a, b) => clase(a.estado) - clase(b.estado) || a.idVenta - b.idVenta);
 
   const confirmarAvance = async (datos) => {
+    console.log("[Despachos] Avanzar despacho:", { idVenta: avanzando.idVenta, estadoActual: avanzando.estado, ...datos });
     const actualizado = await avanzarDespacho(avanzando.idVenta, datos); // si falla, la ventana muestra el error
     setDespachos((actuales) => actuales.map((d) => (d.idVenta === actualizado.idVenta ? actualizado : d)));
     setAvanzando(null);

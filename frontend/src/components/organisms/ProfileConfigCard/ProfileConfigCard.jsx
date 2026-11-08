@@ -72,7 +72,10 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
 
   const comunaSeleccionada = comunas.find((c) => c.id === Number(form.idComuna)) ?? null;
 
-  const handleGuardar = () => onGuardar?.(form);
+  const handleGuardar = () => {
+    console.log('[Perfil] Guardar cambios del perfil:', form);
+    onGuardar?.(form);
+  };
 
   return (
     <Box sx={{ backgroundColor: '#fff', padding: 3, borderRadius: 2 }}>

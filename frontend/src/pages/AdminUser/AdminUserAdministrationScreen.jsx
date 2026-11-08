@@ -66,6 +66,7 @@ const AdminUserAdministrationScreen = () => {
 
   const eliminarUsuario = async (usuario) => {
     if (!window.confirm(`¿Eliminar a "${usuario.nombre}"?`)) return;
+    console.log("[Usuarios] Eliminar usuario:", { rut: usuario.rut, nombre: usuario.nombre });
     setErrorAccion("");
     try {
       await eliminarUsuarioApi(usuario.rut);
