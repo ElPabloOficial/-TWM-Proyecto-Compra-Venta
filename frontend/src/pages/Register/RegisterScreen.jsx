@@ -113,9 +113,12 @@ export default function RegisterScreen() {
     setSubmitted(true);
     setSuccess(false);
 
+    // Las contraseñas nunca se imprimen: solo se confirma que se capturaron
     console.log('Datos de registro:', {
       tipoCuenta: userType === 0 ? 'cliente' : 'vendedor',
       ...formData,
+      contrasena: '[oculta]',
+      confirmaContrasena: '[oculta]',
     });
 
     if (

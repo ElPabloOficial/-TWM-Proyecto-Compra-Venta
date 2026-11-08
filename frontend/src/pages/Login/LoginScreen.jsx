@@ -11,11 +11,13 @@ const LoginScreen = () => {
 
   const handleLogin = async (data) => {
     try {
-      console.log("[LoginScreen] handleLogin():", data);
+      // La contraseña nunca se imprime: solo se confirma que se capturó
+      console.log("[LoginScreen] handleLogin():", { rut: data.rut, password: "[oculta]", remember: data.remember });
 
       const response = await authService.login(data.rut, data.password);
 
-      console.log("[LoginScreen] Inicio exitoso. Usuario:", response);
+      // Se imprime solo el usuario: la respuesta también trae el token de sesión y no debe mostrarse
+      console.log("[LoginScreen] Inicio exitoso. Usuario:", response.user);
 
       if (data.remember) {
         console.log("[LoginScreen] 'Recuérdame' fue marcado.");
