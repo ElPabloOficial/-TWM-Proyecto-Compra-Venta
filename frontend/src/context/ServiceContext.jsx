@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { authService } from "../services/authService";
-import * as api from "../services/servicioVendedorService";
+import * as api from "../services/sellerServicesService";
 
 export const modalidades = ["Presencial", "Online", "A domicilio"];
 

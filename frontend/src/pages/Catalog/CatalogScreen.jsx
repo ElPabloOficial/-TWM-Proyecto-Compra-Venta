@@ -9,7 +9,7 @@ import CatalogToolbar from "../../components/molecules/CatalogToolbar/CatalogToo
 import CatalogGrid from "../../components/organisms/CatalogGrid/CatalogGrid";
 import CardGridSkeleton from "../../components/molecules/CardGridSkeleton/CardGridSkeleton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
-import { listarCatalogo, rutaDetalle } from "../../services/catalogoService";
+import { listarCatalogo, rutaDetalle } from "../../services/catalogService";
 import useCart from "../../context/useCart";
 import { useToast } from "../../context/ToastContext";
 import { listarCategorias } from "../../services/productService";

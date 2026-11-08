@@ -1,4 +1,4 @@
-// src/services/catalogoService.js
+// src/services/catalogService.js
 //
 // Catálogo público (GET /catalogo): productos y servicios juntos, para el Home y el Catálogo.
 // La API ya entrega el precio final (con la oferta aplicada si hay una vigente) y, en ese caso,

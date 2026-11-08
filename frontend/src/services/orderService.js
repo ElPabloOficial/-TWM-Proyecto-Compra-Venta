@@ -1,4 +1,4 @@
-// src/services/pedidoService.js
+// src/services/orderService.js
 //
 // Conecta la pantalla de Pedidos del vendedor con la API (.NET).
 //

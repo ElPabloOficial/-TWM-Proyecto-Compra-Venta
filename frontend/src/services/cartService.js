@@ -1,4 +1,4 @@
-// src/services/carritoService.js
+// src/services/cartService.js
 //
 // Carrito y compra, conectados a la API:
 //   GET    /carrito                         -> lo que hay en el carrito (productos y servicios, con su cantidad)
@@ -12,7 +12,7 @@
 // toman del catálogo (que ya trae el precio final con la oferta aplicada).
 
 import { pedir } from './apiClient';
-import { listarCatalogo } from './catalogoService';
+import { listarCatalogo } from './catalogService';
 
 const API_URL = import.meta.env.VITE_API_URL ?? '';
 

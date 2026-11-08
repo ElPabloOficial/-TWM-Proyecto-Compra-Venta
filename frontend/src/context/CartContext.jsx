@@ -6,7 +6,7 @@ import {
   agregarAlCarrito,
   actualizarCantidad,
   quitarDelCarrito,
-} from '../services/carritoService';
+} from '../services/cartService';
 
 /*
  * Carrito de compra, guardado en la base de datos (cada usuario tiene el suyo).

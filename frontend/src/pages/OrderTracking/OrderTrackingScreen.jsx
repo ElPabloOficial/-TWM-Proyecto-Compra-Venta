@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/organisms/Header/Header";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import { authService } from "../../services/authService";
-import { obtenerDespacho, ETAPAS_DESPACHO, ETIQUETA_ESTADO } from "../../services/despachoService";
+import { obtenerDespacho, ETAPAS_DESPACHO, ETIQUETA_ESTADO } from "../../services/shipmentService";
 import { useToast } from "../../context/ToastContext";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";

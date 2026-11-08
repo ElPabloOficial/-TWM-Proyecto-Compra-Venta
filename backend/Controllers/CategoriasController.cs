@@ -12,9 +12,20 @@ public class CategoriasController : ControllerBase
 {
     private readonly AppDbContext _context;
 
+    private const int MaxNombre = 50; // largo de Categoria.Nombre en la BD
+
     public CategoriasController(AppDbContext context)
     {
         _context = context;
+    }
+
+    // Valida el nombre y devuelve el nombre sin espacios sobrantes (o un error)
+    private static string? ValidarNombre(string? nombre, out string limpio)
+    {
+        limpio = nombre?.Trim() ?? "";
+        if (limpio == "") return "El nombre no puede estar vacío.";
+        if (limpio.Length > MaxNombre) return $"El nombre no puede tener más de {MaxNombre} caracteres.";
+        return null;
     }
 
     // GET: api/categorias (Público - Listar todas las categorías)
@@ -66,8 +77,9 @@ public class CategoriasController : ControllerBase
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> CrearCategoria([FromBody] CategoriaCreateDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.nombre))
-            return BadRequest(new { success = false, message = "El nombre no puede estar vacío." });
+        var errorNombre = ValidarNombre(dto.nombre, out var nombreNuevo);
+        if (errorNombre != null)
+            return BadRequest(new { success = false, message = errorNombre });
 
         // Si se envía id_categoria_padre, validar que exista
         if (dto.id_categoria_padre.HasValue)
@@ -77,9 +89,15 @@ public class CategoriasController : ControllerBase
                 return BadRequest(new { success = false, message = "La categoría padre no existe." });
         }
 
+        // No se repite el nombre dentro de la misma categoría padre
+        var nombreRepetido = await _context.categoria.AnyAsync(c =>
+            c.id_categoria == dto.id_categoria_padre && c.nombre.ToLower() == nombreNuevo.ToLower());
+        if (nombreRepetido)
+            return Conflict(new { success = false, message = "Ya existe una categoría con ese nombre en este nivel." });
+
         var nuevaCategoria = new categorium
         {
-            nombre = dto.nombre,
+            nombre = nombreNuevo,
             id_categoria = dto.id_categoria_padre
         };
 
@@ -98,7 +116,38 @@ public class CategoriasController : ControllerBase
         if (categoria == null)
             return NotFound(new { success = false, message = "Categoría no encontrada." });
 
-        categoria.nombre = dto.nombre;
+        var errorNombre = ValidarNombre(dto.nombre, out var nombreNuevo);
+        if (errorNombre != null)
+            return BadRequest(new { success = false, message = errorNombre });
+
+        if (dto.id_categoria_padre.HasValue)
+        {
+            var padreExiste = await _context.categoria.AnyAsync(c => c.id == dto.id_categoria_padre.Value);
+            if (!padreExiste)
+                return BadRequest(new { success = false, message = "La categoría padre no existe." });
+
+            // Una categoría no puede quedar dentro de sí misma ni de sus propias subcategorías
+            int? ancestro = dto.id_categoria_padre;
+            while (ancestro.HasValue)
+            {
+                if (ancestro.Value == id)
+                    return BadRequest(new { success = false, message = "Una categoría no puede quedar dentro de sí misma ni de sus subcategorías." });
+
+                var actualId = ancestro.Value;
+                ancestro = await _context.categoria
+                    .AsNoTracking()
+                    .Where(c => c.id == actualId)
+                    .Select(c => c.id_categoria)
+                    .FirstOrDefaultAsync();
+            }
+        }
+
+        var nombreRepetido = await _context.categoria.AnyAsync(c =>
+            c.id != id && c.id_categoria == dto.id_categoria_padre && c.nombre.ToLower() == nombreNuevo.ToLower());
+        if (nombreRepetido)
+            return Conflict(new { success = false, message = "Ya existe una categoría con ese nombre en este nivel." });
+
+        categoria.nombre = nombreNuevo;
         categoria.id_categoria = dto.id_categoria_padre;
 
         await _context.SaveChangesAsync();

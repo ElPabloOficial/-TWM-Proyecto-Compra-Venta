@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ventaService } from "../../services/ventaService";
+import { ventaService } from "../../services/saleService";
 import { reviewService } from "../../services/reviewService"
-import { adaptarBoleta, descargarBoletaPdf } from "../../services/boletaPdf";
+import { adaptarBoleta, descargarBoletaPdf } from "../../services/receiptPdf";
 
 import { useState } from "react";
 import { Box, Typography, Alert } from "@mui/material";

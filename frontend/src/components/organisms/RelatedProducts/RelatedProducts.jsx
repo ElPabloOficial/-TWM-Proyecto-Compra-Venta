@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Box, Typography } from "@mui/material";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
-import { urlImagen } from "../../../services/carritoService";
+import { urlImagen } from "../../../services/cartService";
 
 export default function RelatedProducts({
   products = [],

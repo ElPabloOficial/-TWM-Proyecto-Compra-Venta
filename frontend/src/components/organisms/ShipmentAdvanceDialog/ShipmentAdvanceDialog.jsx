@@ -11,7 +11,7 @@ import {
   ETIQUETA_ESTADO,
   TRANSPORTISTAS,
   calcularCostoEnvio,
-} from "../../../services/despachoService";
+} from "../../../services/shipmentService";
 
 /*
  * Ventana del vendedor para pasar un despacho a la etapa siguiente.

@@ -9,8 +9,8 @@ import Header from '../../components/organisms/Header/Header';
 import ErrorState from '../../components/molecules/ErrorState/ErrorState';
 import useCart from '../../context/useCart';
 import { useToast } from '../../context/ToastContext';
-import { listarCatalogo, rutaDetalle } from '../../services/catalogoService';
-import { calcularTotales, urlImagen } from '../../services/carritoService';
+import { listarCatalogo, rutaDetalle } from '../../services/catalogService';
+import { calcularTotales, urlImagen } from '../../services/cartService';
 import '../../styles/Cart.css';
 
 const formatPrice = (amount) =>

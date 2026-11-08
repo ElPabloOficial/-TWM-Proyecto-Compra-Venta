@@ -9,7 +9,7 @@ import {
   crearDireccion,
   actualizarDireccion,
   obtenerComunas,
-} from "../../services/direccionService";
+} from "../../services/addressService";
 import "../../styles/Addresses.css";
 
 // Direcciones de despacho del usuario, guardadas en la base de datos.

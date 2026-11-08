@@ -8,7 +8,7 @@ import CustomButton from "../../components/atoms/Button/CustomButton";
 import CustomDialog from "../../components/atoms/CustomDialog/CustomDialog";
 
 import { returnService } from "../../services/returnService";
-import { ventaService } from "../../services/ventaService";
+import { ventaService } from "../../services/saleService";
 
 const RefundRequest = () => {
   const [reason, setReason] = useState("");

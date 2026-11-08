@@ -11,8 +11,8 @@ import ProductDescription from "../../components/organisms/ProductDescription/Pr
 import ProductReviews from "../../components/organisms/ProductReviews/ProductReviews";
 import RelatedProducts from "../../components/organisms/RelatedProducts/RelatedProducts";
 
-import { productoService } from "../../services/productoService";
-import { servicioService } from "../../services/servicioService";
+import { productoService } from "../../services/productDetailService";
+import { servicioService } from "../../services/serviceDetailService";
 import { reviewService } from "../../services/reviewService";
 
 const obtenerIdsCategorias = (categorias = []) => {

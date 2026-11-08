@@ -1,8 +1,18 @@
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AdminTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import CategoryFormDialog from "../../components/organisms/CategoryFormDialog/CategoryFormDialog";
+import { useToast } from "../../context/ToastContext";
+import {
+    obtenerCategorias,
+    crearCategoria,
+    actualizarCategoria,
+    eliminarCategoria,
+} from "../../services/categoryService";
 
 import AddIcon from "@mui/icons-material/Add";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -11,93 +21,41 @@ import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 
 import "../../styles/CategoryManagement.css";
 
-const initialCategories = [
-    {
-        id: 1,
-        name: "Productos",
-        productCount: 10,
-        children: [
+// Arma el árbol a partir de la lista plana de la API.
+//   ownCount   -> productos y servicios de esa categoría
+//   totalCount -> los suyos más los de todas sus subcategorías (lo que se muestra en la tabla)
+const buildTree = (flat) => {
+    const nodes = new Map(
+        flat.map((c) => [
+            c.id,
             {
-                id: 2,
-                name: "Tecnología",
-                productCount: 10,
-                children: [
-                    {
-                        id: 3,
-                        name: "Computación",
-                        productCount: 4,
-                        children: [],
-                    },
-                    {
-                        id: 4,
-                        name: "Celular",
-                        productCount: 6,
-                        children: [],
-                    },
-                ],
-            },
-        ],
-    },
-    {
-        id: 5,
-        name: "Servicios",
-        productCount: 3,
-        children: [
-            {
-                id: 6,
-                name: "Limpieza",
-                productCount: 3,
+                id: c.id,
+                name: c.nombre,
+                parentId: c.padreId,
+                ownCount: c.cantidadProductos + c.cantidadServicios,
+                totalCount: 0,
                 children: [],
             },
-        ],
-    },
-];
+        ])
+    );
 
-// Recursively update a category and its descendants.
-const updateCategoryTree = (categories, targetId, updater) =>
-    categories.map((category) => {
-        if (category.id === targetId) {
-            return updater(category);
-        }
-
-        return {
-            ...category,
-            children: updateCategoryTree(
-                category.children,
-                targetId,
-                updater
-            ),
-        };
+    const roots = [];
+    nodes.forEach((node) => {
+        const parent = nodes.get(node.parentId);
+        if (parent) parent.children.push(node);
+        else roots.push(node);
     });
 
-// Recursively remove a category and its entire subtree.
-const removeCategoryTree = (categories, targetId) =>
-    categories
-        .filter((category) => category.id !== targetId)
-        .map((category) => ({
-            ...category,
-            children: removeCategoryTree(
-                category.children,
-                targetId
-            ),
-        }));
+    const finish = (list) => {
+        list.sort((a, b) => a.name.localeCompare(b.name, "es"));
+        list.forEach((node) => {
+            finish(node.children);
+            node.totalCount = node.ownCount + node.children.reduce((sum, child) => sum + child.totalCount, 0);
+        });
+    };
+    finish(roots);
 
-// Find a category by ID anywhere in the tree.
-const findCategory = (categories, targetId) => {
-    for (const category of categories) {
-        if (category.id === targetId) {
-            return category;
-        }
-
-        const found = findCategory(
-            category.children,
-            targetId
-        );
-
-        if (found) return found;
-    }
-
-    return null;
+    return roots;
 };
 
 // Calculate total number of categories, including descendants.
@@ -109,58 +67,73 @@ const countCategories = (categories) =>
     );
 
 const CategoryManagementScreen = () => {
-    const [categories, setCategories] = useState(initialCategories);
+    const { mostrarToast } = useToast();
+    const [flat, setFlat] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [dialog, setDialog] = useState(null); // { modo: "crear", padre } | { modo: "editar", categoria }
+    const [toDelete, setToDelete] = useState(null);
 
+    const categories = useMemo(() => buildTree(flat), [flat]);
 
-    // Add a child category to an existing category.
-    const handleAddSubcategory = (parentId) => {
-        const name = window.prompt("Enter the subcategory name:");
+    // Vuelve a pedir las categorías a la API (también actualiza los conteos)
+    const reload = useCallback(async () => {
+        try {
+            setFlat(await obtenerCategorias());
+            setError("");
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
-        if (!name || !name.trim()) return;
+    useEffect(() => {
+        reload();
+    }, [reload]);
 
-        const newCategory = {
-            id: Date.now(),
-            name: name.trim(),
-            productCount: 0,
-            children: [],
-        };
-
-        setCategories((current) =>
-            updateCategoryTree(current, parentId, (category) => ({
-                ...category,
-                children: [...category.children, newCategory],
-            }))
-        );
+    // Nombres de las otras categorías del mismo nivel (para no repetir nombres)
+    const siblingNames = () => {
+        const parentId = dialog.modo === "editar" ? dialog.categoria.parentId : dialog.padre?.id ?? null;
+        const ownId = dialog.modo === "editar" ? dialog.categoria.id : null;
+        return flat.filter((c) => c.padreId === parentId && c.id !== ownId).map((c) => c.nombre);
     };
 
-    // Rename an existing category.
-    const handleEditCategory = (category) => {
-        const name = window.prompt(
-            "Edit category name:",
-            category.name
-        );
-
-        if (!name || !name.trim()) return;
-
-        setCategories((current) =>
-            updateCategoryTree(current, category.id, (item) => ({
-                ...item,
-                name: name.trim(),
-            }))
-        );
+    // Crea o renombra; si la API rechaza el cambio, el formulario muestra el mensaje
+    const handleSave = async (name) => {
+        if (dialog.modo === "editar") {
+            await actualizarCategoria(dialog.categoria.id, { nombre: name, padreId: dialog.categoria.parentId });
+            mostrarToast("Categoría actualizada correctamente");
+        } else {
+            await crearCategoria({ nombre: name, padreId: dialog.padre?.id ?? null });
+            mostrarToast("Categoría creada correctamente");
+        }
+        setDialog(null);
+        await reload();
     };
 
-    // Remove a category and all of its descendants.
+    // La API no deja eliminar una categoría con subcategorías ni con productos/servicios
     const handleRemoveCategory = (category) => {
-        const confirmed = window.confirm(
-            `Remove "${category.name}" and all its subcategories?`
-        );
+        if (category.children.length > 0) {
+            mostrarToast("No se puede eliminar: tiene subcategorías. Elimínalas primero.", "error");
+            return;
+        }
+        if (category.ownCount > 0) {
+            mostrarToast("No se puede eliminar: tiene productos o servicios asociados.", "error");
+            return;
+        }
+        setToDelete(category);
+    };
 
-        if (!confirmed) return;
-
-        setCategories((current) =>
-            removeCategoryTree(current, category.id)
-        );
+    const confirmDelete = async () => {
+        try {
+            await eliminarCategoria(toDelete.id);
+            mostrarToast("Categoría eliminada correctamente");
+            await reload();
+        } catch (e) {
+            mostrarToast(e.message, "error");
+        }
+        setToDelete(null);
     };
 
     // Render the hierarchy as table rows.
@@ -197,7 +170,7 @@ const CategoryManagementScreen = () => {
                 </td>
 
                 <td className="category-count-cell">
-                    {category.productCount}
+                    {category.totalCount}
                 </td>
 
                 <td className="category-level-cell">
@@ -216,9 +189,7 @@ const CategoryManagementScreen = () => {
                             variant="primary"
                             size="small"
                             startIcon={<AddIcon />}
-                            onClick={() =>
-                                handleAddSubcategory(category.id)
-                            }
+                            onClick={() => setDialog({ modo: "crear", padre: { id: category.id, nombre: category.name } })}
                             sx={{
                                 textTransform: "none",
                                 whiteSpace: "nowrap",
@@ -234,7 +205,10 @@ const CategoryManagementScreen = () => {
                                     size="small"
                                     startIcon={<EditOutlinedIcon />}
                                     onClick={() =>
-                                        handleEditCategory(category)
+                                        setDialog({
+                                            modo: "editar",
+                                            categoria: { id: category.id, nombre: category.name, parentId: category.parentId },
+                                        })
                                     }
                                     sx={{
                                         textTransform: "none",
@@ -298,7 +272,11 @@ const CategoryManagementScreen = () => {
                 </section>
 
                 <section className="category-table-section">
-                    {categories.length > 0 ? (
+                    {error ? (
+                        <ErrorState titulo="No pudimos cargar las categorías" detalle={error} onReintentar={reload} />
+                    ) : loading ? (
+                        <p className="category-page-subtitle">Cargando categorías...</p>
+                    ) : categories.length > 0 ? (
                         <div className="category-table-wrapper">
                             <table className="category-table">
                                 <thead>
@@ -332,25 +310,41 @@ const CategoryManagementScreen = () => {
                                 className="category-empty-icon"
                             />
 
-                            <h3>No categories yet</h3>
+                            <h3>Todavía no hay categorías</h3>
 
                             <p>
-                                Create a main category to start organizing
-                                your products and services.
+                                Crea una categoría principal para empezar a
+                                ordenar tus productos y servicios.
                             </p>
 
                             <CustomButton
                                 variant="primary"
                                 startIcon={<AddIcon />}
-                                onClick={handleAddCategory}
+                                onClick={() => setDialog({ modo: "crear", padre: { id: null, nombre: "Categorías" } })}
                                 sx={{ textTransform: "none" }}
                             >
-                                Create first category
+                                Crear primera categoría
                             </CustomButton>
                         </div>
                     )}
                 </section>
             </div>
+
+            <CategoryFormDialog
+                dialogo={dialog}
+                hermanos={dialog ? siblingNames() : []}
+                onClose={() => setDialog(null)}
+                onGuardar={handleSave}
+            />
+
+            <ConfirmDialog
+                open={Boolean(toDelete)}
+                titulo="Eliminar categoría"
+                mensaje={`¿Seguro que quieres eliminar la categoría "${toDelete?.name ?? ""}"? Esta acción no se puede deshacer.`}
+                textoConfirmar="Eliminar"
+                onConfirmar={confirmDelete}
+                onCancelar={() => setToDelete(null)}
+            />
         </AdminTemplate>
     );
 };

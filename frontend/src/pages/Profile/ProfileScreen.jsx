@@ -11,7 +11,7 @@ import {
   listarComunas,
   guardarPerfil,
   cambiarClave,
-} from "../../services/perfilService";
+} from "../../services/profileService";
 
 const CLAVE_MINIMA = 8; // el mismo mínimo que pide el registro
 

@@ -1,4 +1,4 @@
-// src/services/direccionService.js
+// src/services/addressService.js
 //
 // Direcciones de despacho del usuario (API: /direcciones) y la lista de comunas (/comunas).
 //   GET  /direcciones        -> mis direcciones (la primera es la principal)

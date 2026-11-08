@@ -1,4 +1,4 @@
-// src/services/despachoService.js
+// src/services/shipmentService.js
 //
 // Despachos (envíos) de las ventas. Los estados son los de la tabla Despacho de la BD:
 // 'En Preparación' -> 'Despachado' -> 'En reparto' -> 'Entregado'.

@@ -7,8 +7,8 @@ import CardGridSkeleton from "../../components/molecules/CardGridSkeleton/CardGr
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import useCart from "../../context/useCart";
 import { useToast } from "../../context/ToastContext";
-import { listarCatalogo, rutaDetalle } from "../../services/catalogoService";
-import { urlImagen } from "../../services/carritoService";
+import { listarCatalogo, rutaDetalle } from "../../services/catalogService";
+import { urlImagen } from "../../services/cartService";
 import "../../styles/Home.css";
 
 const CANTIDAD_DESTACADOS = 4;

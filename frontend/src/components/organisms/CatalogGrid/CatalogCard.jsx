@@ -1,7 +1,7 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import { urlImagen } from "../../../services/carritoService";
+import { urlImagen } from "../../../services/cartService";
 
 const ROJO = "#EC3333";
 const formatearPrecio = (numero) => `$${numero.toLocaleString("es-CL")}`;

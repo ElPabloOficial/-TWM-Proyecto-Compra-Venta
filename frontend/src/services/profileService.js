@@ -1,4 +1,4 @@
-// src/services/perfilService.js
+// src/services/profileService.js
 //
 // Conecta la pantalla de Perfil con la API (.NET):
 //   GET  /perfil        -> datos del usuario con sesión iniciada

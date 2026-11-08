@@ -13,7 +13,7 @@ import ListPageSkeleton from "../../components/organisms/ListPageSkeleton/ListPa
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import CustomButton from "../../components/atoms/Button/CustomButton";
-import { listarMisPedidos, actualizarEstadoPedido } from "../../services/pedidoService";
+import { listarMisPedidos, actualizarEstadoPedido } from "../../services/orderService";
 import "../../styles/Inventory.css";
 import "../../styles/Orders.css";
 

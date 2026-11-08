@@ -10,7 +10,7 @@ import {
   avanzarDespacho,
   ETAPAS_DESPACHO,
   ETIQUETA_ESTADO,
-} from "../../services/despachoService";
+} from "../../services/shipmentService";
 import { useToast } from "../../context/ToastContext";
 
 import "../../styles/Inventory.css";

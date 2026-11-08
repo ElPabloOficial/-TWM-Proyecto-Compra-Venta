@@ -8,7 +8,7 @@ import ConfirmPurchaseTools from "../../components/molecules/ConfirmPurchaseTool
 import ConfirmPurchaseTable from "../../components/organisms/ConfirmPurchaseTable/ConfirmPurchaseTable";
 import useCart from "../../context/useCart";
 import { useToast } from "../../context/ToastContext";
-import { calcularTotales, crearVenta, listarDirecciones } from "../../services/carritoService";
+import { calcularTotales, crearVenta, listarDirecciones } from "../../services/cartService";
 
 const ROJO = "#EC3333";
 const formatearPrecio = (numero) => `$${numero.toLocaleString("es-CL")}`;

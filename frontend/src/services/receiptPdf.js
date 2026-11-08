@@ -1,4 +1,4 @@
-// src/services/boletaPdf.js
+// src/services/receiptPdf.js
 //
 // Genera la boleta de venta (comprobante) en PDF, en el navegador, a partir del detalle de una
 // venta que entrega la API (GET /ventas/{id}). Incluye lo que pide el enunciado: fecha de la

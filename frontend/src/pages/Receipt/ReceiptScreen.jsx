@@ -6,8 +6,8 @@ import Header from "../../components/organisms/Header/Header";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import { authService } from "../../services/authService";
-import { ventaService } from "../../services/ventaService";
-import { adaptarBoleta, descargarBoletaPdf } from "../../services/boletaPdf";
+import { ventaService } from "../../services/saleService";
+import { adaptarBoleta, descargarBoletaPdf } from "../../services/receiptPdf";
 
 import "../../styles/Receipt.css";
 
