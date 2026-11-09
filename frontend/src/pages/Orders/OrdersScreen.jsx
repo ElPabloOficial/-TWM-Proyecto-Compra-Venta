@@ -6,12 +6,13 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import EditIcon from "@mui/icons-material/Edit";
-import CancelIcon from "@mui/icons-material/Cancel";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import ListPageSkeleton from "../../components/organisms/ListPageSkeleton/ListPageSkeleton";
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
+import { soloCodigo } from "../../services/validaciones";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import { listarMisPedidos, actualizarEstadoPedido } from "../../services/orderService";
 import "../../styles/Inventory.css";
@@ -150,7 +151,7 @@ const OrderDialog = ({ open, pedido, onClose, onGuardar }) => {
             label="Código de seguimiento"
             size="small"
             value={seguimiento}
-            onChange={(e) => setSeguimiento(e.target.value)}
+            onChange={(e) => setSeguimiento(soloCodigo(e.target.value))}
           />
         )}
 
@@ -388,7 +389,7 @@ const OrdersScreen = () => {
                           onClick={() => setPedidoACancelar(p)}
                           aria-label="Cancelar pedido"
                         >
-                          <CancelIcon fontSize="small" />
+                          <DeleteOutlineIcon fontSize="small" />
                         </button>
                       )}
                       {!puedeActualizar && !puedeCancelar && "-"}

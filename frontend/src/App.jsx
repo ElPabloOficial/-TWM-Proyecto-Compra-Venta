@@ -79,7 +79,7 @@ const App = () => {
                 <Route path="/boleta/:id" element={<ReceiptScreen />} />
                 <Route path="/reportes" element={<ReportsScreen />} />
                 <Route path="/transacciones" element={<AdminRoute><TransHistoryScreen /></AdminRoute>} />
-                <Route path="/envios" element={<ShippingCostsScreen />} />
+                <Route path="/envios" element={<AdminRoute><ShippingCostsScreen /></AdminRoute>} />
                 <Route path="/listasdedeseos" element={<WishlistListsScreen />} />
                 <Route path="/listadedeseos" element={<WishlistScreen />} />
                 <Route path="/categorias" element={<AdminRoute><CategoryManagementScreen /></AdminRoute>} />

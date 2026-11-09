@@ -39,6 +39,10 @@ const comparadores = {
   nombre: (a, b) => a.nombre.localeCompare(b.nombre),
 };
 
+// Minúsculas y sin tildes, para que "audifonos" encuentre "Audífonos"
+const normalizar = (texto) =>
+  String(texto ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
 const FILTROS_VACIOS = { categoria: "", precio: "", estado: "", orden: "" };
 
 // Camino de una categoría, por ejemplo "Tecnología › Computación". Se omite la raíz
@@ -78,6 +82,8 @@ const CatalogScreen = () => {
   // /catalogo?estado=oferta|producto|servicio (Ofertas, Productos y Servicios; también "Ver ofertas" del Home)
   const categoriaUrl = params.get("categoria") ?? "";
   const estadoUrl = params.get("estado") ?? "";
+  // /catalogo?q=texto viene de la barra de búsqueda del Header
+  const busqueda = (params.get("q") ?? "").trim();
 
   const [items, setItems] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -89,11 +95,11 @@ const CatalogScreen = () => {
   const [filtros, setFiltros] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoUrl }); //Filtros
   const [aplicados, setAplicados] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoUrl });
   const [pagina, setPagina] = useState(1);
-  const [urlVista, setUrlVista] = useState(`${categoriaUrl}|${estadoUrl}`);
+  const [urlVista, setUrlVista] = useState(`${categoriaUrl}|${estadoUrl}|${busqueda}`);
 
   // Si la URL cambia estando ya en el catálogo (se elige otra categoría u "Ofertas" en el Header), los filtros la siguen
-  if (urlVista !== `${categoriaUrl}|${estadoUrl}`) {
-    setUrlVista(`${categoriaUrl}|${estadoUrl}`);
+  if (urlVista !== `${categoriaUrl}|${estadoUrl}|${busqueda}`) {
+    setUrlVista(`${categoriaUrl}|${estadoUrl}|${busqueda}`);
     setFiltros((f) => ({ ...f, categoria: categoriaUrl, estado: estadoUrl }));
     setAplicados((a) => ({ ...a, categoria: categoriaUrl, estado: estadoUrl }));
     setPagina(1);
@@ -135,6 +141,7 @@ const CatalogScreen = () => {
   const paramsDe = (f) => ({
     ...(f.categoria ? { categoria: f.categoria } : {}),
     ...(f.estado ? { estado: f.estado } : {}),
+    ...(busqueda ? { q: busqueda } : {}),
   });
 
   const cambiarFiltro = (campo, valor) => setFiltros({ ...filtros, [campo]: valor });
@@ -176,6 +183,13 @@ const CatalogScreen = () => {
     setParams(paramsDe({ ...aplicados, categoria: "" }));
   };
 
+  // Quita el texto de búsqueda (la URL queda sin ?q)
+  const quitarBusqueda = () => {
+    setPagina(1);
+    const { q, ...resto } = Object.fromEntries(params);
+    setParams(resto);
+  };
+
   // Opciones de los selectores (salen de lo que hay en el catálogo)
   const opciones = {
     precio: rangosPrecio.map((r) => ({ value: r.id, label: r.label })),
@@ -187,8 +201,17 @@ const CatalogScreen = () => {
   const rango = rangosPrecio.find((r) => r.id === aplicados.precio); //Filtro de precios
   const categoriasPermitidas = aplicados.categoria ? idsConSubcategorias(aplicados.categoria, categorias) : null;
 
+  // Cada palabra escrita debe aparecer en el nombre, la descripción, la categoría o el vendedor
+  const palabras = normalizar(busqueda).split(/\s+/).filter(Boolean);
+  const coincideBusqueda = (i) => {
+    if (palabras.length === 0) return true;
+    const texto = normalizar([i.nombre, i.descripcion, i.vendedor, ...i.categorias.map((c) => c.nombre)].join(" "));
+    return palabras.every((p) => texto.includes(p));
+  };
+
   const filtrados = items.filter(
     (i) =>
+      coincideBusqueda(i) &&
       (!categoriasPermitidas || i.categorias.some((c) => categoriasPermitidas.has(c.id))) &&
       (aplicados.estado === "" ||
         (aplicados.estado === "oferta" ? i.descuentoPct > 0 : i.tipo === aplicados.estado)) &&
@@ -233,6 +256,24 @@ const CatalogScreen = () => {
             onAplicar={aplicarFiltros}
             onLimpiar={limpiarFiltros}
           />
+
+          {busqueda && (
+            <Box sx={{ marginTop: 2, display: "flex", alignItems: "center", gap: 1, fontSize: 13, color: "#666" }}>
+              Búsqueda:
+              <Chip
+                label={busqueda}
+                onDelete={quitarBusqueda}
+                variant="outlined"
+                size="small"
+                sx={{
+                  borderColor: "#EC3333",
+                  color: "#000",
+                  fontWeight: 600,
+                  "& .MuiChip-deleteIcon": { color: "#EC3333" },
+                }}
+              />
+            </Box>
+          )}
 
           {aplicados.categoria && (
             <Box sx={{ marginTop: 2, display: "flex", alignItems: "center", gap: 1, fontSize: 13, color: "#666" }}>

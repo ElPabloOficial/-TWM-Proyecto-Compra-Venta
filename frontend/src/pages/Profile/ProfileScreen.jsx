@@ -5,7 +5,9 @@ import ProfileConfigCard from "../../components/organisms/ProfileConfigCard/Prof
 import FormSkeleton from "../../components/molecules/FormSkeleton/FormSkeleton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import { useToast } from "../../context/ToastContext";
-import { authService } from "../../services/authService";
+import { authService, limpiarRut } from "../../services/authService";
+import { isValidRut } from "../../services/format";
+import { esNombreValido, esTelefonoValido, esCorreoValido, esUrlValida } from "../../services/validaciones";
 import {
   obtenerPerfil,
   listarComunas,
@@ -14,6 +16,19 @@ import {
 } from "../../services/profileService";
 
 const CLAVE_MINIMA = 8; // el mismo mínimo que pide el registro
+
+// Revisa el formulario antes de guardar. Devuelve el mensaje del primer error, o "" si todo está bien.
+const validarPerfil = (f, esVendedor, tieneEmpresa) => {
+  if (!esNombreValido(f.nombre)) return "El nombre solo puede tener letras y debe tener al menos 3 caracteres.";
+  if (f.telefonos.some((t) => t && !esTelefonoValido(t))) return "Cada teléfono debe tener 9 dígitos, por ejemplo 912345678.";
+  if (f.correo.trim() && !esCorreoValido(f.correo)) return "Ingresa un correo válido, por ejemplo nombre@dominio.cl.";
+  if (f.numero !== "" && Number(f.numero) <= 0) return "El número de la dirección debe ser mayor a 0.";
+  if (esVendedor) {
+    if (!tieneEmpresa && f.rutEmpresa && !isValidRut(f.rutEmpresa)) return "El RUT de la empresa no es válido, por ejemplo 76.123.456-7.";
+    if (f.paginaWeb.trim() && !esUrlValida(f.paginaWeb)) return "La página web debe empezar con http:// o https://, por ejemplo https://mitienda.cl";
+  }
+  return "";
+};
 
 const ProfileScreen = () => {
   const { mostrarToast } = useToast();
@@ -67,6 +82,12 @@ const ProfileScreen = () => {
   };
 
   const handleGuardar = async (form) => {
+    const errorForm = validarPerfil(form, perfil.role === "vendedor", perfil.tieneEmpresa);
+    if (errorForm) {
+      mostrarToast(errorForm, "error");
+      return;
+    }
+
     const quiereCambiarClave = Boolean(
       form.passwordActual || form.passwordNueva || form.passwordConfirmar
     );
@@ -91,7 +112,14 @@ const ProfileScreen = () => {
 
     let actualizado;
     try {
-      actualizado = await guardarPerfil(form, perfil.role === "vendedor");
+      actualizado = await guardarPerfil(
+        {
+          ...form,
+          telefonos: form.telefonos.filter(Boolean), // sin filas vacías
+          rutEmpresa: limpiarRut(form.rutEmpresa), // sin puntos y con guion, igual que en el registro
+        },
+        perfil.role === "vendedor"
+      );
     } catch (e) {
       mostrarToast(e.message, "error");
       setGuardando(false);

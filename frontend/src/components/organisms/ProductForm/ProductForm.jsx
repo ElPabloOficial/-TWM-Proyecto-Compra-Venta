@@ -2,6 +2,7 @@ import { useState } from "react";
 import CustomButton from "../../atoms/Button/CustomButton";
 import ImageUpload from "../../molecules/ImageUpload/ImageUpload";
 import DateField from "../../atoms/DateField/DateField";
+import { soloDigitos, soloPorcentaje, soloCodigo } from "../../../services/validaciones";
 
 const inicial = {
   nombre: "",
@@ -26,6 +27,11 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
 
   const cambiar = (campo) => (e) => {
     setForm({ ...form, [campo]: e.target.value });
+  };
+
+  // Aplica un filtro de validaciones.js a lo que se escribe (por ejemplo, solo dígitos en el precio)
+  const cambiarFiltrado = (campo, filtro) => (e) => {
+    setForm({ ...form, [campo]: filtro(e.target.value) });
   };
 
   const cambiarCategoria = (e) => {
@@ -110,6 +116,7 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
             type="text"
             placeholder="Ej. Laptop Industrial Pro X"
             value={form.nombre}
+            maxLength={100}
             onChange={cambiar("nombre")}
           />
         </div>
@@ -121,7 +128,7 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
             type="text"
             placeholder="LAP-IND-PROX"
             value={form.sku}
-            onChange={cambiar("sku")}
+            onChange={cambiarFiltrado("sku", soloCodigo)}
           />
         </div>
       </div>
@@ -170,10 +177,11 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
             <input
               id="precio"
               className="addp-input"
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="0"
               value={form.precio}
-              onChange={cambiar("precio")}
+              onChange={cambiarFiltrado("precio", (t) => soloDigitos(t, 9))}
             />
           </div>
         </div>
@@ -182,10 +190,11 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
           <input
             id="stock"
             className="addp-input"
-            type="number"
+            type="text"
+            inputMode="numeric"
             placeholder="0"
             value={form.stock}
-            onChange={cambiar("stock")}
+            onChange={cambiarFiltrado("stock", (t) => soloDigitos(t, 6))}
           />
         </div>
       </div>
@@ -231,10 +240,11 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
               <input
                 id="oferta"
                 className="addp-input"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 placeholder="0"
                 value={form.oferta}
-                onChange={cambiar("oferta")}
+                onChange={cambiarFiltrado("oferta", soloPorcentaje)}
               />
             </div>
           </div>

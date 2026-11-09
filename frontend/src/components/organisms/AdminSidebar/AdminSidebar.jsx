@@ -6,6 +6,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import FolderIcon from '@mui/icons-material/Folder';
 import SyncIcon from '@mui/icons-material/Sync';
 import ChatIcon from '@mui/icons-material/Chat';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import logoImage from '../../../assets/logo.png'; // Ajusta la ruta si es necesario
 
 const menuItems = [
@@ -13,6 +14,7 @@ const menuItems = [
   { id: 'usuarios', label: 'Usuarios', icon: <PeopleIcon />, ruta: '/usuarios' },
   { id: 'categorias', label: 'Categorías', icon: <FolderIcon />, ruta: '/categorias' },
   { id: 'transacciones', label: 'Transacciones', icon: <SyncIcon />, ruta: '/transacciones' },
+  { id: 'envios', label: 'Costos de envío', icon: <LocalShippingIcon />, ruta: '/envios' },
   { id: 'mensajeria', label: 'Mensajería', icon: <ChatIcon />, ruta: '/mensajes' },
 ];
 

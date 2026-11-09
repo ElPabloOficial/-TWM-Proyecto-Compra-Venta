@@ -8,6 +8,14 @@ export default function SearchBar({
   onSearch,
   placeholder = 'Buscar...',
 }) {
+  // Enter equivale a presionar la lupa
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      onSearch?.();
+    }
+  };
+
   return (
     <div
       style={{
@@ -23,6 +31,8 @@ export default function SearchBar({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        onKeyDown={handleKeyDown}
+        slotProps={{ input: { 'aria-label': placeholder } }}
         sx={{
           border: 'none',
           ml: 0,

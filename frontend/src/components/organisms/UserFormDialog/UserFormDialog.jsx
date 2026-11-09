@@ -6,6 +6,9 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import CustomButton from "../../atoms/Button/CustomButton";
+import formatRut, { isValidRut } from "../../../services/format";
+import { limpiarRut } from "../../../services/authService";
+import { soloLetras, esNombreValido, esCorreoValido } from "../../../services/validaciones";
 
 const vacio = {
   rut: "",
@@ -44,8 +47,6 @@ const fechaAISO = (texto) => {
 
 const normalizarRut = (rut) => rut.trim().replace(/\./g, "").toLowerCase();
 
-const FORMATO_RUT = /^\d{7,8}-[\dkK]$/; // 12345678-9 (sin puntos, con guion)
-const FORMATO_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /*
  * Formulario para crear un usuario desde el panel de administración.
@@ -75,15 +76,19 @@ const UserFormDialog = ({ open, ruts = [], onClose, onGuardar }) => {
       setError("Rut, nombre, correo, contraseña y fecha de nacimiento son obligatorios.");
       return;
     }
-    if (!FORMATO_RUT.test(rut)) {
-      setError("El RUT debe escribirse sin puntos y con guion, por ejemplo 12345678-9.");
+    if (!isValidRut(rut)) {
+      setError("Ingresa un RUT válido, por ejemplo 12.345.678-5.");
+      return;
+    }
+    if (!esNombreValido(form.nombre)) {
+      setError("El nombre solo puede tener letras y debe tener al menos 3 caracteres.");
       return;
     }
     if (ruts.some((r) => normalizarRut(r) === normalizarRut(rut))) {
       setError("Ya existe un usuario con ese RUT.");
       return;
     }
-    if (!FORMATO_CORREO.test(form.correo.trim())) {
+    if (!esCorreoValido(form.correo)) {
       setError("El correo electrónico no es válido.");
       return;
     }
@@ -102,7 +107,7 @@ const UserFormDialog = ({ open, ruts = [], onClose, onGuardar }) => {
     }
 
     const datos = {
-      rut,
+      rut: limpiarRut(rut), // sin puntos y con guion, el formato que recibe la API
       nombre: form.nombre.trim(),
       correo: form.correo.trim(),
       clave: form.clave,
@@ -127,9 +132,28 @@ const UserFormDialog = ({ open, ruts = [], onClose, onGuardar }) => {
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
       <DialogTitle>Nuevo usuario</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: "8px !important" }}>
-        <TextField label="Rut" placeholder="12345678-9" size="small" value={form.rut} onChange={handleChange("rut")} />
-        <TextField label="Nombre completo" size="small" value={form.nombre} onChange={handleChange("nombre")} />
-        <TextField label="Correo electrónico" type="email" size="small" value={form.correo} onChange={handleChange("correo")} />
+        <TextField
+          label="Rut"
+          placeholder="12.345.678-5"
+          size="small"
+          value={form.rut}
+          onChange={(e) => setForm({ ...form, rut: formatRut(e.target.value) })}
+          slotProps={{ htmlInput: { maxLength: 12 } }}
+        />
+        <TextField
+          label="Nombre completo"
+          size="small"
+          value={form.nombre}
+          onChange={(e) => setForm({ ...form, nombre: soloLetras(e.target.value) })}
+        />
+        <TextField
+          label="Correo electrónico"
+          type="email"
+          size="small"
+          value={form.correo}
+          onChange={handleChange("correo")}
+          slotProps={{ htmlInput: { maxLength: 100 } }}
+        />
         <TextField
           label="Contraseña"
           type="password"

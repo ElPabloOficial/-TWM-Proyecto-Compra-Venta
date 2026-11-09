@@ -5,6 +5,7 @@ import AdminTemplate from "../../components/templates/SellerTemplate/SellerTempl
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import MessageToolbar from "../../components/molecules/MessageToolbar/MessageToolbar";
 import MessageModerationTable from "../../components/organisms/MessageModerationTable/MessageModerationTable";
+import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import { useToast } from "../../context/ToastContext";
 
 const POR_PAGINA = 6;
@@ -24,6 +25,7 @@ const MessageModerationScreen = ()=> {
   const [filtro, setFiltro] = useState("pendiente"); //muestra pendientes
   const [orden, setOrden] = useState("");
   const [pagina, setPagina] = useState(1);
+  const [mensajeAEliminar, setMensajeAEliminar] = useState(null); // mensaje pendiente de confirmar
 
   //CRUD
   const aprobarMensaje = (mensaje) => {
@@ -32,15 +34,19 @@ const MessageModerationScreen = ()=> {
     )); //estado de mensaje aprobado x
   };
 
-  const eliminarMensaje = (mensaje) => {
-    if (window.confirm("¿Eliminar este mensaje?")) {
-      console.log("[Moderación] Eliminar mensaje:", { id: mensaje.id });
-      setMensajes(mensajes.map((m) =>
-        m.id === mensaje.id ? { ...m, estado: "eliminado" } : m
-      ));
-      mostrarToast("Mensaje eliminado correctamente");
-      // Estado eliminado x
-    }
+  // El botón solo abre el diálogo de confirmación
+  const eliminarMensaje = (mensaje) => setMensajeAEliminar(mensaje);
+
+  const confirmarEliminar = () => {
+    const mensaje = mensajeAEliminar;
+    if (!mensaje) return;
+    console.log("[Moderación] Eliminar mensaje:", { id: mensaje.id });
+    setMensajes((actuales) => actuales.map((m) =>
+      m.id === mensaje.id ? { ...m, estado: "eliminado" } : m
+    ));
+    setMensajeAEliminar(null);
+    mostrarToast("Mensaje eliminado correctamente");
+    // Estado eliminado x
   };
 
   const verTodos = () => {
@@ -123,6 +129,15 @@ const MessageModerationScreen = ()=> {
           />
         </Box>
       </Box>
+
+      <ConfirmDialog
+        open={Boolean(mensajeAEliminar)}
+        titulo="Eliminar mensaje"
+        mensaje="¿Eliminar este mensaje? Esta acción no se puede deshacer."
+        textoConfirmar="Eliminar"
+        onConfirmar={confirmarEliminar}
+        onCancelar={() => setMensajeAEliminar(null)}
+      />
     </AdminTemplate>
   );
 };

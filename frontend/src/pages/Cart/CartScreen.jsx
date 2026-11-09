@@ -249,7 +249,17 @@ const CartScreen = () => {
                 </div>
                 <div className="cart-recommendations-grid">
                   {recomendados.map((item) => (
-                    <article className="cart-recommendation" key={item.clave}>
+                    <article
+                      className="cart-recommendation"
+                      key={item.clave}
+                      role="link"
+                      tabIndex={0}
+                      aria-label={`Ver ${item.nombre}`}
+                      onClick={() => navigate(rutaDetalle(item))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') navigate(rutaDetalle(item));
+                      }}
+                    >
                       <div className="cart-recommendation-image">
                         <CartImage src={urlImagen(item.imagen)} alt={item.nombre} />
                       </div>
@@ -259,7 +269,11 @@ const CartScreen = () => {
                         <strong>{formatPrice(item.precio)}</strong>
                         <button
                           type="button"
-                          onClick={() => handleAdd(item)}
+                          onClick={(e) => {
+                            e.stopPropagation(); // agregar no debe abrir la ficha
+                            handleAdd(item);
+                          }}
+                          onKeyDown={(e) => e.stopPropagation()}
                           aria-label={`Añadir ${item.nombre} al carrito`}
                         >
                           Agregar

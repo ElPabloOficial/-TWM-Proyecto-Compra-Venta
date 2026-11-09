@@ -16,7 +16,7 @@ const LoginForm = ({ onSubmit }) => {
     e.preventDefault();
     setRutSubmitted(true);
 
-    if (!isValidRut(rut)) {
+    if (!isValidRut(rut) || !password) {
       return;
     }
 
@@ -45,6 +45,7 @@ const LoginForm = ({ onSubmit }) => {
         placeholder="••••••••••"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        errorMessage={rutSubmitted && !password ? "Ingresa tu contraseña." : ""}
       />
       <RememberUser
         checked={remember}

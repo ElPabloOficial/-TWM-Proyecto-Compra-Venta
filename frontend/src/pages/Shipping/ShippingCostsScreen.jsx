@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import "../../styles/Inventory.css";
 import "../../styles/Shipping.css";
+import { soloDigitos, soloAlfanumerico } from "../../services/validaciones";
 
 // TEMPORAL: estos catálogos vendrán de la base de datos cuando se conecte el backend.
 const transportistas = ["Chilexpress", "Starken", "Correos de Chile", "Blue Express"];
@@ -46,6 +47,11 @@ const ShippingCostsScreen = () => {
 
   const handleChange = (campo) => (e) => {
     setForm({ ...form, [campo]: e.target.value });
+  };
+
+  // Aplica un filtro de validaciones.js a lo que se escribe (por ejemplo, solo dígitos en los costos)
+  const handleFiltrado = (campo, filtro) => (e) => {
+    setForm({ ...form, [campo]: filtro(e.target.value) });
   };
 
   const irAlFormulario = () => {
@@ -261,36 +267,36 @@ const ShippingCostsScreen = () => {
               <label className="env-campo">
                 <span className="env-label">Costo fijo</span>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   className="env-input"
                   placeholder="$0"
                   value={form.costoFijo}
-                  onChange={handleChange("costoFijo")}
+                  onChange={handleFiltrado("costoFijo", (t) => soloDigitos(t, 7))}
                 />
               </label>
 
               <label className="env-campo">
                 <span className="env-label">Tarifa base ($/kg)</span>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   className="env-input"
                   placeholder="$0"
                   value={form.tarifaBase}
-                  onChange={handleChange("tarifaBase")}
+                  onChange={handleFiltrado("tarifaBase", (t) => soloDigitos(t, 7))}
                 />
               </label>
 
               <label className="env-campo">
                 <span className="env-label">Costo mínimo</span>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   className="env-input"
                   placeholder="$0"
                   value={form.costoMinimo}
-                  onChange={handleChange("costoMinimo")}
+                  onChange={handleFiltrado("costoMinimo", (t) => soloDigitos(t, 7))}
                 />
               </label>
             </div>
@@ -303,7 +309,7 @@ const ShippingCostsScreen = () => {
                   className="env-input"
                   placeholder="Ej. 1-2 días"
                   value={form.tiempo}
-                  onChange={handleChange("tiempo")}
+                  onChange={handleFiltrado("tiempo", (t) => soloAlfanumerico(t, 20))}
                 />
               </label>
 

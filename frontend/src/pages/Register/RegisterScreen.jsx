@@ -21,6 +21,14 @@ import Typography from '@mui/material/Typography';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import formatRut, { isValidRut } from '../../services/format';
+import {
+  soloLetras,
+  soloDigitos,
+  esNombreValido,
+  esCorreoValido as isValidEmail,
+  esTelefonoValido,
+  esUrlValida,
+} from '../../services/validaciones';
 import { pedir } from '../../services/apiClient';
 import { authService, limpiarRut } from '../../services/authService';
 import { obtenerComunas } from '../../services/addressService';
@@ -53,8 +61,6 @@ const initialFormData = {
   confirmaContrasena: '',
   terminosAceptados: false,
 };
-
-const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
 // Lista de nombres sin repetir, ordenada, en el formato { id, nombre } que usa el <Select>
 const unicos = (nombres) =>
@@ -128,10 +134,10 @@ export default function RegisterScreen() {
   const handleRutChange = (event) => update(event.target.name, formatRut(event.target.value));
 
   const handleDigitsChange = (maxLength) => (event) =>
-    update(event.target.name, event.target.value.replace(/\D/g, '').slice(0, maxLength));
+    update(event.target.name, soloDigitos(event.target.value, maxLength));
 
   const handleLettersChange = (event) =>
-    update(event.target.name, event.target.value.replace(/[^\p{L}\s'-]/gu, ''));
+    update(event.target.name, soloLetras(event.target.value));
 
   const handleRegionChange = (event) => {
     setFormData((previous) => ({
@@ -164,9 +170,9 @@ export default function RegisterScreen() {
     const f = formData;
     const e = {};
 
-    if (f.nombre.trim().length < 3) e.nombre = 'Ingresa tu nombre completo.';
+    if (!esNombreValido(f.nombre)) e.nombre = 'Ingresa tu nombre completo, solo con letras.';
     if (!isValidRut(f.rut)) e.rut = 'Ingresa un RUT válido, ej: 12.345.678-5.';
-    if (!/^\d{9}$/.test(f.telefono)) e.telefono = 'Ingresa 9 dígitos, ej: 912345678.';
+    if (!esTelefonoValido(f.telefono)) e.telefono = 'Ingresa 9 dígitos, ej: 912345678.';
     if (!f.fechaNacimiento) e.fechaNacimiento = 'Selecciona tu fecha de nacimiento.';
     else if (f.fechaNacimiento < '1940-01-01' || f.fechaNacimiento > hoyISO())
       e.fechaNacimiento = 'La fecha no es válida.';
@@ -175,7 +181,7 @@ export default function RegisterScreen() {
     if (isVendor) {
       if (!f.nombreEmpresa.trim()) e.nombreEmpresa = 'Ingresa el nombre de la empresa.';
       if (!isValidRut(f.rutEmpresa)) e.rutEmpresa = 'Ingresa un RUT válido, ej: 76.123.456-7.';
-      if (f.paginaWeb && !/^https?:\/\/\S+\.\S+$/i.test(f.paginaWeb.trim()))
+      if (f.paginaWeb && !esUrlValida(f.paginaWeb))
         e.paginaWeb = 'Incluye http:// o https://, ej: https://mitienda.cl';
     }
 
@@ -288,7 +294,8 @@ export default function RegisterScreen() {
   };
 
   /* ---------- Piezas reutilizables ---------- */
-  const field = (name, label, props = {}) => (
+  // MUI 9 ya no acepta inputProps / InputProps en TextField: se pasan por slotProps
+  const field = (name, label, { inputProps, InputProps, slotProps, ...props } = {}) => (
     <TextField
       fullWidth
       name={name}
@@ -297,6 +304,11 @@ export default function RegisterScreen() {
       onChange={handleChange}
       error={hasError(name)}
       helperText={help(name)}
+      slotProps={{
+        ...slotProps,
+        htmlInput: { ...slotProps?.htmlInput, ...inputProps },
+        input: { ...slotProps?.input, ...InputProps },
+      }}
       {...props}
     />
   );
@@ -310,7 +322,7 @@ export default function RegisterScreen() {
         value={formData[name]}
         label={label}
         onChange={onChange}
-        MenuProps={{ PaperProps: { style: { maxHeight: 280 } } }}
+        MenuProps={{ slotProps: { paper: { style: { maxHeight: 280 } } } }}
       >
         {options.map((option) => (
           <MenuItem key={option.id} value={option.id}>

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Badge from '@mui/material/Badge';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import CustomLogo from '../../atoms/Logo/CustomLogo';
 import SearchBar from '../../molecules/SearchBar/SearchBar';
@@ -16,8 +16,24 @@ import useCart from '../../../context/useCart';
 
 const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { cartCount, user } = useCart();
   const [categoriasAbiertas, setCategoriasAbiertas] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+
+  // En el catálogo la barra muestra la búsqueda activa (y se vacía si se quita desde la URL)
+  useEffect(() => {
+    const q = new URLSearchParams(location.search).get('q') ?? '';
+    setBusqueda(location.pathname === '/catalogo' ? q : '');
+  }, [location.pathname, location.search]);
+
+  // Buscar lleva al catálogo con ?q=texto (sin texto, al catálogo completo)
+  const buscar = () => {
+    const texto = busqueda.trim();
+    console.log('[Búsqueda] Buscar:', { texto });
+    setCategoriasAbiertas(false);
+    navigate(texto ? `/catalogo?q=${encodeURIComponent(texto)}` : '/catalogo');
+  };
 
   // Ofertas, Productos y Servicios abren el catálogo ya filtrado por ese tipo
   const irACatalogo = (tipo) => {
@@ -63,6 +79,9 @@ const Header = () => {
           }}
         >
           <SearchBar
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            onSearch={buscar}
             placeholder="Buscar producto..."
           />
         </Box>

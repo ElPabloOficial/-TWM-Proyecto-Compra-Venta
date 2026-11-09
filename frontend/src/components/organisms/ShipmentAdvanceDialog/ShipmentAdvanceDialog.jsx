@@ -6,6 +6,7 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import CustomButton from "../../atoms/Button/CustomButton";
+import { soloCodigo } from "../../../services/validaciones";
 import {
   ETAPAS_DESPACHO,
   ETIQUETA_ESTADO,
@@ -92,7 +93,7 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
               label="Número de seguimiento"
               size="small"
               value={seguimiento}
-              onChange={(e) => setSeguimiento(e.target.value)}
+              onChange={(e) => setSeguimiento(soloCodigo(e.target.value))}
             />
             <div style={{ display: "flex", gap: 8 }}>
               {[

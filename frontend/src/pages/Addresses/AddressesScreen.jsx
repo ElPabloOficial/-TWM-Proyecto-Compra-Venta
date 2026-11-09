@@ -85,7 +85,7 @@ const AddressesScreen = () => {
 
   // El número solo admite dígitos (la base de datos lo guarda como entero)
   const cambiarNumero = (e) => {
-    setForm({ ...form, numero: e.target.value.replace(/\D/g, "") });
+    setForm({ ...form, numero: e.target.value.replace(/\D/g, "").slice(0, 6) });
   };
 
   // Al cambiar de región, la comuna se vuelve a elegir

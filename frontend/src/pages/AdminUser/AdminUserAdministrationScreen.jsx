@@ -9,6 +9,7 @@ import AdminUserTable from "../../components/organisms/AdminUserTable/AdminUserT
 import UserFormDialog from "../../components/organisms/UserFormDialog/UserFormDialog";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import { listarUsuarios, crearUsuario as crearUsuarioApi, eliminarUsuario as eliminarUsuarioApi } from "../../services/adminService";
 import { useToast } from "../../context/ToastContext";
 
@@ -31,6 +32,7 @@ const AdminUserAdministrationScreen = () => {
   const [estado, setEstado] = useState("");
   const [pagina, setPagina] = useState(1);
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
+  const [usuarioAEliminar, setUsuarioAEliminar] = useState(null); // usuario pendiente de confirmar
 
   const cambiarFiltro = (setter) => (valor) => {
     setter(valor);
@@ -64,8 +66,13 @@ const AdminUserAdministrationScreen = () => {
     navigate(`/usuarios/${encodeURIComponent(usuario.rut)}`);
   };
 
-  const eliminarUsuario = async (usuario) => {
-    if (!window.confirm(`¿Eliminar a "${usuario.nombre}"?`)) return;
+  // El botón solo abre el diálogo de confirmación
+  const eliminarUsuario = (usuario) => setUsuarioAEliminar(usuario);
+
+  const confirmarEliminar = async () => {
+    const usuario = usuarioAEliminar;
+    if (!usuario) return;
+    setUsuarioAEliminar(null);
     console.log("[Usuarios] Eliminar usuario:", { rut: usuario.rut, nombre: usuario.nombre });
     setErrorAccion("");
     try {
@@ -76,6 +83,7 @@ const AdminUserAdministrationScreen = () => {
       setErrorAccion(e.message);
     }
   };
+
   const texto = normalizar(busqueda.trim()); //filtros nombre, rut, tipo o estado
   const textoRut = limpiarRut(texto);
 
@@ -152,6 +160,15 @@ const AdminUserAdministrationScreen = () => {
         ruts={usuarios.map((u) => u.rut)}
         onClose={() => setDialogoAbierto(false)}
         onGuardar={crearUsuario}
+      />
+
+      <ConfirmDialog
+        open={Boolean(usuarioAEliminar)}
+        titulo="Eliminar usuario"
+        mensaje={`¿Seguro que quieres eliminar a "${usuarioAEliminar?.nombre ?? ""}"? Esta acción no se puede deshacer.`}
+        textoConfirmar="Eliminar"
+        onConfirmar={confirmarEliminar}
+        onCancelar={() => setUsuarioAEliminar(null)}
       />
     </AdminTemplate>
   );

@@ -399,6 +399,14 @@
   border: 1px solid #e2e4e7;
   border-radius: 9px;
   background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.cart-recommendation:hover,
+.cart-recommendation:focus-visible {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .cart-recommendation-image {

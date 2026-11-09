@@ -14,12 +14,14 @@ const AdminUserTools = ({ busqueda, onBusqueda, tipo, onTipo, estado, onEstado }
         value={busqueda}
         onChange={(e) => onBusqueda(e.target.value)}
         sx={{ minWidth: 280 }}
-        InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              <SearchIcon fontSize="small" />
-            </InputAdornment>
-          ),
+        slotProps={{
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          },
         }}
       />
 

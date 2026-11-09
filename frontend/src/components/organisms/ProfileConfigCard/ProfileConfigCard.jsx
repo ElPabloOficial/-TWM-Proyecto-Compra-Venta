@@ -11,6 +11,8 @@ import ProfileField from '../../molecules/ProfileField/ProfileField';
 import ProfileAccountType from '../../molecules/ProfileAccountType/ProfileAccountType';
 import ProfilePassword from '../../molecules/ProfilePassword/ProfilePassword';
 import ProfileSwitch from '../../molecules/ProfileSwitch/ProfileSwitch';
+import formatRut from '../../../services/format';
+import { soloLetras, soloDigitos, telefonoADigitos } from '../../../services/validaciones';
 
 const MAX_TELEFONOS = 5; // el mismo máximo que acepta la API
 
@@ -23,7 +25,7 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
     nombre: user.name || '',
     rut: user.rut || '',
     // Siempre hay al menos una fila para escribir
-    telefonos: user.telefonos?.length ? user.telefonos : [''],
+    telefonos: user.telefonos?.length ? user.telefonos.map(telefonoADigitos) : [''],
     fechaNacimiento: user.fechaNacimiento || '',
     correo: user.correo || '',
     rutEmpresa: user.rutEmpresa || '',
@@ -50,7 +52,7 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
   const cambiarTelefono = (indice) => (e) =>
     setForm((anterior) => ({
       ...anterior,
-      telefonos: anterior.telefonos.map((t, i) => (i === indice ? e.target.value : t)),
+      telefonos: anterior.telefonos.map((t, i) => (i === indice ? soloDigitos(e.target.value, 9) : t)),
     }));
 
   const agregarTelefono = () =>
@@ -68,7 +70,11 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
 
   // El número de la dirección solo admite dígitos (la base de datos lo guarda como entero)
   const cambiarNumero = (e) =>
-    setForm((anterior) => ({ ...anterior, numero: e.target.value.replace(/\D/g, '') }));
+    setForm((anterior) => ({ ...anterior, numero: soloDigitos(e.target.value, 6) }));
+
+  // Aplica un filtro de validaciones.js a lo que se escribe (por ejemplo, solo letras en el nombre)
+  const cambiarFiltrado = (campo, filtro) => (e) =>
+    setForm((anterior) => ({ ...anterior, [campo]: filtro(e.target.value) }));
 
   const comunaSeleccionada = comunas.find((c) => c.id === Number(form.idComuna)) ?? null;
 
@@ -86,7 +92,7 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
           </Box>
 
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, alignItems: 'start' }}>
-            <ProfileField label="Nombre Completo" value={form.nombre} onChange={cambiar('nombre')} placeholder="Ingresa tu nombre" />
+            <ProfileField label="Nombre Completo" value={form.nombre} onChange={cambiarFiltrado('nombre', soloLetras)} placeholder="Ingresa tu nombre" />
             <ProfileField label="RUT" value={form.rut} readOnly />
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#000' }}>
@@ -97,7 +103,7 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
                   key={i}
                   value={telefono}
                   onChange={cambiarTelefono(i)}
-                  placeholder="+56 9 1234 5678"
+                  placeholder="912345678"
                   endIcon={
                     form.telefonos.length > 1 ? (
                       <span
@@ -140,7 +146,7 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
       {esVendedor && (
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-            <ProfileField label="RUT de Empresa" value={form.rutEmpresa} onChange={cambiar('rutEmpresa')} placeholder="76.123.456-7" readOnly={user.tieneEmpresa} />
+            <ProfileField label="RUT de Empresa" value={form.rutEmpresa} onChange={cambiarFiltrado('rutEmpresa', formatRut)} placeholder="76.123.456-7" readOnly={user.tieneEmpresa} />
             <ProfileField label="Nombre" value={form.nombreEmpresa} onChange={cambiar('nombreEmpresa')} placeholder="Nombre de la empresa" />
             <ProfileField label="Giro Comercial" value={form.giroComercial} onChange={cambiar('giroComercial')} placeholder="Giro de la empresa" />
             <ProfileField label="Página Web" value={form.paginaWeb} onChange={cambiar('paginaWeb')} placeholder="https://..." />

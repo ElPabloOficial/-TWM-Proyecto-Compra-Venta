@@ -8,6 +8,7 @@ import { useProductos } from "../../context/ProductContext";
 import { useServicios, modalidades } from "../../context/ServiceContext";
 import { useToast } from "../../context/ToastContext";
 import "../../styles/AddProduct.css";
+import { soloDigitos, soloPorcentaje, soloCodigo } from "../../services/validaciones";
 
 const inicial = {
   codigo: "",
@@ -63,6 +64,8 @@ const ServiceForm = ({ servicio }) => {
   const [guardando, setGuardando] = useState(false);
 
   const cambiar = (campo) => (e) => setForm({ ...form, [campo]: e.target.value });
+  // Aplica un filtro de validaciones.js a lo que se escribe (por ejemplo, solo dígitos en el precio)
+  const cambiarFiltrado = (campo, filtro) => (e) => setForm({ ...form, [campo]: filtro(e.target.value) });
 
   const handleGuardar = async () => {
     const precio = Number(form.precio);
@@ -154,11 +157,11 @@ const ServiceForm = ({ servicio }) => {
           <div className="addp-row">
             <div className="addp-field">
               <label className="addp-label" htmlFor="nombre">Nombre del servicio</label>
-              <input id="nombre" className="addp-input" type="text" placeholder="Ej. Instalación de redes" value={form.nombre} onChange={cambiar("nombre")} />
+              <input id="nombre" className="addp-input" type="text" placeholder="Ej. Instalación de redes" maxLength={100} value={form.nombre} onChange={cambiar("nombre")} />
             </div>
             <div className="addp-field">
               <label className="addp-label" htmlFor="codigo">Código</label>
-              <input id="codigo" className="addp-input" type="text" placeholder="SRV-001" value={form.codigo} onChange={cambiar("codigo")} />
+              <input id="codigo" className="addp-input" type="text" placeholder="SRV-001" value={form.codigo} onChange={cambiarFiltrado("codigo", soloCodigo)} />
             </div>
           </div>
 
@@ -210,12 +213,12 @@ const ServiceForm = ({ servicio }) => {
               <label className="addp-label" htmlFor="precio">Precio</label>
               <div className="addp-money">
                 <span>$</span>
-                <input id="precio" className="addp-input" type="number" placeholder="0" value={form.precio} onChange={cambiar("precio")} />
+                <input id="precio" className="addp-input" type="text" inputMode="numeric" placeholder="0" value={form.precio} onChange={cambiarFiltrado("precio", (t) => soloDigitos(t, 9))} />
               </div>
             </div>
             <div className="addp-field">
               <label className="addp-label" htmlFor="duracion">Duración (minutos)</label>
-              <input id="duracion" className="addp-input" type="number" placeholder="60" value={form.duracion} onChange={cambiar("duracion")} />
+              <input id="duracion" className="addp-input" type="text" inputMode="numeric" placeholder="60" value={form.duracion} onChange={cambiarFiltrado("duracion", (t) => soloDigitos(t, 4))} />
             </div>
           </div>
 
@@ -226,7 +229,7 @@ const ServiceForm = ({ servicio }) => {
           <div className="addp-row">
             <div className="addp-field">
               <label className="addp-label" htmlFor="oferta">Oferta (%)</label>
-              <input id="oferta" className="addp-input" type="number" placeholder="0" value={form.oferta} onChange={cambiar("oferta")} />
+              <input id="oferta" className="addp-input" type="text" inputMode="numeric" placeholder="0" value={form.oferta} onChange={cambiarFiltrado("oferta", soloPorcentaje)} />
             </div>
           </div>
           {Number(form.oferta) > 0 && (

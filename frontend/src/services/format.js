@@ -1,5 +1,7 @@
 function formatRut(inRut) {
-  let outRut = inRut.replace(/[^0-9kK]/g, '').slice(0, 9);
+  // Solo números y, como dígito verificador, una K al final: una K en medio del RUT se descarta
+  let outRut = inRut.replace(/[^0-9kK]/g, '').replace(/[kK](?=.)/g, '').slice(0, 9);
+  if (/^[kK]$/.test(outRut)) outRut = ''; // un RUT no puede empezar con K
 
   if (outRut.length > 1) {
     const body = outRut.slice(0, -1);
