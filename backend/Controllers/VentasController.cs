@@ -103,6 +103,18 @@ public class VentasController : ControllerBase
                 return BadRequest(new { success = false, message = "Tu carrito incluye productos o servicios solo para mayores de 18 años." });
         }
 
+        // Nadie puede comprarse a sí mismo: la base de datos rechaza ventas donde el cliente y el vendedor
+        // son la misma persona (restricción chk_venta_vendedor_cliente). Se revisa antes de empezar
+        // para avisar con un mensaje claro en vez de un error de la base de datos.
+        var vendedoresProductos = itemsProductos.Select(i => i.id_productoNavigation.ofrecer1s.FirstOrDefault()?.id_usuario);
+        var vendedoresServicios = itemsServicios.Select(i => i.id_servicioNavigation.ofrecer2s.FirstOrDefault()?.id_usuario);
+        var vendedoresCarrito = vendedoresProductos.Concat(vendedoresServicios).ToList();
+
+        if (vendedoresCarrito.Any(v => v == rutCliente))
+            return BadRequest(new { success = false, message = "Tu carrito incluye productos o servicios que tú mismo vendes. Quítalos del carrito para poder pagar." });
+        if (vendedoresCarrito.Any(v => string.IsNullOrEmpty(v)))
+            return BadRequest(new { success = false, message = "Hay productos o servicios en tu carrito sin vendedor asignado. Quítalos para poder pagar." });
+
         // Precios de los servicios: los pone cada vendedor en la tabla Valorar (igual que en el catálogo)
         var idsServicios = itemsServicios.Select(i => i.id_servicio).ToList();
         var preciosServicio = await _context.valorars

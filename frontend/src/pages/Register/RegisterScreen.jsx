@@ -179,8 +179,11 @@ export default function RegisterScreen() {
     if (!isValidEmail(f.email)) e.email = 'Ingresa un correo válido, ej: nombre@dominio.cl.';
 
     if (isVendor) {
-      if (!f.nombreEmpresa.trim()) e.nombreEmpresa = 'Ingresa el nombre de la empresa.';
-      if (!isValidRut(f.rutEmpresa)) e.rutEmpresa = 'Ingresa un RUT válido, ej: 76.123.456-7.';
+      // La empresa es opcional: si se escribe algo, deben ir el RUT y el nombre juntos
+      if (f.nombreEmpresa.trim() || f.rutEmpresa.trim()) {
+        if (!f.nombreEmpresa.trim()) e.nombreEmpresa = 'Ingresa el nombre de la empresa.';
+        if (!isValidRut(f.rutEmpresa)) e.rutEmpresa = 'Ingresa un RUT válido, ej: 76.123.456-7.';
+      }
       if (f.paginaWeb && !esUrlValida(f.paginaWeb))
         e.paginaWeb = 'Incluye http:// o https://, ej: https://mitienda.cl';
     }
@@ -264,7 +267,7 @@ export default function RegisterScreen() {
             sector: f.sector.trim(),
             id_comuna: Number(f.comuna),
           },
-          empresa: isVendor
+          empresa: isVendor && (f.rutEmpresa.trim() || f.nombreEmpresa.trim())
             ? {
                 rut: limpiarRut(f.rutEmpresa),
                 nombre: f.nombreEmpresa.trim(),
@@ -440,16 +443,14 @@ export default function RegisterScreen() {
           {isVendor && (
             <>
               <Typography component="h2" className="register-section-title">
-                Datos de la empresa
+                Datos de la empresa (opcional)
               </Typography>
               <div className="register-fields">
-                {field('nombreEmpresa', 'Nombre de la empresa o tienda', {
-                  required: true,
+                {field('nombreEmpresa', 'Nombre de la empresa o tienda (opcional)', {
                   autoComplete: 'organization',
                   inputProps: { maxLength: 100 },
                 })}
-                {field('rutEmpresa', 'RUT de la empresa', {
-                  required: true,
+                {field('rutEmpresa', 'RUT de la empresa (opcional)', {
                   placeholder: '76.123.456-7',
                   onChange: handleRutChange,
                   inputProps: { maxLength: 12 },

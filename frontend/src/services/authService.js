@@ -84,6 +84,12 @@ export const authService = {
         return ['admin', 'administrador'].includes(tipo);
     },
 
+    // Reemplaza el JWT guardado (por ejemplo, el nuevo token con el rol actualizado al pasar de
+    // cliente a vendedor; con el token anterior la API seguiría tratando la cuenta como cliente).
+    setToken(token) {
+        localStorage.setItem('authToken', token);
+    },
+
     // Actualiza datos del usuario guardado en la sesión (p. ej. el nombre tras editar el perfil)
     // sin tener que volver a iniciar sesión.
     actualizarUsuario(cambios) {
@@ -104,8 +110,3 @@ export const authService = {
         return token ? { Authorization: `Bearer ${token}` } : {};
     },
 };
-
-if (import.meta.env.DEV) {
-    window.authService = authService;
-    console.log('[Dev Mode] authService is now globally available on window.authService');
-}

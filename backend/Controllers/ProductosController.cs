@@ -19,6 +19,12 @@ public class ProductosController : ControllerBase
         _context = context;
     }
 
+    // Una ruta del computador de quien sube la imagen ("file:///C:/..." o "C:\...") no sirve para los demás
+    // usuarios: el navegador la bloquea. La imagen debe ser una ruta del servidor o una URL http(s).
+    private static bool EsRutaLocal(string? ruta) =>
+        !string.IsNullOrWhiteSpace(ruta)
+        && System.Text.RegularExpressions.Regex.IsMatch(ruta.Trim(), @"^(file:|[a-zA-Z]:[\\/]|\\\\)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
     // GET: api/productos (Público)
     [HttpGet]
     public async Task<IActionResult> GetProductos()
@@ -153,6 +159,9 @@ public class ProductosController : ControllerBase
         if (string.IsNullOrEmpty(rutVendedor))
             return Unauthorized(new { success = false, message = "Usuario no autenticado." });
 
+        if (EsRutaLocal(dto.imagen))
+            return BadRequest(new { success = false, message = "La imagen no es válida: no puede ser una ruta de tu computador.", errors = new[] { "imagen: ruta local." } });
+
         var categoriaExiste = await _context.categoria.FindAsync(dto.id_categoria);
         if (categoriaExiste == null)
             return BadRequest(new { success = false, message = "La categoría no existe.", errors = new[] { "id_categoria: inválido." } });
@@ -209,6 +218,9 @@ public class ProductosController : ControllerBase
 
         if (producto == null) return NotFound(new { success = false, message = "Producto no encontrado." });
         if (!producto.ofrecer1s.Any(o => o.id_usuario == rut)) return Forbid(); // un producto puede tener varios vendedores
+
+        if (EsRutaLocal(dto.imagen))
+            return BadRequest(new { success = false, message = "La imagen no es válida: no puede ser una ruta de tu computador.", errors = new[] { "imagen: ruta local." } });
 
         // Actualizar campos
         producto.nombre = dto.nombre;

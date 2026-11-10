@@ -1,8 +1,11 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Mail;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using TiendaOnline.API.DTOs;
 using TiendaOnline.API.Models;
 
@@ -14,6 +17,7 @@ namespace TiendaOnline.API.Controllers;
 //   GET  api/perfil        -> datos personales + dirección + empresa
 //   PUT  api/perfil        -> guarda los cambios
 //   PUT  api/perfil/clave  -> cambia la contraseña
+//   PUT  api/perfil/vendedor -> convierte una cuenta de cliente en vendedor (la empresa es opcional)
 //
 // Cómo se guardan los datos en la base:
 //   - teléfonos: el perfil maneja la lista completa (hasta 5).
@@ -30,10 +34,12 @@ public class PerfilController : ControllerBase
     private const int MaximoTelefonos = 5;
 
     private readonly AppDbContext _context;
+    private readonly IConfiguration _configuration;
 
-    public PerfilController(AppDbContext context)
+    public PerfilController(AppDbContext context, IConfiguration configuration)
     {
         _context = context;
+        _configuration = configuration;
     }
 
     private string? RutActual() => User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -361,6 +367,106 @@ public class PerfilController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { success = true, message = "Contraseña actualizada.", data = (object?)null, errors = (object?)null });
+    }
+
+    // PUT: api/perfil/vendedor
+    // Convierte una cuenta de cliente en vendedor y cambia el tipo de usuario.
+    // La empresa es opcional: si se envían el RUT y el nombre se crea; si no se envía nada, solo cambia el tipo
+    // y la empresa se puede agregar después desde el perfil. Un vendedor también compra, así que no pierde nada de lo que ya tenía como cliente.
+    // Como el rol viaja dentro del token (JWT), se devuelve un token nuevo con el rol "Vendedor";
+    // con el token anterior la API seguiría tratando a la persona como cliente hasta volver a entrar.
+    [HttpPut("vendedor")]
+    public async Task<IActionResult> ConvertirEnVendedor([FromBody] PerfilEmpresaDto? dto)
+    {
+        dto ??= new PerfilEmpresaDto();
+        var rut = RutActual();
+        if (string.IsNullOrEmpty(rut))
+            return Falla(401, "Usuario no autenticado.");
+
+        var u = await _context.usuarios
+            .Include(x => x.id_empresas)
+            .FirstOrDefaultAsync(x => x.rut == rut);
+
+        if (u == null)
+            return Falla(404, "Usuario no encontrado.");
+
+        var tipo = u.tipousuario.Trim().ToLowerInvariant();
+        if (tipo == "vendedor" || tipo == "ambos")
+            return Falla(400, "Tu cuenta ya es de vendedor.");
+        if (tipo != "cliente")
+            return Falla(403, "Solo una cuenta de cliente puede convertirse en vendedor.");
+
+        var rutEmpresa = LimpiarRut(dto.rut);
+        var nombreEmpresa = Vacio(dto.nombre);
+        var giro = Vacio(dto.giro);
+        var paginaweb = Vacio(dto.paginaweb);
+
+        // Si no se escribe nada de la empresa, se omite. Si se escribe algo, deben ir el RUT y el nombre.
+        var quiereEmpresa = rutEmpresa.Length > 0 || nombreEmpresa != null;
+
+        var errores = new List<string>();
+        if (quiereEmpresa && (rutEmpresa.Length == 0 || nombreEmpresa == null))
+            errores.Add("empresa: indica el RUT y el nombre.");
+        else if (quiereEmpresa && (rutEmpresa.Length > 11 || !System.Text.RegularExpressions.Regex.IsMatch(rutEmpresa, @"^\d{7,8}-[0-9K]$")))
+            errores.Add("empresa.rut: el RUT no es válido.");
+        if ((nombreEmpresa?.Length ?? 0) > 100 || (giro?.Length ?? 0) > 100 || (paginaweb?.Length ?? 0) > 100)
+            errores.Add("empresa: nombre, giro y página web admiten máximo 100 caracteres.");
+        if (errores.Count > 0)
+            return Falla(400, "No se pudo convertir la cuenta en vendedor.", errores.ToArray());
+
+        if (quiereEmpresa)
+        {
+            // No se vincula una empresa que ya existe: podría ser de otra persona
+            if (await _context.empresas.AnyAsync(x => x.rut == rutEmpresa))
+                return Falla(409, "No se pudo convertir la cuenta en vendedor.", "empresa.rut: ya está registrado.");
+
+            // Al agregarla a la colección del usuario EF crea la empresa y su vínculo (tener3)
+            u.id_empresas.Add(new empresa
+            {
+                rut = rutEmpresa,
+                nombre = nombreEmpresa!,
+                giro = giro,
+                paginaweb = paginaweb
+            });
+        }
+        u.tipousuario = "vendedor";
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            return Falla(400, "No se pudo convertir la cuenta en vendedor.", ex.InnerException?.Message ?? ex.Message);
+        }
+
+        var jwtKey = _configuration["Jwt:Key"];
+        if (string.IsNullOrEmpty(jwtKey))
+            throw new InvalidOperationException("La clave Jwt:Key no está configurada.");
+
+        // Mismo token que entrega el inicio de sesión para un vendedor
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, u.rut),
+            new Claim(ClaimTypes.Name, u.nombre),
+            new Claim(ClaimTypes.Role, "Vendedor")
+        };
+        var credenciales = new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(2),
+            signingCredentials: credenciales));
+
+        var perfil = await ConstruirPerfil(rut);
+        return Ok(new
+        {
+            success = true,
+            message = "Tu cuenta ahora es de vendedor.",
+            data = new { token, perfil },
+            errors = (object?)null
+        });
     }
 
     // Arma el perfil que recibe el frontend (lecturas sin seguimiento: no modifican nada)

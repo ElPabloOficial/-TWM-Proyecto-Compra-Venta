@@ -1,5 +1,3 @@
-const API_URL = import.meta.env.VITE_API_URL;
-
 import DateField from "../../atoms/DateField/DateField";
 import { useEffect, useState } from "react";
 import { Box } from "@mui/material";
@@ -8,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import CustomButton from "../../atoms/Button/CustomButton";
 import CustomIconButton from "../../atoms/IconButton/CustomIconButton";
 import useCart from "../../../context/useCart";
+import { urlImagen } from "../../../services/cartService";
 import { useToast } from "../../../context/ToastContext";
 import { agregarAWishlist, obtenerMiWishlist } from "../../../services/wishlistService";
 
@@ -120,11 +119,7 @@ export default function ProductInfo({
     }
   };
 
-  const imagenUrl = product.imagen
-  ? product.imagen.startsWith("http")
-    ? product.imagen
-    : `${API_URL.replace(/\/api\/?$/, "")}/${product.imagen.replace(/^\/+/, "")}`
-  : null;
+  const imagenUrl = urlImagen(product.imagen);
 
   const inputSx = {
     width: "100%",

@@ -18,9 +18,7 @@ const MAX_TELEFONOS = 5; // el mismo máximo que acepta la API
 
 // "comunas" viene de la API: [{ id, nombre, provincia, region }]. Al elegir una comuna, su provincia
 // y su región se completan solas (así la dirección siempre apunta a una comuna que existe).
-export default function ProfileConfigCard({ user = {}, comunas = [], guardando = false, onGuardar, onCancelar }) {
-  const [restriccionEdad, setRestriccionEdad] = useState(false);
-
+export default function ProfileConfigCard({ user = {}, comunas = [], guardando = false, onGuardar, onCancelar, onCambiarTipo }) {
   const [form, setForm] = useState({
     nombre: user.name || '',
     rut: user.rut || '',
@@ -28,6 +26,8 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
     telefonos: user.telefonos?.length ? user.telefonos.map(telefonoADigitos) : [''],
     fechaNacimiento: user.fechaNacimiento || '',
     correo: user.correo || '',
+    // Un vendedor puede tener empresa o no: "Sí" muestra los datos de empresa, "No" los oculta
+    conEmpresa: Boolean(user.tieneEmpresa),
     rutEmpresa: user.rutEmpresa || '',
     nombreEmpresa: user.nombreEmpresa || '',
     giroComercial: user.giroComercial || '',
@@ -132,18 +132,24 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
         </Box>
       </ProfileSection>
 
-      <ProfileAccountType tipoActivo={esVendedor ? 'vendedor' : 'cliente'} />
+      <ProfileAccountType tipoActivo={esVendedor ? 'vendedor' : 'cliente'} onChange={onCambiarTipo} />
 
       {esVendedor && (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.5 }}>
-          <ProfileSwitch checked={restriccionEdad} onChange={(e) => setRestriccionEdad(e.target.checked)} label="Sí" />
-          <Typography sx={{ color: '#EC3333', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-            Datos de Empresa (Modo Vendedor)
+          {/* Si ya tiene empresa queda en "Sí" y bloqueado: la empresa no se puede quitar desde aquí */}
+          <ProfileSwitch
+            checked={form.conEmpresa}
+            disabled={user.tieneEmpresa}
+            onChange={(e) => setForm((anterior) => ({ ...anterior, conEmpresa: e.target.checked }))}
+            label={form.conEmpresa ? 'Sí' : 'No'}
+          />
+          <Typography sx={{ color: form.conEmpresa ? '#EC3333' : '#757575', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            {form.conEmpresa ? 'Datos de Empresa (Modo Vendedor)' : '¿Tienes empresa? (Modo Vendedor)'}
           </Typography>
         </Box>
       )}
 
-      {esVendedor && (
+      {esVendedor && form.conEmpresa && (
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
             <ProfileField label="RUT de Empresa" value={form.rutEmpresa} onChange={cambiarFiltrado('rutEmpresa', formatRut)} placeholder="76.123.456-7" readOnly={user.tieneEmpresa} />

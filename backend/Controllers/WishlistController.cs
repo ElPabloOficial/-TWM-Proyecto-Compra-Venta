@@ -84,4 +84,36 @@ public class WishlistController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(new { success = true, message = "Agregado a la lista de deseos.", data = (object?)null, errors = (object?)null });
     }
+
+    // DELETE: api/wishlist/eliminar/producto/5 (Quitar un ítem de mi lista)
+    // El cliente puede eliminar lo que guardó en su lista de deseos.
+    [HttpDelete("eliminar/{tipo}/{id}")]
+    public async Task<IActionResult> EliminarDeWishlist(string tipo, int id)
+    {
+        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(rut))
+            return Unauthorized(new { success = false, message = "Usuario no autenticado." });
+
+        if (tipo.ToLower() == "producto")
+        {
+            var items = await _context.crear1s.Where(c => c.id_usuario == rut && c.id_producto == id).ToListAsync();
+            if (items.Count == 0)
+                return NotFound(new { success = false, message = "El producto no está en tu lista." });
+            _context.crear1s.RemoveRange(items);
+        }
+        else if (tipo.ToLower() == "servicio")
+        {
+            var items = await _context.crear2s.Where(c => c.id_usuario == rut && c.id_servicio == id).ToListAsync();
+            if (items.Count == 0)
+                return NotFound(new { success = false, message = "El servicio no está en tu lista." });
+            _context.crear2s.RemoveRange(items);
+        }
+        else
+        {
+            return BadRequest(new { success = false, message = "Tipo inválido." });
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { success = true, message = "Quitado de la lista de deseos.", data = (object?)null, errors = (object?)null });
+    }
 }

@@ -1,12 +1,5 @@
-// src/services/profileService.js
-//
-// Conecta la pantalla de Perfil con la API (.NET):
-//   GET  /perfil        -> datos del usuario con sesión iniciada
-//   PUT  /perfil        -> guarda los cambios
-//   PUT  /perfil/clave  -> cambia la contraseña
-//   GET  /comunas       -> comunas con su provincia y región (para el selector)
-
 import { pedir } from './apiClient';
+import { authService } from './authService';
 
 // "987654321" -> "+56 9 8765 4321"
 const formatearTelefono = (numero) => {
@@ -73,6 +66,23 @@ export async function guardarPerfil(form, esVendedor) {
         },
     });
     return adaptarPerfil(datos);
+}
+
+// Convierte una cuenta de cliente en vendedor (PUT /perfil/vendedor). La API crea la empresa,
+// cambia el tipo de cuenta y entrega un token nuevo con el rol de vendedor.
+export async function convertirEnVendedor(empresa) {
+    const datos = await pedir('/perfil/vendedor', {
+        method: 'PUT',
+        body: {
+            rut: empresa.rut,
+            nombre: empresa.nombre,
+            giro: empresa.giro,
+            paginaweb: empresa.paginaWeb,
+        },
+    });
+    authService.setToken(datos.token);
+    authService.actualizarUsuario({ role: 'vendedor', tipousuario: 'vendedor' });
+    return adaptarPerfil(datos.perfil);
 }
 
 export async function cambiarClave({ claveActual, claveNueva }) {

@@ -21,6 +21,7 @@ import ReplayOutlinedIcon from "@mui/icons-material/ReplayOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import { urlImagen } from "../../services/cartService";
 
 const PurchaseHistory = () => {
   
@@ -77,7 +78,7 @@ const PurchaseHistory = () => {
         name: producto.nombre,
         quantity: producto.cantidad,
         price: producto.total,
-        image: producto.imagen,
+        image: urlImagen(producto.imagen),
         type: "producto",
       })),
     
@@ -86,7 +87,7 @@ const PurchaseHistory = () => {
         name: servicio.nombre,
         quantity: servicio.cantidad,
         price: servicio.total,
-        image: servicio.imagen,
+        image: urlImagen(servicio.imagen),
         type: "servicio",
       })),
     }));
@@ -874,4 +875,4 @@ const PurchaseHistory = () => {
   );
 };
 
-export default PurchaseHistory; 
+export default PurchaseHistory;

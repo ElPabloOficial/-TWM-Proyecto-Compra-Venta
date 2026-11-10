@@ -56,3 +56,11 @@ export async function obtenerMiWishlist() {
 export async function agregarAWishlist(tipo, id) {
     await pedir('/wishlist/agregar', { method: 'POST', body: { tipo, id_item: id } });
 }
+
+// Eliminar un producto o servicio de la lista de deseos
+export async function eliminarDeWishlist(tipo, id) {
+    await pedir(
+        `/wishlist/eliminar/${tipo}/${id}`,
+        { method: 'DELETE' }
+    );
+}

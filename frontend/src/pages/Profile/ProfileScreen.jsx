@@ -4,6 +4,7 @@ import ProfileTemplate from "../../components/templates/ProfileTemplate/ProfileT
 import ProfileConfigCard from "../../components/organisms/ProfileConfigCard/ProfileConfigCard";
 import FormSkeleton from "../../components/molecules/FormSkeleton/FormSkeleton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import BecomeSellerDialog from "../../components/organisms/BecomeSellerDialog/BecomeSellerDialog";
 import { useToast } from "../../context/ToastContext";
 import { authService, limpiarRut } from "../../services/authService";
 import { isValidRut } from "../../services/format";
@@ -13,6 +14,7 @@ import {
   listarComunas,
   guardarPerfil,
   cambiarClave,
+  convertirEnVendedor,
 } from "../../services/profileService";
 
 const CLAVE_MINIMA = 8; // el mismo mínimo que pide el registro
@@ -24,6 +26,8 @@ const validarPerfil = (f, esVendedor, tieneEmpresa) => {
   if (f.correo.trim() && !esCorreoValido(f.correo)) return "Ingresa un correo válido, por ejemplo nombre@dominio.cl.";
   if (f.numero !== "" && Number(f.numero) <= 0) return "El número de la dirección debe ser mayor a 0.";
   if (esVendedor) {
+    // Con el interruptor de empresa en "Sí", para agregarla hacen falta el RUT y el nombre
+    if (!tieneEmpresa && !(f.rutEmpresa && f.nombreEmpresa.trim())) return "Indica el RUT y el nombre de tu empresa, o cambia la opción a \"No\".";
     if (!tieneEmpresa && f.rutEmpresa && !isValidRut(f.rutEmpresa)) return "El RUT de la empresa no es válido, por ejemplo 76.123.456-7.";
     if (f.paginaWeb.trim() && !esUrlValida(f.paginaWeb)) return "La página web debe empezar con http:// o https://, por ejemplo https://mitienda.cl";
   }
@@ -39,6 +43,7 @@ const ProfileScreen = () => {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [dialogoVendedor, setDialogoVendedor] = useState(false);
   // Al cambiar vuelve a armarse el formulario: descarta lo escrito y limpia los campos de contraseña
   const [version, setVersion] = useState(0);
 
@@ -82,7 +87,9 @@ const ProfileScreen = () => {
   };
 
   const handleGuardar = async (form) => {
-    const errorForm = validarPerfil(form, perfil.role === "vendedor", perfil.tieneEmpresa);
+    // Los datos de empresa solo se validan y se envían si es vendedor y tiene el interruptor en "Sí"
+    const conEmpresa = perfil.role === "vendedor" && form.conEmpresa;
+    const errorForm = validarPerfil(form, conEmpresa, perfil.tieneEmpresa);
     if (errorForm) {
       mostrarToast(errorForm, "error");
       return;
@@ -118,7 +125,7 @@ const ProfileScreen = () => {
           telefonos: form.telefonos.filter(Boolean), // sin filas vacías
           rutEmpresa: limpiarRut(form.rutEmpresa), // sin puntos y con guion, igual que en el registro
         },
-        perfil.role === "vendedor"
+        conEmpresa
       );
     } catch (e) {
       mostrarToast(e.message, "error");
@@ -147,6 +154,25 @@ const ProfileScreen = () => {
 
   const handleCancelar = () => setVersion((v) => v + 1);
 
+  // Selector Cliente / Vendedor: un cliente puede pasar a vendedor (pide los datos de su empresa).
+  // Un vendedor no necesita "volver" a cliente: ya puede comprar como cualquier cliente.
+  const handleCambiarTipo = (tipo) => {
+    console.log("[Perfil] Cambiar tipo de cuenta:", { actual: perfil.role, solicitado: tipo });
+    if (tipo === "vendedor" && perfil.role !== "vendedor") {
+      setDialogoVendedor(true);
+    } else if (tipo === "cliente" && perfil.role === "vendedor") {
+      mostrarToast("Como vendedor también puedes comprar: ya tienes todo lo de una cuenta de cliente.", "info");
+    }
+  };
+
+  const handleConvertirEnVendedor = async (empresa) => {
+    const actualizado = await convertirEnVendedor(empresa); // si falla, el diálogo muestra el error
+    setPerfil(actualizado);
+    setVersion((v) => v + 1); // vuelve a armar el formulario con los datos de empresa
+    setDialogoVendedor(false);
+    mostrarToast("¡Listo! Tu cuenta ahora es de vendedor.");
+  };
+
   if (!haySesion) return <Navigate to="/login" replace />;
 
   return (
@@ -167,8 +193,15 @@ const ProfileScreen = () => {
           guardando={guardando}
           onGuardar={handleGuardar}
           onCancelar={handleCancelar}
+          onCambiarTipo={handleCambiarTipo}
         />
       )}
+
+      <BecomeSellerDialog
+        open={dialogoVendedor}
+        onClose={() => setDialogoVendedor(false)}
+        onGuardar={handleConvertirEnVendedor}
+      />
     </ProfileTemplate>
   );
 };

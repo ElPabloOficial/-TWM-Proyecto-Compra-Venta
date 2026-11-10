@@ -108,6 +108,7 @@ const ProfileMenu = () => {
   const abierto = posicion !== null;
 
   const abrir = (e) => {
+    setUsuario(authService.getCurrentUser()); // por si el tipo de cuenta cambió (p. ej. al pasar a vendedor)
     const rect = e.currentTarget.getBoundingClientRect();
     setPosicion({
       top: rect.bottom + 4,
