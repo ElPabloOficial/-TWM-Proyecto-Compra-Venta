@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using TiendaOnline.API.Models;
+using backend.api.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;

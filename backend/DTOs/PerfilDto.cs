@@ -1,4 +1,4 @@
-namespace TiendaOnline.API.DTOs;
+namespace backend.api.DTOs;
 
 // Lo que el frontend manda al guardar el perfil (PUT api/perfil).
 // Un campo vacío ("" o null) significa "no cambiar": nunca borra datos que ya existen.

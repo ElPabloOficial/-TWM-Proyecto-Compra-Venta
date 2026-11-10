@@ -4,10 +4,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
-using TiendaOnline.API.DTOs;
-using TiendaOnline.API.Models;
+using backend.api.DTOs;
+using backend.api.Models;
 
-namespace TiendaOnline.API.Controllers;
+namespace backend.api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

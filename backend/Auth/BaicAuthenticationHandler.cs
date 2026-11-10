@@ -5,9 +5,9 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using TiendaOnline.API.Models;
+using backend.api.Models;
 
-namespace TiendaOnline.API.Auth;
+namespace backend.api.Auth;
 
 public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
-namespace TiendaOnline.API.Models;
+namespace backend.api.Models;
 
 public partial class AppDbContext : DbContext
 {

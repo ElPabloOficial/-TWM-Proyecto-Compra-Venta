@@ -1,4 +1,4 @@
-namespace TiendaOnline.API.DTOs;
+namespace backend.api.DTOs;
 
 public class CotizacionCreateDto
 {

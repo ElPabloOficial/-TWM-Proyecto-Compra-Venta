@@ -2,11 +2,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using TiendaOnline.API.DTOs;
-using TiendaOnline.API.Models;
+using backend.api.DTOs;
+using backend.api.Models;
 using System.IO;
 
-namespace TiendaOnline.API.Controllers;
+namespace backend.api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

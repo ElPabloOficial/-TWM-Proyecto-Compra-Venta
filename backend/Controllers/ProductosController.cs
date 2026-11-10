@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
-using TiendaOnline.API.DTOs;
-using TiendaOnline.API.Models;
+using backend.api.DTOs;
+using backend.api.Models;
 
-namespace TiendaOnline.API.Controllers;
+namespace backend.api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

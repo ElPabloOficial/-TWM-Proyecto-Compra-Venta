@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TiendaOnline.API.Models;
+using backend.api.Models;
 
-namespace TiendaOnline.API.Controllers;
+namespace backend.api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

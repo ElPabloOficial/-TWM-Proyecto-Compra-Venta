@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace TiendaOnline.API.Models;
+namespace backend.api.Models;
 
 public partial class crear1
 {

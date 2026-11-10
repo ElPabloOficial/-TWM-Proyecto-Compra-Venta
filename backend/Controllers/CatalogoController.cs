@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TiendaOnline.API.Models;
+using backend.api.Models;
 
-namespace TiendaOnline.API.Controllers;
+namespace backend.api.Controllers;
 
 // Catálogo público: los productos y los servicios juntos, con lo que necesitan el Home y el
 // Catálogo (precio final, precio anterior si hay oferta, categorías y ubicación del vendedor).

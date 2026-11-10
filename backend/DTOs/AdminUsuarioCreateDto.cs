@@ -1,4 +1,4 @@
-namespace TiendaOnline.API.DTOs;
+namespace backend.api.DTOs;
 
 // Datos para que un administrador cree un usuario (POST api/admin/usuarios)
 public class AdminUsuarioCreateDto
