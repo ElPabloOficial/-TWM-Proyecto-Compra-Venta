@@ -1,6 +1,6 @@
-@TiendaOnline.API_HostAddress = http://localhost:5097
+@backend_HostAddress = http://localhost:5219
 
-GET {{TiendaOnline.API_HostAddress}}/weatherforecast/
+GET {{backend_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###

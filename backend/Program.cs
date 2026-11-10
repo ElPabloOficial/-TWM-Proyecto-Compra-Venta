@@ -74,12 +74,10 @@ builder.Services.AddSwaggerGen();
 // 6. Configurar CORS para React
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("PermitirReact", policy =>
+    options.AddPolicy("FrontendPolicy", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000"
-              )
+                "http://10.33.12.50:5173")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -96,7 +94,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // 8. CORS
-app.UseCors("PermitirReact");
+app.UseCors("FrontendPolicy");
 
 // 9. Autenticación JWT
 app.UseAuthentication();
