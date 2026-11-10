@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
-namespace backend.api.DTOs;
+namespace backend.DTOs;
 
 public class ServicioCreateDto
 {

@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using backend.api.DTOs;
-using backend.api.Models;
+using backend.DTOs;
+using backend.Models;
 
-namespace backend.api.Controllers;
+namespace backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

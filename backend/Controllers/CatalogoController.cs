@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using backend.api.Models;
+using backend.Models;
 
-namespace backend.api.Controllers;
+namespace backend.Controllers;
 
 // Catálogo público: los productos y los servicios juntos, con lo que necesitan el Home y el
 // Catálogo (precio final, precio anterior si hay oferta, categorías y ubicación del vendedor).

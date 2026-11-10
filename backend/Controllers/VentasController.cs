@@ -3,12 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
-using backend.api.DTOs;
-using backend.api.Models;
+using backend.DTOs;
+using backend.Models;
 using System.Text.Json.Nodes;
 
 
-namespace backend.api.Controllers;
+namespace backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

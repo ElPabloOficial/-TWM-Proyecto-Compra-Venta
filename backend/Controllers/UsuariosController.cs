@@ -4,10 +4,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
-using backend.api.DTOs;
-using backend.api.Models;
+using backend.DTOs;
+using backend.Models;
 
-namespace backend.api.Controllers;
+namespace backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

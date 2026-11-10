@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using backend.api.DTOs;
-using backend.api.Models;
+using backend.DTOs;
+using backend.Models;
 
-namespace backend.api.Controllers;
+namespace backend.Controllers;
 
 // Perfil del usuario con sesión iniciada. El RUT sale siempre del token (JWT), nunca del cuerpo
 // de la petición, así que nadie puede ver ni modificar el perfil de otra persona.

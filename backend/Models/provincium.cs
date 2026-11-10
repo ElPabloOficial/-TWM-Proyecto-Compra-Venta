@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace backend.api.Models;
+namespace backend.Models;
 
 public partial class provincium
 {

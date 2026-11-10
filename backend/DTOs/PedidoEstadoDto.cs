@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace backend.api.DTOs;
+namespace backend.DTOs;
 
 public class PedidoEstadoDto
 {

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace backend.api.DTOs;
+namespace backend.DTOs;
 
 public class ProductoDto
 {

@@ -1,4 +1,4 @@
-namespace backend.api.DTOs;
+namespace backend.DTOs;
 
 // Datos para que un administrador cree un usuario (POST api/admin/usuarios)
 public class AdminUsuarioCreateDto

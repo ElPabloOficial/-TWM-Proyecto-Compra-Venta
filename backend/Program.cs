@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using backend.api.Models;
+using backend.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
