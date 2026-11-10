@@ -1,18 +1,27 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Header from "../../components/organisms/Header/Header";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 
-import { listarListasDeseos } from "../../services/wishlistService";
-import { agregarAlCarrito } from "../../services/cartService";
+import {
+    listarListasDeseos,
+    obtenerMiWishlist,
+    eliminarDeWishlist,
+} from "../../services/wishlistService";
+import { listarCatalogo, rutaDetalle } from "../../services/catalogService";
+import { urlImagen } from "../../services/cartService";
+import useCart from "../../context/useCart";
+import { useToast } from "../../context/ToastContext";
 
 import "../../styles/Wishlist.css";
+
+const COLORES = ["blue", "pink", "green"];
 
 const WishlistScreen = () => {
     const navigate = useNavigate();
@@ -20,122 +29,135 @@ const WishlistScreen = () => {
 
     const [nombreLista, setNombreLista] = useState("");
     const [agregandoId, setAgregandoId] = useState(null);
-    const [mensaje, setMensaje] = useState("");
+    const [wishlist, setWishlist] = useState([]);
+    const [cargando, setCargando] = useState(true);
+    const [error, setError] = useState("");
+    const [recarga, setRecarga] = useState(0);
 
-    // Datos temporales de productos
-    const [wishlist, setWishlist] = useState([
-        {
-            id: 1,
-            tipo: "producto",
-            name: "Auriculares inalámbricos",
-            description:
-                "Sonido claro, batería de larga duración y diseño compacto.",
-            price: 89990,
-            status: "En stock",
-            image: null,
-            color: "blue",
-        },
-        {
-            id: 2,
-            tipo: "producto",
-            name: "Cafetera inteligente",
-            description:
-                "Controla el horario y la intensidad desde tu teléfono.",
-            price: 149990,
-            status: "En stock",
-            image: null,
-            color: "pink",
-        },
-        {
-            id: 3,
-            tipo: "producto",
-            name: "Batería portátil",
-            description:
-                "Carga rápida y diseño compacto para llevar siempre.",
-            price: 29990,
-            status: "Agotado",
-            image: null,
-            color: "green",
-        },
-    ]);
+    // addItem agrega en la API y además actualiza el carrito de toda la app (el número del Header y la pantalla Carrito)
+    const { addItem, user } = useCart();
+    const { mostrarToast } = useToast();
+    const rut = user?.rut ?? null;
+
+    // Por ahora solo "Mis Favoritos" (lista 1) guarda productos de verdad: es la lista que llena el corazón
+    // de la ficha del producto. La API todavía no maneja varias listas por usuario.
+    const listaId = Number(searchParams.get("lista")) || 1;
+    const esListaReal = listaId === 1;
 
     // Obtener el nombre de la lista seleccionada
     useEffect(() => {
-        const id = Number(searchParams.get("lista"));
-
-        if (!id) {
+        if (!searchParams.get("lista")) {
             setNombreLista("");
             return;
         }
 
         listarListasDeseos()
             .then((listas) => {
-                const lista = listas.find((l) => l.id === id);
+                const lista = listas.find((l) => l.id === listaId);
                 setNombreLista(lista?.nombre ?? "");
             })
-            .catch((error) => {
-                console.error(
-                    "Error al obtener el nombre de la lista:",
-                    error
-                );
+            .catch((e) => {
+                console.error("Error al obtener el nombre de la lista:", e);
             });
-    }, [searchParams]);
+    }, [searchParams, listaId]);
+
+    // Cargar lo que el usuario guardó (GET /wishlist) y completarlo con el catálogo (precio, imagen, descripción)
+    useEffect(() => {
+        let activo = true;
+
+        const cargar = async () => {
+            if (!rut || !esListaReal) {
+                setWishlist([]);
+                setCargando(false);
+                return;
+            }
+
+            setCargando(true);
+            setError("");
+            try {
+                const [guardados, catalogo] = await Promise.all([
+                    obtenerMiWishlist(),
+                    listarCatalogo(),
+                ]);
+
+                const items = [
+                    ...guardados.productos.map((g) => ({ ...g, tipo: "producto" })),
+                    ...guardados.servicios.map((g) => ({ ...g, tipo: "servicio" })),
+                ].map((g, i) => {
+                    const c = catalogo.find((x) => x.tipo === g.tipo && x.id === g.id);
+                    return {
+                        id: g.id,
+                        tipo: g.tipo,
+                        name: c?.nombre || g.nombre,
+                        description: c?.descripcion || "",
+                        price: c?.precio ?? null, // un servicio sin vendedor puede no tener precio
+                        // El catálogo no informa el stock: se muestra "Disponible" si tiene precio
+                        disponible: c?.precio != null,
+                        image: urlImagen(c?.imagen),
+                        color: COLORES[i % COLORES.length],
+                    };
+                });
+
+                if (activo) setWishlist(items);
+            } catch (e) {
+                if (activo) setError(e.message);
+            } finally {
+                if (activo) setCargando(false);
+            }
+        };
+
+        cargar();
+        return () => {
+            activo = false;
+        };
+    }, [rut, esListaReal, recarga]);
 
     // Agregar producto al carrito mediante la API
     const handleAddToCart = async (product) => {
-        if (product.status !== "En stock") return;
+        if (!product.disponible) return;
+
+        if (!user) {
+            navigate("/login");
+            return;
+        }
 
         try {
             setAgregandoId(product.id);
-            setMensaje("");
 
-            await agregarAlCarrito(
-                product.tipo || "producto",
-                product.id,
-                1
-            );
+            // El carrito guarda tipo + id (un producto y un servicio pueden tener el mismo id)
+            await addItem({ tipo: product.tipo || "producto", id: product.id }, 1);
 
-            setMensaje(
-                `${product.name} se agregó correctamente al carrito.`
-            );
-
+            mostrarToast(`${product.name} se agregó al carrito`);
         } catch (error) {
-            console.error(
-                "Error al agregar producto al carrito:",
-                error
-            );
-
-            setMensaje(
-                error.message ||
-                "No se pudo agregar el producto al carrito."
-            );
-
+            console.error("Error al agregar producto al carrito:", error);
+            mostrarToast(error.message || "No se pudo agregar el producto al carrito.", "error");
         } finally {
             setAgregandoId(null);
         }
     };
 
-    // Quitar producto de la lista
-    const handleRemove = (productId) => {
-        console.log(
-            "[Lista de deseos] Quitar producto:",
-            { productId }
-        );
+    // Quitar producto de la lista (DELETE /wishlist/eliminar/{tipo}/{id})
+    const handleRemove = async (product) => {
+        console.log("[Lista de deseos] Quitar:", { tipo: product.tipo, id: product.id });
 
-        setWishlist((currentWishlist) =>
-            currentWishlist.filter(
-                (product) => product.id !== productId
-            )
-        );
+        try {
+            await eliminarDeWishlist(product.tipo, product.id);
+            setWishlist((actual) =>
+                actual.filter((p) => !(p.tipo === product.tipo && p.id === product.id))
+            );
+            mostrarToast(`${product.name} se quitó de la lista`);
+        } catch (e) {
+            mostrarToast(e.message || "No se pudo quitar de la lista.", "error");
+        }
     };
 
     // Mostrar imagen de reemplazo si ocurre un error
-    const handleImageError = (productId) => {
-        setWishlist((currentWishlist) =>
-            currentWishlist.map((product) =>
-                product.id === productId
-                    ? { ...product, image: null }
-                    : product
+    const handleImageError = (product) => {
+        setWishlist((actual) =>
+            actual.map((p) =>
+                p.tipo === product.tipo && p.id === product.id
+                    ? { ...p, image: null }
+                    : p
             )
         );
     };
@@ -189,19 +211,30 @@ const WishlistScreen = () => {
                     </div>
                 </section>
 
-                {/* Mensaje de operación */}
-                {mensaje && (
-                    <p
-                        role="status"
-                        aria-live="polite"
-                        className="wishlist-message"
-                    >
-                        {mensaje}
-                    </p>
-                )}
-
-                {/* Productos */}
-                {wishlist.length > 0 ? (
+                {/* Estados: sin sesión, cargando, error */}
+                {!rut ? (
+                    <section className="wishlist-empty">
+                        <span className="wishlist-empty-icon" aria-hidden="true">♡</span>
+                        <h2>Inicia sesión para ver tu lista</h2>
+                        <p>Tus productos guardados aparecen aquí cuando entras a tu cuenta.</p>
+                        <CustomButton
+                            variant="primary"
+                            size="medium"
+                            onClick={() => navigate("/login")}
+                            sx={{ textTransform: "none", fontWeight: 600 }}
+                        >
+                            Iniciar sesión
+                        </CustomButton>
+                    </section>
+                ) : cargando ? (
+                    <p role="status">Cargando tu lista...</p>
+                ) : error ? (
+                    <ErrorState
+                        titulo="No pudimos cargar tu lista"
+                        detalle={error}
+                        onReintentar={() => setRecarga((n) => n + 1)}
+                    />
+                ) : wishlist.length > 0 ? (
                     <section
                         className="wishlist-list"
                         aria-label="Productos de la lista de deseos"
@@ -222,7 +255,7 @@ const WishlistScreen = () => {
                                             alt={product.name}
                                             loading="lazy"
                                             onError={() =>
-                                                handleImageError(product.id)
+                                                handleImageError(product)
                                             }
                                         />
                                     ) : (
@@ -234,7 +267,18 @@ const WishlistScreen = () => {
 
                                 {/* Información */}
                                 <div className="wishlist-product-info">
-                                    <h2>{product.name}</h2>
+                                    <h2>
+                                        <a
+                                            href={rutaDetalle(product)}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                navigate(rutaDetalle(product));
+                                            }}
+                                            style={{ color: "inherit", textDecoration: "none" }}
+                                        >
+                                            {product.name}
+                                        </a>
+                                    </h2>
 
                                     <p className="wishlist-description">
                                         {product.description}
@@ -242,13 +286,15 @@ const WishlistScreen = () => {
 
                                     <span
                                         className={`wishlist-status ${
-                                            product.status === "En stock"
+                                            product.disponible
                                                 ? "available"
                                                 : "unavailable"
                                         }`}
                                     >
                                         <span className="status-dot" />
-                                        {product.status}
+                                        {product.disponible
+                                            ? "Disponible"
+                                            : "Sin precio disponible"}
                                     </span>
                                 </div>
 
@@ -256,8 +302,9 @@ const WishlistScreen = () => {
                                 <div className="wishlist-product-actions">
 
                                     <p className="wishlist-price">
-                                        $
-                                        {product.price.toLocaleString("es-CL")}
+                                        {product.price != null
+                                            ? `$${product.price.toLocaleString("es-CL")}`
+                                            : "Sin precio"}
                                     </p>
 
                                     {/* Agregar al carrito */}
@@ -270,7 +317,7 @@ const WishlistScreen = () => {
                                             handleAddToCart(product)
                                         }
                                         disabled={
-                                            product.status !== "En stock" ||
+                                            !product.disponible ||
                                             agregandoId !== null
                                         }
                                         sx={{
@@ -293,7 +340,7 @@ const WishlistScreen = () => {
                                         size="medium"
                                         startIcon={<DeleteOutlineIcon />}
                                         onClick={() =>
-                                            handleRemove(product.id)
+                                            handleRemove(product)
                                         }
                                         sx={{
                                             width: "100%",
@@ -327,13 +374,15 @@ const WishlistScreen = () => {
                         </h2>
 
                         <p>
-                            Los productos que guardes aparecerán aquí.
+                            {esListaReal
+                                ? "Los productos que guardes con el corazón aparecerán aquí."
+                                : "Por ahora solo «Mis Favoritos» guarda productos. Las listas personalizadas todavía no están conectadas."}
                         </p>
 
                         <CustomButton
                             variant="primary"
                             size="medium"
-                            onClick={() => navigate(-1)}
+                            onClick={() => navigate("/catalogo")}
                             sx={{
                                 minWidth: "180px",
                                 textTransform: "none",

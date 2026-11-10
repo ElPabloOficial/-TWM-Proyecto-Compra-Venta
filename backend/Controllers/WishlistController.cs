@@ -50,8 +50,11 @@ public class WishlistController : ControllerBase
         if (string.IsNullOrEmpty(rut))
             return Unauthorized(new { success = false, message = "Usuario no autenticado." });
 
-        // 1. Buscar o crear una lista de deseos por defecto para el usuario
-        var lista = await _context.listadeseos.FirstOrDefaultAsync();
+        // 1. Buscar la lista de deseos del usuario (la que ya usa en Crear1/Crear2) o crear una si es su primer favorito.
+        // Antes se tomaba la primera lista de toda la tabla, y todos los usuarios compartían la misma.
+        var idLista = await _context.crear1s.Where(c => c.id_usuario == rut).Select(c => (int?)c.id_lista).FirstOrDefaultAsync()
+            ?? await _context.crear2s.Where(c => c.id_usuario == rut).Select(c => (int?)c.id_lista).FirstOrDefaultAsync();
+        var lista = idLista != null ? await _context.listadeseos.FindAsync(idLista.Value) : null;
         if (lista == null)
         {
             lista = new listadeseo { nombrelista = "Mis Favoritos", descripcion = "Lista por defecto", visibilidad = false };

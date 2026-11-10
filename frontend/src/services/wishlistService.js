@@ -1,21 +1,26 @@
-// src/services/wishlistService.js
-//
-// Listas de deseos del usuario (tabla ListaDeseos: id, nombrelista, descripcion, visibilidad).
-// TEMPORAL: la API todavía no tiene un endpoint que devuelva las listas del usuario
-// (GET /wishlist solo devuelve los productos y servicios). Mientras tanto se usan
-// datos de ejemplo; al crear el endpoint, solo hay que cambiar esta función por pedir('/wishlist/listas').
-
 import { pedir } from './apiClient';
 
+// Solo "Mis Favoritos" (id 1) es real: sus productos son los que el usuario guarda con el corazón de la
+// ficha (tablas Crear1 y Crear2). Las demás listas son de ejemplo y no guardan productos todavía.
 const LISTAS_EJEMPLO = [
-    { id: 1, nombre: 'Mis Favoritos', descripcion: 'Lista por defecto', publica: false, cantidad: 3 },
-    { id: 2, nombre: 'Regalos de cumpleaños', descripcion: 'Ideas para regalar este año', publica: true, cantidad: 5 },
-    { id: 3, nombre: 'Setup de escritorio', descripcion: 'Monitor, teclado y accesorios', publica: false, cantidad: 4 },
+    { id: 1, nombre: 'Mis Favoritos', descripcion: 'Lista por defecto', publica: false, cantidad: 0 },
+    { id: 2, nombre: 'Regalos de cumpleaños', descripcion: 'Ideas para regalar este año', publica: true, cantidad: 0 },
+    { id: 3, nombre: 'Setup de escritorio', descripcion: 'Monitor, teclado y accesorios', publica: false, cantidad: 0 },
     { id: 4, nombre: 'Hogar nuevo', descripcion: '', publica: false, cantidad: 0 },
 ];
 
 export async function listarListasDeseos() {
-    return LISTAS_EJEMPLO;
+    // La cantidad de "Mis Favoritos" sale de lo que el usuario guardó de verdad en la API
+    let guardados = null;
+    if (localStorage.getItem('authToken')) {
+        try {
+            const w = await obtenerMiWishlist();
+            guardados = w.productos.length + w.servicios.length;
+        } catch {
+            guardados = null; // si la API falla, se deja la cantidad del ejemplo
+        }
+    }
+    return LISTAS_EJEMPLO.map((l) => (l.id === 1 && guardados !== null ? { ...l, cantidad: guardados } : { ...l }));
 }
 
 // datos: { nombre, descripcion, publica }
