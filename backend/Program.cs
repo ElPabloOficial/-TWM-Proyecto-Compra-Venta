@@ -77,7 +77,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("FrontendPolicy", policy =>
     {
         policy.WithOrigins(
-                "http://10.33.12.50:5173")
+                "http://10.33.12.14:5173")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
