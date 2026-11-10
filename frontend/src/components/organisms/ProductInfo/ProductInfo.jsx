@@ -262,12 +262,14 @@ export default function ProductInfo({
         {!isService && (
           <Box
             sx={{
-              color: "#16A34A",
+              color: product.stock > 0 ? "#16A34A" : "#DC2626",
               fontSize: 13,
               mt: 1,
             }}
           >
-            Stock disponible ({product.stock} unidades)
+            {product.stock > 0
+              ? `Stock disponible (${product.stock} ${product.stock === 1 ? "unidad" : "unidades"})`
+              : "Sin stock"}
           </Box>
         )}
 

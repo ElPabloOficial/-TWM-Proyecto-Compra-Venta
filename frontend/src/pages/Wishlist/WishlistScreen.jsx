@@ -100,7 +100,8 @@ const WishlistScreen = () => {
 
                 if (activo) setWishlist(items);
             } catch (e) {
-                if (activo) setError(e.message);
+                // Si la sesión se cerró sola, rut pasa a null y se muestra "Inicia sesión", sin error
+                if (activo && !e.sesionCerrada) setError(e.message);
             } finally {
                 if (activo) setCargando(false);
             }

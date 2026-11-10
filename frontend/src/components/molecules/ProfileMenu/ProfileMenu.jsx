@@ -23,7 +23,7 @@ import "../../../styles/ProfileMenu.css";
 // exactamente las mismas opciones, y además un único acceso a su gestión ("Gestión de inventario").
 // Todo lo que hace como vendedor (productos, servicios, pedidos, despachos, mensajes recibidos,
 // reseñas recibidas, cotizaciones recibidas, devoluciones...) está en el menú lateral de esa gestión.
-//
+
 // Tipos de usuario (campo "tipousuario" de la base de datos):
 //   cliente  -> solo compra
 //   vendedor -> vende, y además compra
@@ -105,6 +105,16 @@ const ProfileMenu = () => {
   const visible = (opcion) => opcion.para !== "vendedor" || esVendedor;
   const [posicion, setPosicion] = useState(null);
   const navigate = useNavigate();
+
+  // Si la sesión se cierra sola (token vencido o API sin conexión), el menú pasa a "Iniciar sesión"
+  useEffect(() => {
+    const alCerrarSesion = () => {
+      setUsuario(null);
+      setPosicion(null);
+    };
+    window.addEventListener("sesion-cerrada", alCerrarSesion);
+    return () => window.removeEventListener("sesion-cerrada", alCerrarSesion);
+  }, []);
   const abierto = posicion !== null;
 
   const abrir = (e) => {

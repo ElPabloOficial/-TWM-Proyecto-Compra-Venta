@@ -70,6 +70,18 @@ export const authService = {
         localStorage.removeItem('user');
     },
 
+    // Cierra la sesión sin que el usuario lo pida (token vencido o API sin conexión).
+    // Avisa a la app con el evento "sesion-cerrada" para que se actualice sola.
+    // Devuelve true si había una sesión que cerrar.
+    cerrarSesionAutomatica(motivo) {
+        if (!localStorage.getItem('authToken') && !localStorage.getItem('user')) return false;
+        console.warn('[authService] Sesión cerrada automáticamente:', motivo);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        window.dispatchEvent(new Event('sesion-cerrada'));
+        return true;
+    },
+
     getCurrentUser() {
         const userStr = localStorage.getItem('user');
         return userStr ? JSON.parse(userStr) : null;

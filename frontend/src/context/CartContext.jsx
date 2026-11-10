@@ -24,6 +24,7 @@ const readUser = () => {
 
 export function CartProvider({ children }) {
   useLocation(); // vuelve a leer la sesión al cambiar de página (al iniciar o cerrar sesión)
+  const [, setVersionSesion] = useState(0);
   const user = readUser();
   const rut = user?.rut ?? null;
 
@@ -41,7 +42,12 @@ export function CartProvider({ children }) {
     try {
       setCart(await obtenerCarrito());
     } catch (e) {
-      setError(e.message);
+      if (e.sesionCerrada) {
+        // La sesión se cerró sola: se muestra el carrito como "sin sesión", sin mensaje de error
+        setCart([]);
+      } else {
+        setError(e.message);
+      }
     } finally {
       setCargando(false);
     }
@@ -51,6 +57,17 @@ export function CartProvider({ children }) {
     setCargando(Boolean(rut));
     refrescar();
   }, [rut, refrescar]);
+
+  // Si la API cierra la sesión (token vencido o sin conexión), se vuelve a leer al instante
+  useEffect(() => {
+    const alCerrarSesion = () => {
+      setError('');
+      setCart([]);
+      setVersionSesion((v) => v + 1);
+    };
+    window.addEventListener('sesion-cerrada', alCerrarSesion);
+    return () => window.removeEventListener('sesion-cerrada', alCerrarSesion);
+  }, []);
 
   const addItem = async (item, cantidad = 1) => {
     if (!user) return false;

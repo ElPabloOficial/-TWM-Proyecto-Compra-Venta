@@ -102,7 +102,7 @@ export default function ProductSheet({ type = "product" }) {
               itemActual.precio_oferta != null
                 ? Number(caracteristicas.precio || 0)
                 : null,
-            stock: Number(caracteristicas.stock || 0),
+            stock: Number(itemActual.stock ?? caracteristicas.stock ?? 0),
             rating: 0,
             cantidadResenas: 0,
             descripcion: caracteristicas.descripcion || "",

@@ -4,7 +4,6 @@ import Header from "../../components/organisms/Header/Header";
 import Footer from "../../components/organisms/Footer/Footer";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import CardGridSkeleton from "../../components/molecules/CardGridSkeleton/CardGridSkeleton";
-import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import useCart from "../../context/useCart";
 import { useToast } from "../../context/ToastContext";
 import { listarCatalogo, rutaDetalle } from "../../services/catalogService";
@@ -12,6 +11,7 @@ import { urlImagen } from "../../services/cartService";
 import "../../styles/Home.css";
 
 const CANTIDAD_DESTACADOS = 4;
+const REINTENTO_AUTOMATICO_MS = 5000;
 
 // Destacados: primero lo que está en oferta (mayor descuento arriba) y después el resto
 const destacados = (items, tipo) =>
@@ -44,7 +44,10 @@ const HomeScreen = () => {
     const cargar = async () => {
       try {
         const lista = await listarCatalogo();
-        if (activo) setCatalogo(lista);
+        if (activo) {
+          setCatalogo(lista);
+          setError("");
+        }
       } catch (e) {
         if (activo) setError(e.message);
       } finally {
@@ -58,11 +61,13 @@ const HomeScreen = () => {
     };
   }, [intento]);
 
-  const reintentar = () => {
-    setCargando(true);
-    setError("");
-    setIntento((n) => n + 1);
-  };
+  // Si la API no responde, las secciones siguen mostrando el esqueleto gris 
+  // y se vuelve a intentar sola cada pocos segundos hasta que el catálogo cargue.
+  useEffect(() => {
+    if (!error) return undefined;
+    const temporizador = setTimeout(() => setIntento((n) => n + 1), REINTENTO_AUTOMATICO_MS);
+    return () => clearTimeout(temporizador);
+  }, [error, intento]);
 
   const handleAgregarCarro = async (item) => {
     if (!user) {
@@ -94,10 +99,8 @@ const HomeScreen = () => {
       <h2 className="home-titulo">{titulo}</h2>
       {descripcion && <p className="home-descripcion">{descripcion}</p>}
 
-      {cargando ? (
+      {cargando || error ? (
         <CardGridSkeleton cantidad={CANTIDAD_DESTACADOS} />
-      ) : error ? (
-        <ErrorState titulo="No pudimos cargar esta sección" detalle={error} onReintentar={reintentar} />
       ) : items.length === 0 ? (
         <p className="home-descripcion">{textoVacio}</p>
       ) : (

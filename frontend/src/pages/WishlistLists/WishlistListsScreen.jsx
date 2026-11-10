@@ -12,6 +12,7 @@ import {
   eliminarListaDeseos,
 } from "../../services/wishlistService";
 import { useToast } from "../../context/ToastContext";
+import useCart from "../../context/useCart";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import FavoriteIcon from "@mui/icons-material/Favorite";
@@ -21,6 +22,7 @@ import "../../styles/WishlistLists.css";
 const WishlistListsScreen = () => {
   const navigate = useNavigate();
   const { mostrarToast } = useToast();
+  const { user } = useCart(); // se actualiza solo si la sesión se cierra automáticamente
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
   const [listaEditando, setListaEditando] = useState(null); // null = creando una nueva
   const [listaAEliminar, setListaAEliminar] = useState(null);
@@ -29,15 +31,23 @@ const WishlistListsScreen = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!user) {
+      // Sin sesión no se consulta la API: se muestra "Inicia sesión" en vez de un error
+      setListas([]);
+      setError("");
+      setCargando(false);
+      return undefined;
+    }
     let activo = true;
+    setCargando(true);
     listarListasDeseos()
       .then((datos) => activo && setListas(datos))
-      .catch((e) => activo && setError(e.message))
+      .catch((e) => activo && !e.sesionCerrada && setError(e.message))
       .finally(() => activo && setCargando(false));
     return () => {
       activo = false;
     };
-  }, []);
+  }, [user]);
 
   const abrirLista = (id) => navigate(`/listadedeseos?lista=${id}`);
 
@@ -109,7 +119,7 @@ const WishlistListsScreen = () => {
             <h1>Mis listas de deseos</h1>
             <p className="wl-subtitulo">Elige una lista para ver los productos y servicios que guardaste.</p>
           </div>
-          {!cargando && !error && (
+          {user && !cargando && !error && (
             <div className="wl-acciones">
               <div className="wl-contador">
                 {listas.length} {listas.length === 1 ? "lista" : "listas"}
@@ -126,10 +136,21 @@ const WishlistListsScreen = () => {
           )}
         </section>
 
-        {cargando && <p className="wl-mensaje">Cargando tus listas...</p>}
-        {error && <p className="wl-mensaje wl-error">{error}</p>}
+        {!user && (
+          <section className="wl-vacio">
+            <FavoriteIcon className="wl-vacio-icono" />
+            <h2>Inicia sesión para ver tus listas</h2>
+            <p>Tus productos y servicios guardados aparecen aquí cuando entras a tu cuenta.</p>
+            <CustomButton variant="primary" size="medium" onClick={() => navigate("/login")} sx={{ textTransform: "none" }}>
+              Iniciar sesión
+            </CustomButton>
+          </section>
+        )}
 
-        {!cargando && !error && listas.length === 0 && (
+        {user && cargando && <p className="wl-mensaje">Cargando tus listas...</p>}
+        {user && error && <p className="wl-mensaje wl-error">{error}</p>}
+
+        {user && !cargando && !error && listas.length === 0 && (
           <section className="wl-vacio">
             <FavoriteIcon className="wl-vacio-icono" />
             <h2>Todavía no tienes listas de deseos</h2>
@@ -140,7 +161,7 @@ const WishlistListsScreen = () => {
           </section>
         )}
 
-        {!cargando && !error && listas.length > 0 && (
+        {user && !cargando && !error && listas.length > 0 && (
           <ul className="wl-grid">
             {listas.map((lista) => (
               <li key={lista.id}>

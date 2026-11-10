@@ -11,9 +11,18 @@ export async function pedir(ruta, { method = 'GET', body } = {}) {
             body: body ? JSON.stringify(body) : undefined,
         });
     } catch {
-        throw new Error('No se pudo conectar con el servidor. Revisa que la API esté encendida.');
+        // Con sesión iniciada, se cierra sola para no dejar mensajes de "sin conexión" en pantalla
+        const cerrada = authService.cerrarSesionAutomatica('sin conexión con la API');
+        const error = new Error('No se pudo conectar con el servidor. Revisa que la API esté encendida.');
+        error.sesionCerrada = cerrada;
+        throw error;
     }
-    if (respuesta.status === 401) throw new Error('Tu sesión no es válida. Vuelve a iniciar sesión.');
+    if (respuesta.status === 401) {
+        const cerrada = authService.cerrarSesionAutomatica('token vencido o inválido (401)');
+        const error = new Error('Tu sesión no es válida. Vuelve a iniciar sesión.');
+        error.sesionCerrada = cerrada;
+        throw error;
+    }
     if (respuesta.status === 403) throw new Error('No tienes permiso para modificar este elemento.');
 
     const cuerpo = await respuesta.json().catch(() => null);

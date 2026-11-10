@@ -66,13 +66,22 @@ public class ProductosController : ControllerBase
             .Include(p => p.ofrecer1s)
                 .ThenInclude(o => o.id_usuarioNavigation)
             .Include(p => p.id_ofertaNavigation)
+            .Include(p => p.almacenars)
+                .ThenInclude(a => a.id_inventarioNavigation)
             .FirstOrDefaultAsync(p => p.id == id);
 
         if (producto == null)
             return NotFound(new { success = false, message = "Producto no encontrado.", data = (object?)null, errors = (object?)null });
 
         var vendedor = producto.ofrecer1s.FirstOrDefault();
-        
+
+        // El stock real vive en la tabla "almacenar" (inventario del vendedor), no en "caracteristicas".
+        var stockVendedor = vendedor == null
+            ? producto.almacenars.Sum(a => a.stockactual)
+            : producto.almacenars
+                .Where(a => a.id_inventarioNavigation.id_usuario == vendedor.id_usuario)
+                .Sum(a => a.stockactual);
+
         JsonElement caracteristicasJson;
         try { caracteristicasJson = JsonDocument.Parse(producto.caracteristicas ?? "{}").RootElement; }
         catch { caracteristicasJson = JsonDocument.Parse("{}").RootElement; }
@@ -103,6 +112,7 @@ public class ProductosController : ControllerBase
             restriccionedad = producto.restriccionedad,
             caracteristicas = caracteristicasJson,
             imagen = producto.rutaimagen,
+            stock = stockVendedor,
             precio_oferta = precioOferta,
             descuento = ofertaVigente ? oferta!.preciooferta : (decimal?)null,
             categorias = producto.id_categoria.Select(c => new { c.id, c.nombre }),
