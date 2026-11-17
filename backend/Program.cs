@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 using Microsoft.AspNetCore.Mvc;
+using backend.Services;
 
 
 
@@ -17,6 +18,9 @@ var connectionString =
 builder.Services.AddDbContext<AppDbContext>(
     options => options.UseNpgsql(connectionString)
 );
+
+// 1.1 Servicio que expone las funciones PostgreSQL (bd_proyecto/funciones.txt)
+builder.Services.AddScoped<FuncionesService>();
 
 // 2. Configurar JWT
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -76,12 +80,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        //policy.WithOrigins(
-        //        "http://10.33.12.14:5173")
-        policy.WithOrigins(
-            "http://localhost:5173",
-            "http://localhost:3000"
-        )
+        policy.WithOrigins()
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
