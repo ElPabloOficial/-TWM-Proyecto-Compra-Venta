@@ -134,6 +134,22 @@ const PurchaseHistory = () => {
     }
   };
 
+  // Lleva a la ficha del producto o servicio (/producto/:id o /servicio/:id)
+  const handleViewDetail = (item) => {
+    navigate(
+      item.type === "servicio" ? `/servicio/${item.id}` : `/producto/${item.id}`
+    );
+  };
+
+  // Permite abrir la ficha con Enter o Espacio (accesibilidad)
+  const handleDetailKeyDown = (event, item) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleViewDetail(item);
+    }
+  };
+
   const handleReturn = (purchaseId, productId, productquantity) => {
     navigate("/devolucion", {
       state: {
@@ -524,7 +540,14 @@ const PurchaseHistory = () => {
                       {purchase.products.map((product, index) => (
                         <Box
                           key={product.id}
+                          role="link"
+                          tabIndex={0}
+                          aria-label={`Ver ficha de ${product.name}`}
+                          onClick={() => handleViewDetail(product)}
+                          onKeyDown={(e) => handleDetailKeyDown(e, product)}
                           sx={{
+                            cursor: "pointer",
+                            "&:hover": { backgroundColor: "#F8FAFC" },
                             display: "flex",
                             alignItems: "center",
                             gap: 2,
@@ -607,7 +630,10 @@ const PurchaseHistory = () => {
 
                           {/* ACCIONES INDIVIDUALES */}
                           <Box
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
                             sx={{
+                              cursor: "default",
                               display: "flex",
                               gap: 1.5,
                               alignItems: "center",
@@ -658,7 +684,14 @@ const PurchaseHistory = () => {
                           {purchase.services.map((service, index) => (
                             <Box
                               key={service.id}
+                              role="link"
+                              tabIndex={0}
+                              aria-label={`Ver ficha de ${service.name}`}
+                              onClick={() => handleViewDetail(service)}
+                              onKeyDown={(e) => handleDetailKeyDown(e, service)}
                               sx={{
+                                cursor: "pointer",
+                                "&:hover": { backgroundColor: "#F8FAFC" },
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 2,
@@ -743,7 +776,10 @@ const PurchaseHistory = () => {
                                 
                               {/* ACCIONES */}
                               <Box
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
                                 sx={{
+                                  cursor: "default",
                                   display: "flex",
                                   gap: 1.5,
                                   alignItems: "center",

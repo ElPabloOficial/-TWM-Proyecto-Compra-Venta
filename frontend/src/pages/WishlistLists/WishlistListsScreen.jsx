@@ -7,7 +7,6 @@ import WishlistFormDialog from "../../components/organisms/WishlistFormDialog/Wi
 import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import {
   listarListasDeseos,
-  crearListaDeseos,
   actualizarListaDeseos,
   eliminarListaDeseos,
 } from "../../services/wishlistService";
@@ -24,7 +23,7 @@ const WishlistListsScreen = () => {
   const { mostrarToast } = useToast();
   const { user } = useCart(); // se actualiza solo si la sesión se cierra automáticamente
   const [dialogoAbierto, setDialogoAbierto] = useState(false);
-  const [listaEditando, setListaEditando] = useState(null); // null = creando una nueva
+  const [listaEditando, setListaEditando] = useState(null);
   const [listaAEliminar, setListaAEliminar] = useState(null);
   const [listas, setListas] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -51,31 +50,18 @@ const WishlistListsScreen = () => {
 
   const abrirLista = (id) => navigate(`/listadedeseos?lista=${id}`);
 
-  const abrirNueva = () => {
-    setListaEditando(null);
-    setDialogoAbierto(true);
-  };
-
   const abrirEditar = (lista) => {
     setListaEditando(lista);
     setDialogoAbierto(true);
   };
 
-  // Crea o edita según el formulario; si falla, el formulario muestra el error
+  // Las listas nuevas se crean desde el corazón de un producto (una lista existe mientras tenga algo guardado).
+  // Aquí solo se edita; si falla, el formulario muestra el error
   const guardarLista = async (datos) => {
-    console.log(listaEditando ? "[Listas de deseos] Actualizar lista:" : "[Listas de deseos] Crear lista:", {
-      ...(listaEditando && { id: listaEditando.id }),
-      ...datos,
-    });
-    if (listaEditando) {
-      const actualizada = await actualizarListaDeseos(listaEditando.id, datos);
-      setListas((actuales) => actuales.map((l) => (l.id === actualizada.id ? { ...actualizada } : l)));
-      mostrarToast("Lista actualizada correctamente");
-    } else {
-      const nueva = await crearListaDeseos(datos);
-      setListas((actuales) => [...actuales, nueva]);
-      mostrarToast("Lista creada correctamente");
-    }
+    console.log("[Listas de deseos] Actualizar lista:", { id: listaEditando.id, ...datos });
+    const actualizada = await actualizarListaDeseos(listaEditando.id, datos);
+    setListas((actuales) => actuales.map((l) => (l.id === actualizada.id ? { ...actualizada } : l)));
+    mostrarToast("Lista actualizada correctamente");
     setDialogoAbierto(false);
   };
 
@@ -117,21 +103,15 @@ const WishlistListsScreen = () => {
         <section className="wl-cabecera">
           <div>
             <h1>Mis listas de deseos</h1>
-            <p className="wl-subtitulo">Elige una lista para ver los productos y servicios que guardaste.</p>
+            <p className="wl-subtitulo">
+              Elige una lista para ver lo que guardaste. Para crear una nueva, toca el corazón de un producto o servicio.
+            </p>
           </div>
           {user && !cargando && !error && (
             <div className="wl-acciones">
               <div className="wl-contador">
                 {listas.length} {listas.length === 1 ? "lista" : "listas"}
               </div>
-              <CustomButton
-                variant="primary"
-                size="medium"
-                onClick={abrirNueva}
-                sx={{ border: "2px solid #EC3333", textTransform: "none" }}
-              >
-                + Nuevo
-              </CustomButton>
             </div>
           )}
         </section>
@@ -202,7 +182,7 @@ const WishlistListsScreen = () => {
       </main>
 
       <WishlistFormDialog
-        open={dialogoAbierto}
+        open={dialogoAbierto && Boolean(listaEditando)}
         lista={listaEditando}
         nombres={listas.filter((l) => l.id !== listaEditando?.id).map((l) => l.nombre)}
         onClose={() => setDialogoAbierto(false)}

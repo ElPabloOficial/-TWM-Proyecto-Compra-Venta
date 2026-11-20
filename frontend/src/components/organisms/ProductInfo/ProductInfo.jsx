@@ -8,7 +8,8 @@ import CustomIconButton from "../../atoms/IconButton/CustomIconButton";
 import useCart from "../../../context/useCart";
 import { urlImagen } from "../../../services/cartService";
 import { useToast } from "../../../context/ToastContext";
-import { agregarAWishlist, obtenerMiWishlist } from "../../../services/wishlistService";
+import { obtenerMiWishlist } from "../../../services/wishlistService";
+import AddToListDialog from "../AddToListDialog/AddToListDialog";
 
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
@@ -34,9 +35,9 @@ export default function ProductInfo({
   const tipoItem = isService ? "servicio" : "producto";
   const haySesion = Boolean(user);
 
-  // Corazón: lleno si el producto o servicio ya está en la lista de deseos del usuario
+  // Corazón: lleno si el producto o servicio ya está en alguna lista de deseos del usuario
   const [enLista, setEnLista] = useState(false);
-  const [guardandoFavorito, setGuardandoFavorito] = useState(false);
+  const [dialogoListasAbierto, setDialogoListasAbierto] = useState(false);
 
   useEffect(() => {
     if (!haySesion) return;
@@ -56,28 +57,25 @@ export default function ProductInfo({
     return () => {
       activo = false;
     };
-  }, [haySesion, isService, product.id]);
+  }, [haySesion, isService, tipoItem, product.id]);
 
-  const agregarAFavoritos = async () => {
+  // Abre el diálogo "Agregar a una lista" (sin sesión, lleva al login)
+  const abrirListasDeDeseos = () => {
     if (!user) {
       navigate("/login");
       return;
     }
-    if (enLista) {
-      mostrarToast("Ya está en tu lista de deseos.");
-      return;
-    }
-    try {
-      setGuardandoFavorito(true);
-      await agregarAWishlist(tipoItem, product.id);
-      setEnLista(true);
-      mostrarToast(`${product.nombre ?? "El artículo"} se agregó a tu lista de deseos`);
-    } catch (e) {
-      if (/ya está/i.test(e.message)) setEnLista(true); // la API avisa si ya estaba guardado
-      mostrarToast(e.message, "error");
-    } finally {
-      setGuardandoFavorito(false);
-    }
+    setDialogoListasAbierto(true);
+  };
+
+  const alGuardarEnListas = ({ enAlguna, cantidad }) => {
+    setEnLista(enAlguna);
+    const nombre = product.nombre ?? "El artículo";
+    mostrarToast(
+      cantidad === 0
+        ? `${nombre} se quitó de tus listas de deseos`
+        : `${nombre} se guardó en ${cantidad} ${cantidad === 1 ? "lista" : "listas"}`
+    );
   };
 
   // Lleva a "Solicitar cotización" con este producto o servicio ya cargado, con la cantidad elegida
@@ -376,14 +374,21 @@ export default function ProductInfo({
           </CustomButton>
 
           <CustomIconButton
-            ariaLabel={enLista ? "Ya está en tu lista de deseos" : "Agregar a favoritos"}
-            disabled={guardandoFavorito}
-            onClick={agregarAFavoritos}
+            ariaLabel={enLista ? "Editar mis listas de deseos" : "Agregar a una lista de deseos"}
+            onClick={abrirListasDeDeseos}
           >
             {enLista ? <FavoriteIcon sx={{ color: "#EC3333" }} /> : <FavoriteBorderIcon />}
           </CustomIconButton>
         </Box>
       </Box>
+
+      <AddToListDialog
+        open={dialogoListasAbierto}
+        onClose={() => setDialogoListasAbierto(false)}
+        tipo={tipoItem}
+        itemId={product.id}
+        onGuardado={alGuardarEnListas}
+      />
     </Box>
   );
 }

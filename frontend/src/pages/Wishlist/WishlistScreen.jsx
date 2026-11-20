@@ -39,34 +39,32 @@ const WishlistScreen = () => {
     const { mostrarToast } = useToast();
     const rut = user?.rut ?? null;
 
-    // Por ahora solo "Mis Favoritos" (lista 1) guarda productos de verdad: es la lista que llena el corazón
-    // de la ficha del producto. La API todavía no maneja varias listas por usuario.
-    const listaId = Number(searchParams.get("lista")) || 1;
-    const esListaReal = listaId === 1;
+    // Con ?lista=ID se muestra esa lista; sin él, todo lo que el usuario guardó
+    const listaParam = Number(searchParams.get("lista")) || null;
 
     // Obtener el nombre de la lista seleccionada
     useEffect(() => {
-        if (!searchParams.get("lista")) {
+        if (!listaParam || !rut) {
             setNombreLista("");
             return;
         }
 
         listarListasDeseos()
             .then((listas) => {
-                const lista = listas.find((l) => l.id === listaId);
+                const lista = listas.find((l) => l.id === listaParam);
                 setNombreLista(lista?.nombre ?? "");
             })
             .catch((e) => {
                 console.error("Error al obtener el nombre de la lista:", e);
             });
-    }, [searchParams, listaId]);
+    }, [listaParam, rut]);
 
     // Cargar lo que el usuario guardó (GET /wishlist) y completarlo con el catálogo (precio, imagen, descripción)
     useEffect(() => {
         let activo = true;
 
         const cargar = async () => {
-            if (!rut || !esListaReal) {
+            if (!rut) {
                 setWishlist([]);
                 setCargando(false);
                 return;
@@ -80,10 +78,16 @@ const WishlistScreen = () => {
                     listarCatalogo(),
                 ]);
 
-                const items = [
+                // Un mismo ítem puede estar en varias listas: sin ?lista se muestra una sola vez
+                const unicos = new Map();
+                [
                     ...guardados.productos.map((g) => ({ ...g, tipo: "producto" })),
                     ...guardados.servicios.map((g) => ({ ...g, tipo: "servicio" })),
-                ].map((g, i) => {
+                ]
+                    .filter((g) => listaParam === null || g.idLista === listaParam)
+                    .forEach((g) => unicos.set(`${g.tipo}-${g.id}`, g));
+
+                const items = [...unicos.values()].map((g, i) => {
                     const c = catalogo.find((x) => x.tipo === g.tipo && x.id === g.id);
                     return {
                         id: g.id,
@@ -111,7 +115,7 @@ const WishlistScreen = () => {
         return () => {
             activo = false;
         };
-    }, [rut, esListaReal, recarga]);
+    }, [rut, listaParam, recarga]);
 
     // Agregar producto al carrito mediante la API
     const handleAddToCart = async (product) => {
@@ -137,12 +141,12 @@ const WishlistScreen = () => {
         }
     };
 
-    // Quitar producto de la lista (DELETE /wishlist/eliminar/{tipo}/{id})
+    // Quitar producto de la lista (DELETE /wishlist/eliminar/{tipo}/{id}?idLista=)
     const handleRemove = async (product) => {
         console.log("[Lista de deseos] Quitar:", { tipo: product.tipo, id: product.id });
 
         try {
-            await eliminarDeWishlist(product.tipo, product.id);
+            await eliminarDeWishlist(product.tipo, product.id, listaParam ?? undefined);
             setWishlist((actual) =>
                 actual.filter((p) => !(p.tipo === product.tipo && p.id === product.id))
             );
@@ -375,9 +379,7 @@ const WishlistScreen = () => {
                         </h2>
 
                         <p>
-                            {esListaReal
-                                ? "Los productos que guardes con el corazón aparecerán aquí."
-                                : "Por ahora solo «Mis Favoritos» guarda productos. Las listas personalizadas todavía no están conectadas."}
+                            Los productos que guardes con el corazón aparecerán aquí.
                         </p>
 
                         <CustomButton

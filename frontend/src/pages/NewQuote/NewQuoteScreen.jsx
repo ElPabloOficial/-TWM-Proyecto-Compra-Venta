@@ -6,6 +6,7 @@ import Header from '../../components/organisms/Header/Header';
 import useQuotes from '../../context/useQuotes';
 import { useToast } from '../../context/ToastContext';
 import CustomButton from '../../components/atoms/Button/CustomButton';
+import AddQuoteItemDialog from '../../components/organisms/AddQuoteItemDialog/AddQuoteItemDialog';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -19,6 +20,8 @@ export default function CreateQuoteScreen() {
   // La solicitud parte con el producto o servicio desde el que se presionó "Solicitar cotización" en su ficha
   const itemDeLaFicha = location.state?.item;
   const [items, setItems] = useState(itemDeLaFicha ? [{ ...itemDeLaFicha, cantidad: itemDeLaFicha.cantidad ?? 1 }] : []);
+
+  const [selectorAbierto, setSelectorAbierto] = useState(false);
 
   const total = items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
 
@@ -35,6 +38,26 @@ export default function CreateQuoteScreen() {
     addQuote(items.map((item) => ({ name: item.nombre, unitPrice: item.precio, quantity: item.cantidad })));
     mostrarToast('Cotización solicitada correctamente');
     navigate('/mis-cotizaciones');
+  };
+
+  // Agrega un producto o servicio del catálogo a la solicitud (si ya estaba, no se repite)
+  const agregarItem = (item) => {
+    setItems((actuales) =>
+      actuales.some((i) => i.clave === item.clave)
+        ? actuales
+        : [
+            ...actuales,
+            {
+              clave: item.clave,
+              id: item.id,
+              nombre: item.nombre,
+              categoria: item.categoria,
+              precio: Number(item.precio) || 0,
+              tipo: item.tipo === 'servicio' ? 'servicio' : 'unidad',
+              cantidad: 1,
+            },
+          ],
+    );
   };
 
   const eliminarItem = (clave) => {
@@ -114,9 +137,16 @@ export default function CreateQuoteScreen() {
           ))}
         </Box>
 
-        <CustomButton variant="primary" fullWidth sx={{ mb: 3, borderRadius: 1, py: 1.5 }}>
+        <CustomButton variant="primary" fullWidth onClick={() => setSelectorAbierto(true)} sx={{ mb: 3, borderRadius: 1, py: 1.5 }}>
           + Agregar otro producto o servicio al catálogo
         </CustomButton>
+
+        <AddQuoteItemDialog
+          open={selectorAbierto}
+          onClose={() => setSelectorAbierto(false)}
+          clavesAgregadas={items.map((i) => i.clave)}
+          onAgregar={agregarItem}
+        />
 
         <Box sx={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 2, p: 3, mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
