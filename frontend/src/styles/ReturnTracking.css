@@ -1,0 +1,105 @@
+/* Seguimiento de devoluciones (cliente): misma paleta que el seguimiento del pedido (rojo #EC3333, blanco) */
+.rt-page {
+  max-width: 900px;
+  width: calc(100% - 48px);
+  margin: 0 auto;
+  padding: 28px 0 64px;
+  color: #242424;
+  box-sizing: border-box;
+}
+.rt-page *, .rt-page *::before, .rt-page *::after { box-sizing: border-box; }
+
+.rt-titulo { margin: 0; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.5px; color: #000; }
+.rt-subtitulo { margin: 6px 0 24px; font-size: 15px; color: #555; }
+.rt-mensaje { color: #555; font-size: 14px; }
+
+/* Filtros */
+.rt-filtros { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.rt-filtro {
+  padding: 6px 18px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.rt-filtro:hover { border-color: #ec3333; color: #ec3333; }
+.rt-filtro.activo { background: #ec3333; border-color: #ec3333; color: #fff; }
+
+/* Tarjetas */
+.rt-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 20px; }
+.rt-tarjeta { padding: 22px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
+
+.rt-cabecera { display: flex; align-items: center; gap: 16px; }
+.rt-imagen { flex-shrink: 0; width: 64px; height: 64px; border-radius: 6px; background: #e0e0e0; overflow: hidden; }
+.rt-imagen img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rt-producto { flex: 1; min-width: 0; }
+.rt-nombre { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+.rt-meta { margin: 0; font-size: 13px; color: #777; }
+
+.rt-estado { flex-shrink: 0; padding: 4px 12px; font-size: 12px; font-weight: 700; border-radius: 999px; white-space: nowrap; }
+.rt-estado.revision { color: #b97613; background: #fff1d9; }
+.rt-estado.aprobada { color: #278252; background: #e0f2e8; }
+.rt-estado.rechazada { color: #b42318; background: #fde8e6; }
+
+.rt-titular { margin: 22px 0 0; font-size: 20px; font-weight: 700; color: #000; }
+.rt-titular.aprobada { color: #16a34a; }
+.rt-titular.rechazada { color: #b42318; }
+.rt-detalle { margin: 6px 0 0; font-size: 14px; color: #555; }
+
+/* Etapas */
+.rt-etapas { list-style: none; margin: 26px 0 0; padding: 0; display: flex; }
+.rt-etapa { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.rt-etapa:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 19px;
+  left: calc(50% + 24px);
+  right: calc(-50% + 24px);
+  height: 3px;
+  background: #ddd;
+}
+.rt-etapa.completada:not(:last-child)::after { background: #ec3333; }
+
+.rt-etapa-circulo {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid #ddd;
+  background: #fff;
+  color: #aaa;
+}
+.rt-etapa.completada .rt-etapa-circulo { background: #ec3333; border-color: #ec3333; color: #fff; }
+.rt-etapa.actual .rt-etapa-circulo { border-color: #ec3333; color: #ec3333; box-shadow: 0 0 0 4px rgba(236, 51, 51, 0.15); }
+.rt-etapa.rechazada .rt-etapa-circulo { background: #b42318; border-color: #b42318; }
+.rt-etapa-nombre { font-size: 12px; font-weight: 600; color: #888; }
+.rt-etapa.completada .rt-etapa-nombre, .rt-etapa.actual .rt-etapa-nombre { color: #000; }
+.rt-etapa-fecha { font-size: 12px; color: #888; }
+
+/* Datos */
+.rt-datos { margin: 24px 0 0; padding-top: 18px; border-top: 1px solid #eee; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px 24px; }
+.rt-datos dt { font-size: 12px; color: #777; }
+.rt-datos dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; }
+.rt-dato-ancho { grid-column: 1 / -1; }
+.rt-dato-ancho dd { font-weight: 400; }
+
+/* Acciones */
+.rt-acciones { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; }
+.rt-enlace { padding: 0; font: inherit; font-size: 13px; font-weight: 700; color: #ec3333; background: none; border: none; cursor: pointer; text-decoration: none; }
+.rt-enlace:hover { text-decoration: underline; }
+
+/* Sin devoluciones */
+.rt-vacio { padding: 40px 16px; text-align: center; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
+.rt-vacio-titulo { margin: 0 0 6px; font-size: 18px; font-weight: 700; }
+.rt-vacio .rt-mensaje { margin: 0 0 18px; }
+
+@media (max-width: 600px) {
+  .rt-cabecera { flex-wrap: wrap; }
+  .rt-estado { order: -1; }
+}

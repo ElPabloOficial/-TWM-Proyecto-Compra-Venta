@@ -43,6 +43,12 @@ const opciones = [
     ruta: "/historial",
   },
   {
+    id: "devoluciones",
+    label: "Mis devoluciones", // el seguimiento de las que pidió como cliente (las que recibe como vendedor están en su gestión)
+    icon: <UndoIcon fontSize="small" />,
+    ruta: "/seguimiento-devoluciones",
+  },
+  {
     id: "cotizaciones",
     label: "Mis Cotizaciones", // las que pidió como cliente (la del vendedor está en su menú de gestión)
     icon: <ReceiptLongIcon fontSize="small" />,

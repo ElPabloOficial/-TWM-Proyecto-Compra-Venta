@@ -220,7 +220,7 @@ public class NotificacionesController : ControllerBase
                 _ => $"Tu devolución está {d.estado.ToLower()}"
             },
             $"Devolución de «{d.producto}» (venta #{d.id_venta}).",
-            Dia(d.resolucion ?? d.solicitud), true, "/historial")));
+            Dia(d.resolucion ?? d.solicitud), true, "/seguimiento-devoluciones")));
 
         // 7. Cotizaciones que pedí (productos y servicios). Si además yo vendo lo cotizado, llevan a
         //    "Cotizaciones recibidas" (/cotizaciones); si no, a "Mis cotizaciones" (/mis-cotizaciones).

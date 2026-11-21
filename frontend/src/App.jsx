@@ -5,6 +5,7 @@ import { ServiciosProvider } from "./context/ServiceContext";
 import { QuotesProvider } from "./context/QuotesContext";
 import { CartProvider } from "./context/CartContext";
 
+import ReturnTrackingScreen from "./pages/ReturnTracking/ReturnTrackingScreen";
 import LoginScreen from "./pages/Login/LoginScreen";
 import RegisterScreen from "./pages/Register/RegisterScreen";
 import InventoryScreen from "./pages/Inventory/InventoryScreen";
@@ -100,6 +101,7 @@ const App = () => {
                 <Route path="/servicio/:id" element={<ProductSheet type="service" />} />
                 <Route path="/test" element={<TestScreen />} />
                 <Route path="/notificaciones" element={<NotificationsScreen />} />
+                <Route path="/seguimiento-devoluciones" element={<ReturnTrackingScreen />} />
               </Routes>
             </CartProvider>
           </QuotesProvider>

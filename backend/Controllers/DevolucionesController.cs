@@ -57,6 +57,41 @@ public class DevolucionesController : ControllerBase
         return Ok(new { success = true, message = "Devoluciones obtenidas.", data = devoluciones, errors = (object?)null });
     }
 
+    // GET: api/devoluciones/mias (Seguimiento de las devoluciones que pedí como cliente)
+    [HttpGet("mias")]
+    public async Task<IActionResult> GetMisDevolucionesComoCliente()
+    {
+        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(rut))
+            return Unauthorized(new { success = false, message = "Usuario no autenticado." });
+
+        var devoluciones = await _context.generar1s
+            .AsNoTracking()
+            .Where(g => g.id_usuario == rut)
+            .OrderByDescending(g => g.id_devolucionNavigation.fechasolicitud)
+            .ThenByDescending(g => g.id_devolucion)
+            .Select(g => new
+            {
+                id = g.id_devolucion,
+                venta = g.id_venta,
+                idProducto = g.id_producto,
+                producto = g.id_productoNavigation.nombre,
+                imagenProducto = g.id_productoNavigation.rutaimagen,
+                cantidad = g.cantidad,
+                vendedor = g.id_ventaNavigation.id_vendedorNavigation.nombre,
+                motivo = g.id_devolucionNavigation.motivo,
+                estado = g.id_devolucionNavigation.estado,
+                tipo = g.id_devolucionNavigation.tipodevolucion,
+                montoReintegrado = g.id_devolucionNavigation.montoreintegrado,
+                fechaSolicitud = g.id_devolucionNavigation.fechasolicitud,
+                fechaResolucion = g.id_devolucionNavigation.fecharesolucion,
+                imagenEvidencia = g.id_devolucionNavigation.rutaimagen
+            })
+            .ToListAsync();
+
+        return Ok(new { success = true, message = "Devoluciones obtenidas.", data = devoluciones, errors = (object?)null });
+    }
+
     // POST: api/devoluciones (Solicitar devolución)
     [HttpPost]
     public async Task<IActionResult> CrearDevolucion(
