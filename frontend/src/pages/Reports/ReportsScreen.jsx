@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import CustomButton from "../../components/atoms/Button/CustomButton";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import { listarVentasDelPeriodo } from "../../services/reportService";
 import "../../styles/Inventory.css";
 import "../../styles/Reports.css";
 
@@ -15,59 +17,6 @@ const fechaHace = (dias) => {
   return aISO(fecha);
 };
 
-// TEMPORAL: estas ventas son de ejemplo y se generan respecto a la fecha de hoy
-// para que siempre haya datos en el período. Con el backend se cargan desde la API
-// (las ventas del vendedor, agrupadas con GROUP BY en la consulta).
-const catalogo = {
-  "Notebook Lenovo": { categoria: "Computación", precio: 549990 },
-  "Teclado mecánico": { categoria: "Computación", precio: 39990 },
-  "Mouse inalámbrico": { categoria: "Computación", precio: 12990 },
-  "Audífonos Bluetooth": { categoria: "Electrónica", precio: 24990 },
-  "Hervidor eléctrico": { categoria: "Hogar", precio: 19990 },
-  Licuadora: { categoria: "Hogar", precio: 29990 },
-};
-
-// [días atrás, producto, cantidad]
-const filasEjemplo = [
-  [0, "Audífonos Bluetooth", 2],
-  [0, "Hervidor eléctrico", 1],
-  [1, "Notebook Lenovo", 1],
-  [2, "Teclado mecánico", 1],
-  [2, "Mouse inalámbrico", 3],
-  [3, "Audífonos Bluetooth", 1],
-  [4, "Licuadora", 2],
-  [5, "Notebook Lenovo", 1],
-  [5, "Hervidor eléctrico", 2],
-  [6, "Mouse inalámbrico", 2],
-  [7, "Audífonos Bluetooth", 3],
-  [8, "Teclado mecánico", 2],
-  [9, "Licuadora", 1],
-  [10, "Notebook Lenovo", 1],
-  [11, "Hervidor eléctrico", 1],
-  [12, "Mouse inalámbrico", 4],
-  [13, "Audífonos Bluetooth", 2],
-  [14, "Notebook Lenovo", 1],
-  [16, "Teclado mecánico", 1],
-  [18, "Licuadora", 3],
-  [20, "Hervidor eléctrico", 2],
-  [22, "Audífonos Bluetooth", 1],
-  [24, "Notebook Lenovo", 1],
-  [26, "Mouse inalámbrico", 2],
-  [28, "Licuadora", 1],
-  [29, "Teclado mecánico", 2],
-  [35, "Notebook Lenovo", 1],
-  [40, "Audífonos Bluetooth", 2],
-];
-
-const ventasIniciales = filasEjemplo.map(([dias, producto, cantidad], i) => ({
-  id: i + 1,
-  fecha: fechaHace(dias),
-  producto,
-  categoria: catalogo[producto].categoria,
-  cantidad,
-  precio: catalogo[producto].precio,
-}));
-
 const formatoPrecio = (n) => `$${Number(n).toLocaleString("es-CL")}`;
 
 // 2026-10-31 -> 31/10/2026
@@ -76,32 +25,57 @@ const formatoFecha = (iso) => {
   return `${dia}/${mes}/${anio}`;
 };
 
-// TEMPORAL: se agrupa en el frontend. Con la base de datos pasa a ser una consulta
-// con GROUP BY (SUM(cantidad), SUM(cantidad * precio)) por producto o categoría.
+// La API entrega una fila por producto o servicio vendido; aquí se suman por producto o por categoría
 const agrupar = (ventas, clave) => {
   const mapa = {};
   ventas.forEach((v) => {
     const nombre = v[clave];
     if (!mapa[nombre]) mapa[nombre] = { nombre, unidades: 0, ingresos: 0 };
     mapa[nombre].unidades += v.cantidad;
-    mapa[nombre].ingresos += v.cantidad * v.precio;
+    mapa[nombre].ingresos += v.total;
   });
   return Object.values(mapa).sort((a, b) => b.ingresos - a.ingresos);
 };
 
 const ReportsScreen = () => {
-  const [ventasTodas] = useState(ventasIniciales);
+  const [ventas, setVentas] = useState([]);
   const [dias, setDias] = useState(30);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const [recarga, setRecarga] = useState(0);
 
   // ---------- Período seleccionado ----------
   const hoy = fechaHace(0);
   const desde = fechaHace(dias - 1);
-  const ventas = ventasTodas.filter((v) => v.fecha >= desde && v.fecha <= hoy);
+
+  // GET /reportes/ventas: las ventas del vendedor en el período (se pide de nuevo al cambiar el período)
+  useEffect(() => {
+    let activo = true;
+
+    setCargando(true);
+    setError("");
+    listarVentasDelPeriodo(fechaHace(dias - 1), fechaHace(0))
+      .then((datos) => {
+        if (activo) setVentas(datos);
+      })
+      .catch((e) => {
+        if (activo) setError(e.message);
+      })
+      .finally(() => {
+        if (activo) setCargando(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [dias, recarga]);
 
   // ---------- Tarjetas de totales ----------
-  const ingresos = ventas.reduce((acc, v) => acc + v.cantidad * v.precio, 0);
+  const ingresos = ventas.reduce((acc, v) => acc + v.total, 0);
   const unidades = ventas.reduce((acc, v) => acc + v.cantidad, 0);
-  const ticketPromedio = ventas.length === 0 ? 0 : Math.round(ingresos / ventas.length);
+  // Ticket promedio: ingresos por venta (una venta puede tener varios productos)
+  const cantidadVentas = new Set(ventas.map((v) => v.idVenta)).size;
+  const ticketPromedio = cantidadVentas === 0 ? 0 : Math.round(ingresos / cantidadVentas);
 
   const porProducto = agrupar(ventas, "producto");
   const porCategoria = agrupar(ventas, "categoria");
@@ -114,7 +88,7 @@ const ReportsScreen = () => {
     const fecha = fechaHace(dias - 1 - i);
     const total = ventas
       .filter((v) => v.fecha === fecha)
-      .reduce((acc, v) => acc + v.cantidad * v.precio, 0);
+      .reduce((acc, v) => acc + v.total, 0);
     return { fecha, total };
   });
   const maxDia = Math.max(...serieDiaria.map((d) => d.total), 1);
@@ -125,24 +99,17 @@ const ReportsScreen = () => {
 
   // ---------- Exportar a CSV ----------
   const exportarCSV = () => {
-    const encabezado = ["Fecha", "Producto", "Categoría", "Cantidad", "Precio unitario", "Total"];
+    const encabezado = ["Fecha", "N.º de venta", "Tipo", "Producto o servicio", "Categoría", "Cantidad", "Precio unitario", "Total"];
     const filas = ventas.map((v) => [
       formatoFecha(v.fecha),
+      v.idVenta,
+      v.tipo === "servicio" ? "Servicio" : "Producto",
       v.producto,
       v.categoria,
       v.cantidad,
       v.precio,
-      v.cantidad * v.precio,
+      v.total,
     ]);
-
-    // SIMULACIÓN (solo frontend): muestra en la consola los datos de la exportación.
-    console.log("[Reportes] Exportar reporte:", {
-      periodo: `Últimos ${dias} días`,
-      desde,
-      hasta: hoy,
-      filas: filas.length,
-      ingresos,
-    });
 
     const csv = [encabezado, ...filas]
       .map((fila) => fila.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
@@ -183,7 +150,7 @@ const ReportsScreen = () => {
           <CustomButton
             variant="primary"
             onClick={exportarCSV}
-            disabled={ventas.length === 0}
+            disabled={cargando || Boolean(error) || ventas.length === 0}
             sx={{ border: "2px solid #EC3333" }}
           >
             Exportar CSV
@@ -191,8 +158,18 @@ const ReportsScreen = () => {
         </div>
       </div>
 
+      {cargando ? (
+        <div className="inv-panel">
+          <div className="rep-vacio" role="status">
+            Cargando el reporte...
+          </div>
+        </div>
+      ) : error ? (
+        <ErrorState titulo="No pudimos cargar tu reporte de ventas" detalle={error} onReintentar={() => setRecarga((n) => n + 1)} />
+      ) : (
+        <>
       <div className="inv-stats">
-        <StatCard titulo="Ingresos del período" valor={formatoPrecio(ingresos)} />
+        <StatCard titulo="Ingresos netos del período" valor={formatoPrecio(ingresos)} />
         <StatCard titulo="Unidades vendidas" valor={unidades} />
         <StatCard titulo="Ticket promedio" valor={formatoPrecio(ticketPromedio)} />
         <StatCard titulo="Producto más vendido" valor={masVendido} />
@@ -291,6 +268,8 @@ const ReportsScreen = () => {
           )}
         </div>
       </div>
+        </>
+      )}
     </SellerTemplate>
   );
 };

@@ -15,11 +15,11 @@ const items = [
   { id: "servicios", label: "Servicios", icon: <BuildIcon fontSize="small" /> },
   { id: "pedidos", label: "Pedidos", icon: <ShoppingCartIcon fontSize="small" /> },
   { id: "despachos", label: "Despachos", icon: <RouteOutlinedIcon fontSize="small" /> },
-  { id: "reportes", label: "Reportes", icon: <BarChartIcon fontSize="small" /> },
+  { id: "devoluciones", label: "Devoluciones", icon: <UndoIcon fontSize="small" /> },
+  { id: "cotizacion", label: "Cotización", icon: <CalculateIcon fontSize="small" /> },
   { id: "mensajes", label: "Mensajes", icon: <ChatIcon fontSize="small" /> },
   { id: "resenas", label: "Reseñas", icon: <StarIcon fontSize="small" /> },
-  { id: "cotizacion", label: "Cotización", icon: <CalculateIcon fontSize="small" /> },
-  { id: "devoluciones", label: "Devoluciones", icon: <UndoIcon fontSize="small" /> },
+  { id: "reportes", label: "Reportes", icon: <BarChartIcon fontSize="small" /> },
 ];
 
 // Opciones del menú que ya tienen pantalla
