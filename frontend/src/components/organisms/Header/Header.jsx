@@ -13,11 +13,13 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import useCart from '../../../context/useCart';
+import useNotificacionesSinLeer from '../../../context/useNotificacionesSinLeer';
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartCount, user } = useCart();
+  const notificacionesSinLeer = useNotificacionesSinLeer(user?.rut);
   const [categoriasAbiertas, setCategoriasAbiertas] = useState(false);
   const [busqueda, setBusqueda] = useState('');
 
@@ -135,7 +137,12 @@ const Header = () => {
           <CustomButton
             variant="primary"
             size="small"
-            startIcon={<NotificationsIcon />}
+            startIcon={
+              <Badge badgeContent={notificacionesSinLeer} color="error">
+                <NotificationsIcon />
+              </Badge>
+            }
+            aria-label={notificacionesSinLeer > 0 ? `Notificaciones, ${notificacionesSinLeer} sin leer` : 'Notificaciones'}
             onClick={() => navigate(user ? '/notificaciones' : '/login')}
           >
             Notificaciones

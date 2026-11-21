@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link as RouterLink, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
@@ -7,7 +7,8 @@ import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import CheckIcon from '@mui/icons-material/Check';
 import Header from '../../components/organisms/Header/Header';
-import useQuotes from '../../context/useQuotes';
+import { useToast } from '../../context/ToastContext';
+import { obtenerCotizacion, aceptarCotizacion } from '../../services/quoteService';
 import '../../styles/Quotes.css';
 
 const formatDate = (date) => {
@@ -37,12 +38,48 @@ const QuoteDetailScreen = () => {
   const location = useLocation();
   // Quien viene de "Mis cotizaciones" (cliente) vuelve ahí; el vendedor vuelve a su listado
   const volverA = location.state?.volverA ?? '/cotizaciones';
-  const { quotes, acceptQuote } = useQuotes();
+  const { mostrarToast } = useToast();
+  const [quote, setQuote] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const [accepted, setAccepted] = useState(false);
-  const quote = quotes.find((item) => item.id === id);
 
-  if (!quote) {
+  // GET /cotizaciones/{id}
+  useEffect(() => {
+    let active = true;
+
+    setLoading(true);
+    setFailed(false);
+    obtenerCotizacion(id)
+      .then((data) => {
+        if (active) setQuote(data);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  if (failed) {
     return <Navigate to={volverA} replace />;
+  }
+
+  if (loading || !quote) {
+    return (
+      <div className="quotes-layout">
+        <Header />
+        <main className="quotes-main quotes-detail-main">
+          <p role="status">Cargando cotización...</p>
+        </main>
+      </div>
+    );
   }
 
   const subtotal = quote.items.reduce(
@@ -55,10 +92,19 @@ const QuoteDetailScreen = () => {
     quote.status === 'Expirada' || getRemainingDays(quote.expirationDate) < 0;
   const canAccept = quote.status === 'Respondida' && !isExpired;
 
-  const handleAccept = () => {
-    if (!canAccept) return;
-    acceptQuote(quote.id);
-    setAccepted(true);
+  // PUT /cotizaciones/{id}/aceptar
+  const handleAccept = async () => {
+    if (!canAccept || accepting) return;
+    setAccepting(true);
+    try {
+      await aceptarCotizacion(quote.id);
+      setQuote({ ...quote, status: 'Aceptada' });
+      setAccepted(true);
+    } catch (e) {
+      mostrarToast(e.message, 'error');
+    } finally {
+      setAccepting(false);
+    }
   };
 
   return (
@@ -144,7 +190,7 @@ const QuoteDetailScreen = () => {
               </thead>
               <tbody>
                 {quote.items.map((item) => (
-                  <tr key={item.name}>
+                  <tr key={`${item.tipo}-${item.id}`}>
                     <td>{item.name}</td>
                     <td>{item.unitPrice > 0 ? formatPrice(item.unitPrice) : 'Por cotizar'}</td>
                     <td>{item.quantity}</td>
@@ -172,18 +218,12 @@ const QuoteDetailScreen = () => {
           </div>
         </section>
 
-        {quote.note && (
-          <Alert severity="info" className="quote-feedback">
-            <strong>Mensaje del emprendedor:</strong> {quote.note}
-          </Alert>
-        )}
-
         <div className="quote-detail-actions">
           <Button
             variant="contained"
             startIcon={<CheckIcon />}
             onClick={handleAccept}
-            disabled={!canAccept}
+            disabled={!canAccept || accepting}
             className="quote-accept-button"
           >
             Aceptar cotización

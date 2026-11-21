@@ -25,6 +25,9 @@ public class NotificacionesController : ControllerBase
     // (preguntas, mensajes de venta, pedidos, devoluciones, cotizaciones y ofertas de la lista de deseos).
     // Cada notificación lleva un id estable; si algo cambia de estado (por ejemplo un pedido pasa a "Entregado"),
     // el id cambia y vuelve a aparecer como nueva. Qué notificaciones ya leyó el usuario lo guarda el front.
+    //
+    // tipo: "mensaje" (mensajes y preguntas), "oferta" o "sistema" (pedidos, ventas, devoluciones, cotizaciones).
+    // soloFecha: true cuando el dato de origen no trae hora (el front muestra "Hoy", "Ayer" o la fecha).
     private sealed record Notificacion(
         string Id, string Tipo, string Titulo, string Descripcion, DateTime Fecha, bool SoloFecha, string Ruta);
 
@@ -219,7 +222,8 @@ public class NotificacionesController : ControllerBase
             $"Devolución de «{d.producto}» (venta #{d.id_venta}).",
             Dia(d.resolucion ?? d.solicitud), true, "/historial")));
 
-        // 7. Cotizaciones que pedí (productos y servicios)
+        // 7. Cotizaciones que pedí (productos y servicios). Si además yo vendo lo cotizado, llevan a
+        //    "Cotizaciones recibidas" (/cotizaciones); si no, a "Mis cotizaciones" (/mis-cotizaciones).
         var cotProd = await _context.solicitar1s
             .Where(s => s.id_usuario == rut)
             .OrderByDescending(s => s.id_cotizacionNavigation.fechaultimaactualizacion ?? s.id_cotizacionNavigation.fechacreacion)
@@ -229,7 +233,8 @@ public class NotificacionesController : ControllerBase
                 s.id_cotizacion,
                 estado = s.id_cotizacionNavigation.estado,
                 fecha = s.id_cotizacionNavigation.fechaultimaactualizacion ?? s.id_cotizacionNavigation.fechacreacion,
-                nombre = s.id_productoNavigation.nombre
+                nombre = s.id_productoNavigation.nombre,
+                vendo = _context.ofrecer1s.Any(o => o.id_producto == s.id_producto && o.id_usuario == rut)
             })
             .ToListAsync();
 
@@ -242,18 +247,75 @@ public class NotificacionesController : ControllerBase
                 s.id_cotizacion,
                 estado = s.id_cotizacionNavigation.estado,
                 fecha = s.id_cotizacionNavigation.fechaultimaactualizacion ?? s.id_cotizacionNavigation.fechacreacion,
-                nombre = s.id_servicioNavigation.nombre
+                nombre = s.id_servicioNavigation.nombre,
+                vendo = s.id_oferente == rut
             })
             .ToListAsync();
 
         lista.AddRange(cotProd.Concat(cotServ)
             .GroupBy(c => c.id_cotizacion)
-            .Select(g => g.First())
-            .Select(c => new Notificacion(
-                $"cotizacion-{c.id_cotizacion}-{c.estado}", "sistema",
-                $"Tu cotización #{c.id_cotizacion} está {c.estado.ToLower()}",
-                $"Cotización de «{c.nombre}».",
-                Dia(c.fecha), true, "/mis-cotizaciones")));
+            .Select(g => new { primero = g.First(), vendo = g.Any(x => x.vendo) })
+            .Select(g => new Notificacion(
+                $"cotizacion-{g.primero.id_cotizacion}-{g.primero.estado}", "sistema",
+                $"Tu cotización #{g.primero.id_cotizacion} está {g.primero.estado.ToLower()}",
+                $"Cotización de «{g.primero.nombre}».",
+                Dia(g.primero.fecha), true, g.vendo ? "/cotizaciones" : "/mis-cotizaciones")));
+
+        // 7b. Cotizaciones que me pidieron a mí como vendedor: nuevas solicitudes por responder y las que el
+        //     cliente aceptó. Llevan a "Cotizaciones recibidas" (/cotizaciones).
+        var hoyCotizaciones = DateOnly.FromDateTime(DateTime.Today);
+
+        var recibidas = await _context.cotizacions
+            .AsNoTracking()
+            .Include(c => c.solicitar1s).ThenInclude(s => s.id_productoNavigation)
+            .Include(c => c.solicitar1s).ThenInclude(s => s.id_usuarioNavigation)
+            .Include(c => c.solicitar2s).ThenInclude(s => s.id_servicioNavigation)
+            .Include(c => c.solicitar2s).ThenInclude(s => s.id_usuarioNavigation)
+            .AsSplitQuery()
+            .Where(c => c.solicitar1s.Any(s => s.id_usuario != rut
+                            && _context.ofrecer1s.Any(o => o.id_producto == s.id_producto && o.id_usuario == rut))
+                     || c.solicitar2s.Any(s => s.id_usuario != rut && s.id_oferente == rut))
+            .OrderByDescending(c => c.fechaultimaactualizacion ?? c.fechacreacion)
+            .Take(MaxPorOrigen)
+            .ToListAsync();
+
+        var idsProductosRecibidos = recibidas.SelectMany(c => c.solicitar1s).Select(s => s.id_producto).Distinct().ToList();
+        var misProductos = (await _context.ofrecer1s
+                .Where(o => o.id_usuario == rut && idsProductosRecibidos.Contains(o.id_producto))
+                .Select(o => o.id_producto)
+                .ToListAsync())
+            .ToHashSet();
+
+        foreach (var c in recibidas)
+        {
+            var solicitada = c.estado is "Solicitada" or "En Proceso" or "En revisión" or "Pendiente";
+            var aceptada = c.estado == "Aceptada";
+            if (!solicitada && !aceptada) continue;
+
+            // Si yo mismo la pedí, ya aparece en el punto 7 (con el enlace que corresponde)
+            if (c.solicitar1s.Any(s => s.id_usuario == rut) || c.solicitar2s.Any(s => s.id_usuario == rut)) continue;
+
+            // Una solicitud sin responder que ya pasó su vigencia (15 días) deja de avisarse
+            var ultima = c.fechaultimaactualizacion ?? c.fechacreacion;
+            if (solicitada && hoyCotizaciones > ultima.AddDays(15)) continue;
+
+            var cliente = c.solicitar1s.Select(s => s.id_usuarioNavigation.nombre)
+                .Concat(c.solicitar2s.Select(s => s.id_usuarioNavigation.nombre))
+                .FirstOrDefault() ?? "Un cliente";
+            var items = string.Join(", ",
+                c.solicitar1s.Where(s => s.id_usuario != rut && misProductos.Contains(s.id_producto))
+                    .Select(s => s.id_productoNavigation.nombre)
+                    .Concat(c.solicitar2s.Where(s => s.id_usuario != rut && s.id_oferente == rut)
+                        .Select(s => s.id_servicioNavigation.nombre)));
+
+            lista.Add(new Notificacion(
+                $"cotizacion-recibida-{c.id}-{(solicitada ? "solicitada" : "aceptada")}", "sistema",
+                solicitada ? "Te solicitaron una cotización" : "El cliente aceptó tu cotización",
+                solicitada
+                    ? $"{cliente} pidió cotizar: {Resumir(items)} (cotización #{c.id})."
+                    : $"{cliente} aceptó la cotización #{c.id}: {Resumir(items)}.",
+                Dia(solicitada ? c.fechacreacion : ultima), true, "/cotizaciones"));
+        }
 
         // 8. Productos o servicios de mi lista de deseos que están en oferta
         var hoy = DateOnly.FromDateTime(DateTime.Today);

@@ -6,27 +6,23 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import CustomButton from "../../atoms/Button/CustomButton";
 
-const MAX_NOTA = 200;
-
 const formatoPrecio = (monto) =>
   new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(monto);
 
 /*
  * Ventana del vendedor para una cotización.
- *  - Si está "Solicitada": el vendedor pone el precio unitario de cada ítem y un mensaje opcional.
+ *  - Si está "Solicitada": el vendedor pone el precio unitario de cada ítem.
  *  - Si ya fue respondida (o aceptada, o expiró): se muestra solo para consultar.
- * onEnviar({ prices, note }) debe devolver una promesa o nada; la ventana se cierra desde la pantalla.
+ * onEnviar({ prices }) debe devolver una promesa o nada; la ventana se cierra desde la pantalla.
  */
 const QuoteResponseDialog = ({ quote, puedeResponder, onClose, onEnviar }) => {
   const [precios, setPrecios] = useState([]);
-  const [nota, setNota] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!quote) return;
     // Si el cliente dejó un precio de referencia, parte con ese valor
     setPrecios(quote.items.map((item) => (item.unitPrice > 0 ? String(item.unitPrice) : "")));
-    setNota(quote.note ?? "");
     setError("");
   }, [quote]);
 
@@ -49,7 +45,7 @@ const QuoteResponseDialog = ({ quote, puedeResponder, onClose, onEnviar }) => {
       setError("Indica el precio unitario de todos los productos o servicios.");
       return;
     }
-    onEnviar({ prices: precios.map(valor), note: nota });
+    onEnviar({ prices: precios.map(valor) });
   };
 
   return (
@@ -64,7 +60,7 @@ const QuoteResponseDialog = ({ quote, puedeResponder, onClose, onEnviar }) => {
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: "16px !important" }}>
         {quote.items.map((item, i) => (
           <div
-            key={item.name}
+            key={`${item.tipo}-${item.id}`}
             style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}
           >
             <div style={{ flex: "1 1 180px" }}>
@@ -97,25 +93,6 @@ const QuoteResponseDialog = ({ quote, puedeResponder, onClose, onEnviar }) => {
           <span style={{ fontWeight: 700 }}>{formatoPrecio(subtotal)}</span>
         </div>
         <div style={{ fontSize: 12, color: "#777", marginTop: -8 }}>El cliente verá el IVA (19%) sumado a este valor.</div>
-
-        {puedeResponder ? (
-          <TextField
-            label="Mensaje para el cliente (opcional)"
-            size="small"
-            multiline
-            minRows={2}
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            slotProps={{ htmlInput: { maxLength: MAX_NOTA } }}
-            helperText={`${nota.length}/${MAX_NOTA}`}
-          />
-        ) : (
-          quote.note && (
-            <div style={{ fontSize: 13 }}>
-              <strong>Tu mensaje:</strong> {quote.note}
-            </div>
-          )
-        )}
 
         {puedeResponder && (
           <div style={{ fontSize: 12, color: "#777" }}>

@@ -12,6 +12,9 @@ export async function listarNotificaciones() {
 const claveLeidas = (rut) => `notificaciones-leidas-${rut}`;
 const MAX_LEIDAS = 500;
 
+// Se dispara cada vez que cambian las leídas, para que el globo del Header se actualice al instante
+export const EVENTO_LEIDAS = 'notificaciones-leidas-cambiaron';
+
 export function obtenerLeidas(rut) {
     try {
         return new Set(JSON.parse(localStorage.getItem(claveLeidas(rut)) ?? '[]'));
@@ -26,4 +29,5 @@ export function guardarLeidas(rut, ids) {
     } catch {
         /* sin almacenamiento disponible: se vuelven a mostrar como nuevas */
     }
+    window.dispatchEvent(new Event(EVENTO_LEIDAS));
 }

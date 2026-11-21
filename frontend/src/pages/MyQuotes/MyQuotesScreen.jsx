@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import Header from "../../components/organisms/Header/Header";
 import CustomButton from "../../components/atoms/Button/CustomButton";
-import useQuotes from "../../context/useQuotes";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import { listarMisCotizaciones } from "../../services/quoteService";
 import { authService } from "../../services/authService";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -23,6 +24,7 @@ const MENSAJES = {
   Respondida: "¡Ya te respondieron! Revisa el valor y acéptala",
   Aceptada: "Cotización aceptada",
   Expirada: "Venció: pide una nueva",
+  Rechazada: "El emprendedor rechazó esta cotización",
 };
 
 const formatoFecha = (fecha) => {
@@ -47,10 +49,37 @@ const estadoReal = (c) =>
 
 const MyQuotesScreen = () => {
   const navigate = useNavigate();
-  const { quotes } = useQuotes();
+  const usuario = authService.getCurrentUser();
+  const [quotes, setQuotes] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const [recarga, setRecarga] = useState(0);
   const [filtro, setFiltro] = useState("Todas");
 
-  if (!authService.getCurrentUser()) return <Navigate to="/login" replace />;
+  // GET /cotizaciones/mias
+  useEffect(() => {
+    if (!usuario) return;
+    let activo = true;
+
+    setCargando(true);
+    setError("");
+    listarMisCotizaciones()
+      .then((datos) => {
+        if (activo) setQuotes(datos);
+      })
+      .catch((e) => {
+        if (activo) setError(e.message);
+      })
+      .finally(() => {
+        if (activo) setCargando(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [usuario?.rut, recarga]);
+
+  if (!usuario) return <Navigate to="/login" replace />;
 
   const cotizaciones = quotes.map((c) => ({ ...c, estado: estadoReal(c) }));
   const cuenta = (estado) => cotizaciones.filter((c) => c.estado === estado).length;
@@ -95,6 +124,14 @@ const MyQuotesScreen = () => {
           </CustomButton>
         </section>
 
+        {cargando ? (
+          <p className="mq-mensaje" role="status">
+            Cargando tus cotizaciones...
+          </p>
+        ) : error ? (
+          <ErrorState titulo="No pudimos cargar tus cotizaciones" detalle={error} onReintentar={() => setRecarga((n) => n + 1)} />
+        ) : (
+          <>
         {porResponder > 0 && (
           <div className="mq-aviso" role="status">
             <strong>
@@ -177,6 +214,8 @@ const MyQuotesScreen = () => {
               );
             })}
           </ul>
+        )}
+          </>
         )}
       </main>
     </>

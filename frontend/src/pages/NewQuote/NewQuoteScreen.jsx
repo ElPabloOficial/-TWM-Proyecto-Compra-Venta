@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Header from '../../components/organisms/Header/Header';
-import useQuotes from '../../context/useQuotes';
 import { useToast } from '../../context/ToastContext';
 import CustomButton from '../../components/atoms/Button/CustomButton';
 import AddQuoteItemDialog from '../../components/organisms/AddQuoteItemDialog/AddQuoteItemDialog';
+import { authService } from '../../services/authService';
+import { crearCotizaciones } from '../../services/quoteService';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -14,7 +15,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 export default function CreateQuoteScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { addQuote } = useQuotes();
   const { mostrarToast } = useToast();
 
   // La solicitud parte con el producto o servicio desde el que se presionó "Solicitar cotización" en su ficha
@@ -22,6 +22,7 @@ export default function CreateQuoteScreen() {
   const [items, setItems] = useState(itemDeLaFicha ? [{ ...itemDeLaFicha, cantidad: itemDeLaFicha.cantidad ?? 1 }] : []);
 
   const [selectorAbierto, setSelectorAbierto] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   const total = items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
 
@@ -31,13 +32,22 @@ export default function CreateQuoteScreen() {
     ));
   };
 
-  // TEMPORAL: la cotización se guarda en memoria; con el backend es POST /cotizaciones
-  const enviarSolicitud = () => {
-    if (items.length === 0) return;
-    console.log("[Cotizaciones] Solicitar cotización:", items.map((item) => ({ id: item.id, nombre: item.nombre, cantidad: item.cantidad })));
-    addQuote(items.map((item) => ({ name: item.nombre, unitPrice: item.precio, quantity: item.cantidad })));
-    mostrarToast('Cotización solicitada correctamente');
-    navigate('/mis-cotizaciones');
+  // POST /cotizaciones: la API crea una cotización por cada vendedor involucrado y deja cada una "Solicitada"
+  const enviarSolicitud = async () => {
+    if (items.length === 0 || enviando) return;
+    setEnviando(true);
+    try {
+      const { ids } = await crearCotizaciones(items);
+      mostrarToast(
+        ids.length > 1
+          ? `Se crearon ${ids.length} cotizaciones, una por cada emprendedor`
+          : 'Cotización solicitada correctamente',
+      );
+      navigate('/mis-cotizaciones');
+    } catch (e) {
+      mostrarToast(e.message, 'error');
+      setEnviando(false);
+    }
   };
 
   // Agrega un producto o servicio del catálogo a la solicitud (si ya estaba, no se repite)
@@ -66,6 +76,8 @@ export default function CreateQuoteScreen() {
 
   const formatoCLP = (n) =>
     new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
+
+  if (!authService.getCurrentUser()) return <Navigate to="/login" replace />;
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f4f4f4' }}>
@@ -168,8 +180,8 @@ export default function CreateQuoteScreen() {
           <CustomButton variant="secondary" onClick={() => navigate(-1)}>
             Cancelar
           </CustomButton>
-          <CustomButton variant="primary" onClick={enviarSolicitud} disabled={items.length === 0}>
-            Enviar solicitud de cotización
+          <CustomButton variant="primary" onClick={enviarSolicitud} disabled={items.length === 0 || enviando}>
+            {enviando ? 'Enviando...' : 'Enviar solicitud de cotización'}
           </CustomButton>
         </Box>
 

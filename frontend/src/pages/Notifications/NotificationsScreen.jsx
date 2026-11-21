@@ -113,7 +113,8 @@ export default function NotificationsScreen() {
 
   const tarjeta = (notif) => {
     const nueva = !leidas.has(notif.id);
-    const destacada = notif.tipo === 'mensaje';
+    // Los mensajes y preguntas van en rojo claro mientras están sin leer; al verlos pasan a blanco
+    const destacada = notif.tipo === 'mensaje' && nueva;
 
     return (
       <Box
@@ -125,7 +126,7 @@ export default function NotificationsScreen() {
           padding: 2,
           borderRadius: 1,
           border: destacada ? 'none' : '1px solid #e0e0e0',
-          backgroundColor: destacada ? '#fce4e4' : '#fff', // Rojo claro para mensajes y preguntas
+          backgroundColor: destacada ? '#fce4e4' : '#fff',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>

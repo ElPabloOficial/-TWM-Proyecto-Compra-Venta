@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from '@mui/material/Button';
 import SellerTemplate from '../../components/templates/SellerTemplate/SellerTemplate';
 import StatCard from '../../components/molecules/StatCard/StatCard';
 import QuoteResponseDialog from '../../components/organisms/QuoteResponseDialog/QuoteResponseDialog';
-import useQuotes from '../../context/useQuotes';
+import { listarCotizacionesRecibidas, responderCotizacion } from '../../services/quoteService';
 import { useToast } from '../../context/ToastContext';
 import '../../styles/Inventory.css';
 import '../../styles/Quotes.css';
@@ -45,13 +45,38 @@ const getValidityLabel = (quote, status) => {
 };
 
 // Las que faltan por responder van primero
-const STATUS_ORDER = { Solicitada: 0, Respondida: 1, Aceptada: 2, Expirada: 3 };
+const STATUS_ORDER = { Solicitada: 0, Respondida: 1, Aceptada: 2, Expirada: 3, Rechazada: 4 };
 
 const QuotesScreen = () => {
-  const { quotes, respondQuote } = useQuotes();
   const { mostrarToast } = useToast();
+  const [quotes, setQuotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [reload, setReload] = useState(0);
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState(null);
+
+  // GET /cotizaciones/recibidas (solo con los productos y servicios de este vendedor)
+  useEffect(() => {
+    let active = true;
+
+    setLoading(true);
+    setLoadError('');
+    listarCotizacionesRecibidas()
+      .then((data) => {
+        if (active) setQuotes(data);
+      })
+      .catch((e) => {
+        if (active) setLoadError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reload]);
 
   // Cotizaciones que pidieron los clientes (vista del vendedor)
   const received = quotes
@@ -72,11 +97,16 @@ const QuotesScreen = () => {
     currentPage * QUOTES_PER_PAGE,
   );
 
-  const handleSend = (response) => {
-    console.log("[Cotizaciones] Responder cotización:", { id: selected.id, ...response });
-    respondQuote(selected.id, response);
-    setSelectedId(null);
-    mostrarToast('Cotización respondida correctamente');
+  // PUT /cotizaciones/{id}/responder
+  const handleSend = async (response) => {
+    try {
+      await responderCotizacion(selected, response.prices);
+      setSelectedId(null);
+      mostrarToast('Cotización respondida correctamente');
+      setReload((n) => n + 1);
+    } catch (e) {
+      mostrarToast(e.message, 'error');
+    }
   };
 
   return (
@@ -153,7 +183,24 @@ const QuotesScreen = () => {
                     </tr>
                   );
                 })}
-                {visibleQuotes.length === 0 && (
+                {loading && (
+                  <tr>
+                    <td colSpan={8} className="quotes-empty" role="status">
+                      Cargando cotizaciones...
+                    </td>
+                  </tr>
+                )}
+                {!loading && loadError && (
+                  <tr>
+                    <td colSpan={8} className="quotes-empty">
+                      {loadError}{' '}
+                      <Button size="small" onClick={() => setReload((n) => n + 1)}>
+                        Reintentar
+                      </Button>
+                    </td>
+                  </tr>
+                )}
+                {!loading && !loadError && visibleQuotes.length === 0 && (
                   <tr>
                     <td colSpan={8} className="quotes-empty">
                       Todavía no has recibido solicitudes de cotización.
