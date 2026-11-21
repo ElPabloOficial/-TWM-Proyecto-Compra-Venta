@@ -16,13 +16,14 @@ import "../../styles/MyQuotes.css";
 // Cotizaciones que pidió el cliente: si ya las respondieron, cuál es su estado y pedir una nueva.
 // (La pantalla del vendedor está en /cotizaciones, dentro de su menú de gestión.)
 
-const FILTROS = ["Todas", "Solicitada", "Respondida", "Aceptada", "Expirada"];
+const FILTROS = ["Todas", "Solicitada", "Respondida", "Aceptada", "Comprada", "Expirada"];
 
 // Lo que el cliente debe saber de cada estado
 const MENSAJES = {
   Solicitada: "Esperando respuesta del emprendedor",
-  Respondida: "¡Ya te respondieron! Revisa el valor y acéptala",
-  Aceptada: "Cotización aceptada",
+  Respondida: "¡Ya te respondieron! Revisa el valor: puedes aceptarla y comprar de una vez",
+  Aceptada: "Aceptada: ya puedes comprar con ella",
+  Comprada: "Ya compraste con esta cotización",
   Expirada: "Venció: pide una nueva",
   Rechazada: "El emprendedor rechazó esta cotización",
 };
@@ -45,7 +46,7 @@ const diasRestantes = (vence) => {
 
 // Una cotización vencida se muestra como "Expirada" aunque no se haya actualizado
 const estadoReal = (c) =>
-  c.status !== "Aceptada" && c.status !== "Expirada" && diasRestantes(c.expirationDate) < 0 ? "Expirada" : c.status;
+  c.status !== "Aceptada" && c.status !== "Comprada" && c.status !== "Expirada" && diasRestantes(c.expirationDate) < 0 ? "Expirada" : c.status;
 
 const MyQuotesScreen = () => {
   const navigate = useNavigate();

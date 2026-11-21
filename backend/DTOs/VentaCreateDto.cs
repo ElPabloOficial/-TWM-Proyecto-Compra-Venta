@@ -8,4 +8,5 @@ public class VentaCreateDto
     public bool requieredespacho { get; set; }
     public int? id_direccion { get; set; } // Requerido si requieredespacho es true
     public string? nota { get; set; }
+    public int? id_cotizacion { get; set; } // Si viene, se compra con esa cotización aceptada (no con el carrito)
 }

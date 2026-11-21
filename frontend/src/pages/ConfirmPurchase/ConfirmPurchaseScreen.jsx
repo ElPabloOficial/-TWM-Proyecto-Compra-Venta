@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
@@ -9,6 +9,7 @@ import ConfirmPurchaseTable from "../../components/organisms/ConfirmPurchaseTabl
 import useCart from "../../context/useCart";
 import { useToast } from "../../context/ToastContext";
 import { calcularTotales, crearVenta, listarDirecciones } from "../../services/cartService";
+import { obtenerCotizacion } from "../../services/quoteService";
 
 const ROJO = "#EC3333";
 const formatearPrecio = (numero) => `$${numero.toLocaleString("es-CL")}`;
@@ -33,6 +34,13 @@ const ConfirmPurchaseScreen = () => {
   const navigate = useNavigate();
   const { cart, cargando, user, clearCart } = useCart();
   const { mostrarToast } = useToast();
+
+  // Con ?cotizacion=ID se compra con esa cotización aceptada (a los precios acordados); sin él, con el carrito
+  const [searchParams] = useSearchParams();
+  const idCotizacion = searchParams.get("cotizacion");
+  const [cotizacion, setCotizacion] = useState(null);
+  const [cargandoCotizacion, setCargandoCotizacion] = useState(Boolean(idCotizacion));
+  const [errorCotizacion, setErrorCotizacion] = useState("");
 
   const [direcciones, setDirecciones] = useState([]);
   const [direccionId, setDireccionId] = useState("");
@@ -60,17 +68,68 @@ const ConfirmPurchaseScreen = () => {
     };
   }, [user]);
 
-  if (!user) return <Navigate to="/login" replace />;
-  if (!cargando && cart.length === 0 && !pagando) return <Navigate to="/carrito" replace />;
+  // GET /cotizaciones/{id}: la cotización con la que se compra
+  useEffect(() => {
+    if (!user || !idCotizacion) return undefined;
+    let activo = true;
 
-  const resumen = calcularTotales(cart);
-  const requiereDespacho = cart.some((item) => item.tipo === "producto");
-  const sinPrecio = cart.some((item) => item.precio === null);
+    setCargandoCotizacion(true);
+    setErrorCotizacion("");
+    obtenerCotizacion(idCotizacion)
+      .then((datos) => {
+        if (!activo) return;
+        // Stock: productos de los que ya no quedan las unidades cotizadas
+        const sinStock = datos.items.filter((i) => i.tipo === "producto" && i.stock != null && i.stock < i.quantity);
+
+        if (datos.status === "Comprada") {
+          setErrorCotizacion("Esta cotización ya fue utilizada en una compra.");
+        } else if (datos.status !== "Respondida" && datos.status !== "Aceptada") {
+          setErrorCotizacion("Solo puedes comprar con una cotización respondida o aceptada.");
+        } else if (new Date(`${datos.expirationDate}T23:59:59`) < new Date()) {
+          setErrorCotizacion("La cotización venció. Solicita una nueva.");
+        } else if (sinStock.length > 0) {
+          setErrorCotizacion(
+            `No hay stock suficiente: ${sinStock.map((i) => `${i.name} (cotizaste ${i.quantity}, quedan ${i.stock})`).join("; ")}.`,
+          );
+        } else {
+          setCotizacion(datos);
+        }
+      })
+      .catch((e) => activo && setErrorCotizacion(e.message))
+      .finally(() => activo && setCargandoCotizacion(false));
+
+    return () => {
+      activo = false;
+    };
+  }, [user, idCotizacion]);
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (!idCotizacion && !cargando && cart.length === 0 && !pagando) return <Navigate to="/carrito" replace />;
+
+  // Lo que se paga: los ítems de la cotización o los del carrito
+  const articulos = cotizacion
+    ? cotizacion.items.map((i) => ({
+        clave: `${i.tipo}-${i.id}`,
+        tipo: i.tipo,
+        id: i.id,
+        nombre: i.name,
+        vendedor: cotizacion.seller.name,
+        cantidad: i.quantity,
+        precio: i.unitPrice,
+        imagen: null,
+      }))
+    : cart;
+  const cargandoCompra = idCotizacion ? cargandoCotizacion : cargando;
+  const rutaVolver = idCotizacion ? "/mis-cotizaciones" : "/carrito";
+
+  const resumen = calcularTotales(articulos);
+  const requiereDespacho = articulos.some((item) => item.tipo === "producto");
+  const sinPrecio = articulos.some((item) => item.precio === null);
 
   const pagoValido =
     medioPago === "Tarjeta" ? /^\d{4}$/.test(ultimos4) : /^\d{4,9}$/.test(codigo);
   const direccionValida = !requiereDespacho || direccionId !== "";
-  const puedePagar = !cargando && !pagando && !sinPrecio && pagoValido && direccionValida;
+  const puedePagar = !cargandoCompra && !errorCotizacion && !pagando && !sinPrecio && pagoValido && direccionValida;
 
   const pagar = async () => {
     setPagando(true);
@@ -80,7 +139,8 @@ const ConfirmPurchaseScreen = () => {
       medioPago,
       requiereDespacho,
       id_direccion: requiereDespacho ? direccionId : null,
-      articulos: cart.map((item) => ({ tipo: item.tipo, id: item.id, cantidad: item.cantidad })),
+      cotizacion: idCotizacion,
+      articulos: articulos.map((item) => ({ tipo: item.tipo, id: item.id, cantidad: item.cantidad })),
       total: resumen.total,
     });
 
@@ -93,9 +153,14 @@ const ConfirmPurchaseScreen = () => {
         requieredespacho: requiereDespacho,
         id_direccion: requiereDespacho ? Number(direccionId) : null,
         nota: nota.trim() || null,
+        id_cotizacion: idCotizacion ? Number(idCotizacion) : null,
       });
-      clearCart(); // la API ya vació el carrito
-      mostrarToast("Compra realizada correctamente");
+      if (!idCotizacion) clearCart(); // la API ya vació el carrito (con una cotización no se toca)
+      mostrarToast(
+        cotizacion?.status === "Respondida"
+          ? "Cotización aceptada y compra realizada correctamente"
+          : "Compra realizada correctamente",
+      );
       navigate("/historial");
     } catch (e) {
       setError(e.message);
@@ -147,8 +212,8 @@ const ConfirmPurchaseScreen = () => {
         sx={{ maxWidth: 760, width: "calc(100% - 48px)", margin: "0 auto", padding: "32px 0 64px", display: "flex", flexDirection: "column", gap: 2 }}
       >
         <Breadcrumbs separator="›" sx={{ fontSize: 13 }}>
-          <Box component="span" onClick={() => navigate("/carrito")} sx={{ cursor: "pointer" }}>
-            Carrito
+          <Box component="span" onClick={() => navigate(rutaVolver)} sx={{ cursor: "pointer" }}>
+            {idCotizacion ? "Mis cotizaciones" : "Carrito"}
           </Box>
           <Box component="span" sx={{ color: ROJO }}>Confirmar compra</Box>
         </Breadcrumbs>
@@ -157,11 +222,30 @@ const ConfirmPurchaseScreen = () => {
           Confirmar compra
         </Box>
 
-        {cargando ? (
+        {cotizacion && (
+          <Box sx={{ fontSize: 13, color: "#555" }}>
+            {cotizacion.status === "Respondida"
+              ? `Al pagar aceptas la cotización #${cotizacion.id} y compras a los precios acordados con el vendedor.`
+              : `Compra con la cotización #${cotizacion.id}: pagas los precios acordados con el vendedor.`}
+          </Box>
+        )}
+
+        {cargandoCompra ? (
           <Box sx={{ color: "#666" }}>Cargando tu compra...</Box>
+        ) : errorCotizacion ? (
+          <>
+            <Box role="alert" sx={{ color: "#EF4444", fontSize: 14 }}>
+              {errorCotizacion}
+            </Box>
+            <Box>
+              <Button variant="outlined" onClick={() => navigate(rutaVolver)} sx={{ color: "#000", borderColor: "#000" }}>
+                Volver a mis cotizaciones
+              </Button>
+            </Box>
+          </>
         ) : (
           <>
-            <ConfirmPurchaseTable items={cart} />
+            <ConfirmPurchaseTable items={articulos} />
 
             <ConfirmPurchaseTools
               requiereDespacho={requiereDespacho}
@@ -203,11 +287,11 @@ const ConfirmPurchaseScreen = () => {
             <Box sx={{ display: "flex", gap: 3, marginTop: 1, flexWrap: "wrap" }}>
               <Button
                 variant="outlined"
-                onClick={() => navigate("/carrito")}
+                onClick={() => navigate(rutaVolver)}
                 disabled={pagando}
                 sx={{ width: 150, color: "#000", borderColor: "#000" }}
               >
-                Volver al carrito
+                {idCotizacion ? "Volver" : "Volver al carrito"}
               </Button>
               <Button
                 variant="contained"

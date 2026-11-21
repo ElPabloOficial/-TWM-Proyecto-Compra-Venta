@@ -17,6 +17,7 @@ const adaptar = (c) => ({
         name: i.nombre,
         unitPrice: i.precio,
         quantity: i.cantidad,
+        stock: i.stock ?? null, // unidades que quedan (solo productos, y solo en el detalle del cliente)
     })),
 });
 

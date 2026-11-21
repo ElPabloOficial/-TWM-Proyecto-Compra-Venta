@@ -69,6 +69,10 @@ public class VentasController : ControllerBase
         if (string.IsNullOrEmpty(rutCliente))
             return Unauthorized(new { success = false, message = "Usuario no autenticado." });
 
+        // Compra con una cotización aceptada: se paga lo cotizado y no se toca el carrito
+        if (dto.id_cotizacion.HasValue)
+            return await CrearVentaDesdeCotizacion(dto, rutCliente);
+
         // 1. Buscar el carrito del usuario (con la oferta y el vendedor de cada producto/servicio)
         var itemsProductos = await _context.crear3s
             .Include(c => c.id_productoNavigation).ThenInclude(p => p.id_ofertaNavigation)
@@ -242,6 +246,185 @@ public class VentasController : ControllerBase
     }
 
     
+
+    // Compra a partir de una cotización respondida o aceptada y vigente: se paga lo que quedó cotizado (ítems,
+    // cantidades y precios de Solicitar1 y Solicitar2) y no se usa ni se vacía el carrito. Comprar con una cotización
+    // "Respondida" la acepta en el mismo paso. Queda "Comprada" para que no se pueda usar dos veces.
+    private async Task<IActionResult> CrearVentaDesdeCotizacion(VentaCreateDto dto, string rutCliente)
+    {
+        var cot = await _context.cotizacions
+            .Include(c => c.solicitar1s).ThenInclude(s => s.id_productoNavigation).ThenInclude(p => p.ofrecer1s)
+            .Include(c => c.solicitar2s).ThenInclude(s => s.id_servicioNavigation)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(c => c.id == dto.id_cotizacion!.Value);
+
+        var productos = cot?.solicitar1s.Where(s => s.id_usuario == rutCliente).ToList() ?? new List<solicitar1>();
+        var servicios = cot?.solicitar2s.Where(s => s.id_usuario == rutCliente).ToList() ?? new List<solicitar2>();
+
+        // Solo el cliente que la pidió puede comprarla (a los demás se les responde como si no existiera)
+        if (cot == null || (productos.Count == 0 && servicios.Count == 0))
+            return NotFound(new { success = false, message = "Cotización no encontrada." });
+
+        if (cot.estado == "Comprada")
+            return BadRequest(new { success = false, message = "Esta cotización ya fue utilizada en una compra." });
+        if (cot.estado != "Respondida" && cot.estado != "Aprobada" && cot.estado != "Aceptada")
+            return BadRequest(new { success = false, message = "Solo puedes comprar con una cotización respondida o aceptada." });
+
+        // La cotización vale 15 días desde que se respondió o se aceptó
+        var hoyFecha = DateOnly.FromDateTime(DateTime.Today);
+        if (hoyFecha > (cot.fechaultimaactualizacion ?? cot.fechacreacion).AddDays(15))
+            return BadRequest(new { success = false, message = "La cotización venció. Solicita una nueva." });
+
+        if (productos.Any(p => p.precio <= 0) || servicios.Any(s => s.precio <= 0))
+            return BadRequest(new { success = false, message = "La cotización tiene ítems sin precio. Solicita una nueva." });
+
+        // Stock: el de un producto es la suma de Almacenar en todos los inventarios, igual que lo descuentan los
+        // triggers al pagar. Se revisa antes para avisar con un mensaje claro (los servicios no tienen stock).
+        var idsProductos = productos.Select(p => p.id_producto).ToList();
+        var stockPorProducto = await _context.almacenars
+            .AsNoTracking()
+            .Where(a => idsProductos.Contains(a.id_producto))
+            .GroupBy(a => a.id_producto)
+            .Select(g => new { id = g.Key, total = g.Sum(a => a.stockactual) })
+            .ToListAsync();
+
+        var sinStock = productos
+            .Select(p => new
+            {
+                nombre = p.id_productoNavigation.nombre,
+                pedido = p.cantidad,
+                disponible = stockPorProducto.FirstOrDefault(s => s.id == p.id_producto)?.total ?? 0
+            })
+            .Where(x => x.disponible < x.pedido)
+            .ToList();
+
+        if (sinStock.Count > 0)
+            return BadRequest(new
+            {
+                success = false,
+                message = "No hay stock suficiente: "
+                    + string.Join("; ", sinStock.Select(x => $"«{x.nombre}» (cotizaste {x.pedido}, quedan {x.disponible})"))
+                    + "."
+            });
+
+        // Restricción de edad (igual que con el carrito)
+        var tieneRestriccion = productos.Any(p => p.id_productoNavigation.restriccionedad == true)
+                               || servicios.Any(s => s.id_servicioNavigation.restriccionedad == true);
+        if (tieneRestriccion)
+        {
+            var cliente = await _context.usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.rut == rutCliente);
+            var edad = 0;
+            if (cliente?.fechanacimiento is DateOnly nac)
+            {
+                edad = hoyFecha.Year - nac.Year;
+                if (hoyFecha < nac.AddYears(edad)) edad--;
+            }
+            if (edad < 18)
+                return BadRequest(new { success = false, message = "Esta cotización incluye productos o servicios solo para mayores de 18 años." });
+        }
+
+        // El vendedor es el oferente de la cotización (servicios) o quien ofrece el producto
+        string? vendedor = servicios.Select(s => s.id_oferente).FirstOrDefault();
+        if (vendedor == null)
+            vendedor = productos.Select(p => p.id_productoNavigation.ofrecer1s.FirstOrDefault()?.id_usuario).FirstOrDefault(v => v != null);
+        if (string.IsNullOrEmpty(vendedor))
+            return BadRequest(new { success = false, message = "La cotización no tiene un vendedor asignado." });
+        if (vendedor == rutCliente)
+            return BadRequest(new { success = false, message = "No puedes comprar tus propios productos o servicios." });
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+
+        try
+        {
+            int netoTotal = productos.Sum(p => p.precio * p.cantidad) + servicios.Sum(s => s.precio * s.cantidad);
+
+            var nuevoPago = new pago
+            {
+                mediopago = dto.mediopago,
+                ult4digitostarjeta = dto.ult4digitostarjeta,
+                codigotransferencia = dto.codigotransferencia
+            };
+            _context.pagos.Add(nuevoPago);
+            await _context.SaveChangesAsync();
+
+            var nuevaVenta = new ventum
+            {
+                neto = netoTotal,
+                iva = 0.19m,
+                fecha = DateTime.Today,
+                requieredespacho = dto.requieredespacho,
+                estado = "Pagado",
+                id_vendedor = vendedor,
+                id_cliente = rutCliente,
+                nota = dto.nota
+            };
+            _context.venta.Add(nuevaVenta);
+            await _context.SaveChangesAsync();
+
+            foreach (var item in productos)
+            {
+                _context.generar3s.Add(new generar3
+                {
+                    id_venta = nuevaVenta.id,
+                    id_producto = item.id_producto,
+                    cantidad = item.cantidad,
+                    totalfinal = item.precio * item.cantidad,
+                    id_pago = nuevoPago.id
+                });
+            }
+
+            foreach (var item in servicios)
+            {
+                _context.generar4s.Add(new generar4
+                {
+                    id_venta = nuevaVenta.id,
+                    id_servicio = item.id_servicio,
+                    cantidad = item.cantidad,
+                    totalfinal = item.precio * item.cantidad,
+                    id_pago = nuevoPago.id
+                });
+            }
+
+            if (dto.requieredespacho && dto.id_direccion.HasValue)
+            {
+                var nuevoDespacho = new despacho
+                {
+                    estado = "En Preparación",
+                    id_direccion = dto.id_direccion.Value,
+                    datoslogisticos = "{}"
+                };
+                _context.despachos.Add(nuevoDespacho);
+                await _context.SaveChangesAsync();
+
+                _context.generar2s.Add(new generar2
+                {
+                    id_usuario = rutCliente,
+                    id_despacho = nuevoDespacho.id,
+                    id_venta = nuevaVenta.id
+                });
+            }
+
+            // La cotización ya se usó
+            cot.estado = "Comprada";
+            cot.fechaultimaactualizacion = hoyFecha;
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Venta realizada con éxito.",
+                data = new { id_venta = nuevaVenta.id, total_pagado = netoTotal + (netoTotal * 0.19m) },
+                errors = (object?)null
+            });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            return StatusCode(500, new { success = false, message = "Error al procesar la venta.", errors = new[] { ex.InnerException?.Message ?? ex.Message } });
+        }
+    }
 
     // GET: api/ventas/mis-compras (Cliente)
     [HttpGet("mis-compras")]

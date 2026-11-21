@@ -91,6 +91,13 @@ const QuoteDetailScreen = () => {
   const isExpired =
     quote.status === 'Expirada' || getRemainingDays(quote.expirationDate) < 0;
   const canAccept = quote.status === 'Respondida' && !isExpired;
+  const canBuy = quote.status === 'Aceptada' && !isExpired;
+  // Productos de los que ya no quedan las unidades cotizadas (el stock lo ve solo el cliente)
+  const sinStock = quote.items.filter(
+    (item) => item.tipo === 'producto' && item.stock != null && item.stock < item.quantity,
+  );
+  const hayProblemaDeStock = sinStock.length > 0;
+  const conStockVisible = ['Respondida', 'Aceptada'].includes(quote.status);
 
   // PUT /cotizaciones/{id}/aceptar
   const handleAccept = async () => {
@@ -130,7 +137,7 @@ const QuoteDetailScreen = () => {
 
         {accepted && (
           <Alert severity="success" className="quote-feedback">
-            Cotización aceptada exitosamente.
+            Cotización aceptada exitosamente. Ya puedes comprar con ella al valor acordado.
           </Alert>
         )}
 
@@ -191,7 +198,16 @@ const QuoteDetailScreen = () => {
               <tbody>
                 {quote.items.map((item) => (
                   <tr key={`${item.tipo}-${item.id}`}>
-                    <td>{item.name}</td>
+                    <td>
+                      {item.name}
+                      {conStockVisible && item.tipo === 'producto' && item.stock != null && (
+                        <span className={`quote-stock ${item.stock < item.quantity ? 'quote-stock-bajo' : ''}`}>
+                          {item.stock < item.quantity
+                            ? `Stock insuficiente (quedan ${item.stock})`
+                            : `${item.stock} en stock`}
+                        </span>
+                      )}
+                    </td>
                     <td>{item.unitPrice > 0 ? formatPrice(item.unitPrice) : 'Por cotizar'}</td>
                     <td>{item.quantity}</td>
                     <td className="quotes-total">
@@ -218,6 +234,13 @@ const QuoteDetailScreen = () => {
           </div>
         </section>
 
+        {conStockVisible && hayProblemaDeStock && (
+          <Alert severity="warning" className="quote-feedback">
+            No hay stock suficiente de {sinStock.map((item) => item.name).join(', ')}. No podrás comprar con esta
+            cotización hasta que el vendedor lo reponga.
+          </Alert>
+        )}
+
         <div className="quote-detail-actions">
           <Button
             variant="contained"
@@ -228,6 +251,31 @@ const QuoteDetailScreen = () => {
           >
             Aceptar cotización
           </Button>
+          {quote.status === 'Respondida' && (
+            <Button
+              variant="contained"
+              onClick={() => navigate(`/confirmarcompra?cotizacion=${quote.id}`)}
+              disabled={!canAccept || hayProblemaDeStock}
+              className="quote-accept-button"
+            >
+              Aceptar y comprar
+            </Button>
+          )}
+          {quote.status === 'Aceptada' && (
+            <Button
+              variant="contained"
+              onClick={() => navigate(`/confirmarcompra?cotizacion=${quote.id}`)}
+              disabled={!canBuy || hayProblemaDeStock}
+              className="quote-accept-button"
+            >
+              Comprar con esta cotización
+            </Button>
+          )}
+          {quote.status === 'Comprada' && (
+            <Button variant="contained" onClick={() => navigate('/historial')} className="quote-accept-button">
+              Ver mis compras
+            </Button>
+          )}
           <Button
             variant="outlined"
             onClick={() => window.print()}
@@ -243,7 +291,13 @@ const QuoteDetailScreen = () => {
           </Button>
         </div>
         <Alert severity="info" className="quote-action-note">
-          Solo puedes aceptar cotizaciones respondidas y que aún estén vigentes.
+          {quote.status === 'Aceptada'
+            ? 'Esta cotización está aceptada: puedes comprar al valor acordado mientras siga vigente.'
+            : quote.status === 'Comprada'
+              ? 'Ya compraste con esta cotización. Revisa tu pedido en Mis compras.'
+              : quote.status === 'Respondida'
+                ? 'Puedes aceptarla y comprar de una vez, o solo aceptarla y comprar más tarde mientras siga vigente.'
+                : 'Solo puedes aceptar cotizaciones respondidas y que aún estén vigentes.'}
         </Alert>
       </main>
     </div>

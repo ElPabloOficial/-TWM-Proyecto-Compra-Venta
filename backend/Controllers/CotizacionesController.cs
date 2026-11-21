@@ -44,6 +44,7 @@ public class CotizacionesController : ControllerBase
         "Solicitada" or "En Proceso" or "En revisión" => "Solicitada",
         "Respondida" or "Aprobada" => "Respondida",
         "Aceptada" => "Aceptada",
+        "Comprada" => "Comprada", // el cliente ya compró con ella (queda aceptada y usada)
         "Expirada" => "Expirada",
         "Rechazada" => "Rechazada",
         _ => "Solicitada"
@@ -87,14 +88,15 @@ public class CotizacionesController : ControllerBase
         || c.solicitar1s.Any(s => vendedores.Any(v => v.IdProducto == s.id_producto && v.Rut == rut));
 
     // Arma la cotización como la ve el front. Con soloVendedor, el vendedor ve únicamente sus ítems.
-    private static object Armar(cotizacion c, List<VendedorProducto> vendedores, string? soloVendedor, DateOnly hoy)
+    // Con `stock` (producto -> unidades disponibles) cada producto trae su stock; los servicios no tienen.
+    private static object Armar(cotizacion c, List<VendedorProducto> vendedores, string? soloVendedor, DateOnly hoy, Dictionary<int, int>? stock = null)
     {
         var productos = c.solicitar1s
             .Where(s => soloVendedor == null || vendedores.Any(v => v.IdProducto == s.id_producto && v.Rut == soloVendedor))
-            .Select(s => new { tipo = "producto", id = s.id_producto, nombre = s.id_productoNavigation.nombre, precio = s.precio, cantidad = s.cantidad });
+            .Select(s => new { tipo = "producto", id = s.id_producto, nombre = s.id_productoNavigation.nombre, precio = s.precio, cantidad = s.cantidad, stock = stock == null ? (int?)null : (int?)stock.GetValueOrDefault(s.id_producto) });
         var servicios = c.solicitar2s
             .Where(s => soloVendedor == null || s.id_oferente == soloVendedor)
-            .Select(s => new { tipo = "servicio", id = s.id_servicio, nombre = s.id_servicioNavigation.nombre, precio = s.precio, cantidad = s.cantidad });
+            .Select(s => new { tipo = "servicio", id = s.id_servicio, nombre = s.id_servicioNavigation.nombre, precio = s.precio, cantidad = s.cantidad, stock = (int?)null });
         var items = productos.Concat(servicios).OrderBy(i => i.nombre).ToList();
 
         var cliente = c.solicitar1s.Select(s => s.id_usuarioNavigation)
@@ -193,7 +195,21 @@ public class CotizacionesController : ControllerBase
             soloVendedor = rut;
         }
 
-        return Ok(new { success = true, message = "Cotización obtenida.", data = Armar(c, vendedores, soloVendedor, Hoy()), errors = (object?)null });
+        // El cliente ve cuánto stock queda de cada producto cotizado (para saber si puede comprar)
+        Dictionary<int, int>? stock = null;
+        if (soloVendedor == null)
+        {
+            var idsProductos = c.solicitar1s.Select(s => s.id_producto).ToList();
+            var totales = await _context.almacenars
+                .AsNoTracking()
+                .Where(a => idsProductos.Contains(a.id_producto))
+                .GroupBy(a => a.id_producto)
+                .Select(g => new { id = g.Key, total = g.Sum(a => a.stockactual) })
+                .ToListAsync();
+            stock = totales.ToDictionary(x => x.id, x => x.total);
+        }
+
+        return Ok(new { success = true, message = "Cotización obtenida.", data = Armar(c, vendedores, soloVendedor, Hoy(), stock), errors = (object?)null });
     }
 
     // POST: api/cotizaciones (Solicitar cotización)
