@@ -6,7 +6,9 @@ import { urlImagen } from "../../../services/cartService";
 const ROJO = "#EC3333";
 const formatearPrecio = (numero) => `$${numero.toLocaleString("es-CL")}`;
 
-const CatalogCard = ({ item, onVerDetalle, onAgregar }) => {
+// vista "lista": la tarjeta se muestra horizontal (imagen a la izquierda); en pantallas angostas vuelve a ser vertical
+const CatalogCard = ({ item, onVerDetalle, onAgregar, vista = "cuadricula" }) => {
+  const lista = vista === "lista";
   // Un producto con precio se agrega directo al carro. Un servicio se agenda (fecha y horario) en su ficha.
   const puedeAgregar = item.tipo === "producto" && item.precio != null && Boolean(onAgregar);
 
@@ -25,7 +27,7 @@ const CatalogCard = ({ item, onVerDetalle, onAgregar }) => {
         transition: "box-shadow 0.2s, transform 0.2s",
         "&:hover": { boxShadow: "0 4px 14px rgba(0,0,0,0.12)", transform: "translateY(-2px)" },
         display: "flex",
-        flexDirection: "column",
+        flexDirection: { xs: "column", sm: lista ? "row" : "column" },
         border: "1px solid #E0E0E0",
         borderRadius: 2,
         overflow: "hidden",
@@ -33,13 +35,21 @@ const CatalogCard = ({ item, onVerDetalle, onAgregar }) => {
       }}
     >
       {item.imagen ? (
-        <Box component="img" src={urlImagen(item.imagen)} alt={item.nombre} sx={{ width: "100%", height: 160, objectFit: "cover" }} />
+        <Box
+          component="img"
+          src={urlImagen(item.imagen)}
+          alt={item.nombre}
+          sx={{ width: { xs: "100%", sm: lista ? 220 : "100%" }, height: { xs: 160, sm: lista ? "auto" : 160 }, minHeight: lista ? { sm: 140 } : undefined, flexShrink: 0, objectFit: "cover" }}
+        />
       ) : (
-        <Box sx={{ width: "100%", height: 160, backgroundColor: "#E5E7EB" }} />
+        <Box
+          sx={{ width: { xs: "100%", sm: lista ? 220 : "100%" }, height: { xs: 160, sm: lista ? "auto" : 160 }, minHeight: lista ? { sm: 140 } : undefined, flexShrink: 0, backgroundColor: "#E5E7EB" }}
+        />
       )}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, padding: 1.5, flexGrow: 1 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {/* minHeight: sin comuna ni etiqueta la fila quedaba vacía y el título subía respecto de las otras tarjetas */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 20 }}>
           {item.etiqueta ? (
             <Chip label={item.etiqueta} size="small" sx={{ backgroundColor: ROJO, color: "#fff", fontSize: 11, height: 20 }} />
           ) : (
@@ -56,7 +66,7 @@ const CatalogCard = ({ item, onVerDetalle, onAgregar }) => {
             color: "#666",
             minHeight: 34,
             display: "-webkit-box",
-            WebkitLineClamp: 2,
+            WebkitLineClamp: lista ? 3 : 2,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}
