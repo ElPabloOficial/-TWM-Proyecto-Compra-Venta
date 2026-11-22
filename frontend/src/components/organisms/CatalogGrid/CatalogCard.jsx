@@ -1,13 +1,17 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import { urlImagen } from "../../../services/cartService";
 
 const ROJO = "#EC3333";
 const formatearPrecio = (numero) => `$${numero.toLocaleString("es-CL")}`;
 
 // vista "lista": la tarjeta se muestra horizontal (imagen a la izquierda); en pantallas angostas vuelve a ser vertical
-const CatalogCard = ({ item, onVerDetalle, onAgregar, vista = "cuadricula" }) => {
+// onGuardarEnLista (opcional): muestra un corazón sobre la imagen para guardar en una lista de deseos; `guardado` lo llena
+const CatalogCard = ({ item, onVerDetalle, onAgregar, onGuardarEnLista, guardado = false, vista = "cuadricula" }) => {
   const lista = vista === "lista";
   // Un producto con precio se agrega directo al carro. Un servicio se agenda (fecha y horario) en su ficha.
   const puedeAgregar = item.tipo === "producto" && item.precio != null && Boolean(onAgregar);
@@ -23,6 +27,7 @@ const CatalogCard = ({ item, onVerDetalle, onAgregar, vista = "cuadricula" }) =>
         if (e.key === "Enter" && e.target === e.currentTarget) onVerDetalle(item);
       }}
       sx={{
+        position: "relative",
         cursor: "pointer",
         transition: "box-shadow 0.2s, transform 0.2s",
         "&:hover": { boxShadow: "0 4px 14px rgba(0,0,0,0.12)", transform: "translateY(-2px)" },
@@ -45,6 +50,27 @@ const CatalogCard = ({ item, onVerDetalle, onAgregar, vista = "cuadricula" }) =>
         <Box
           sx={{ width: { xs: "100%", sm: lista ? 220 : "100%" }, height: { xs: 160, sm: lista ? "auto" : 160 }, minHeight: lista ? { sm: 140 } : undefined, flexShrink: 0, backgroundColor: "#E5E7EB" }}
         />
+      )}
+
+      {onGuardarEnLista && (
+        <IconButton
+          size="small"
+          aria-label={guardado ? `Editar listas de deseos de ${item.nombre}` : `Guardar ${item.nombre} en una lista de deseos`}
+          onClick={(e) => {
+            e.stopPropagation(); // el corazón no debe abrir también el detalle de la tarjeta
+            onGuardarEnLista(item);
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
+          sx={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            backgroundColor: "rgba(255,255,255,0.92)",
+            "&:hover": { backgroundColor: "#fff" },
+          }}
+        >
+          {guardado ? <FavoriteIcon fontSize="small" sx={{ color: ROJO }} /> : <FavoriteBorderIcon fontSize="small" />}
+        </IconButton>
       )}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, padding: 1.5, flexGrow: 1 }}>

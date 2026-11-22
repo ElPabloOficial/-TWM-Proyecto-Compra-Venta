@@ -6,6 +6,8 @@ const CatalogGrid = ({
   items,
   onVerDetalle,
   onAgregar,
+  onGuardarEnLista,
+  guardados, // Set con las claves ("producto-5") que ya están en alguna lista de deseos
   vista = "cuadricula",
   vacio = "No se encontraron resultados con esos filtros.",
 }) => {
@@ -35,6 +37,8 @@ const CatalogGrid = ({
           vista={vista}
           onVerDetalle={onVerDetalle}
           onAgregar={onAgregar}
+          onGuardarEnLista={onGuardarEnLista}
+          guardado={guardados?.has(item.clave) ?? false}
         />
       ))}
     </Box>

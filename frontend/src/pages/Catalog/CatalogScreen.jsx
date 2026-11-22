@@ -18,6 +18,8 @@ import { listarCatalogo, rutaDetalle } from "../../services/catalogService";
 import useCart from "../../context/useCart";
 import { useToast } from "../../context/ToastContext";
 import { listarCategorias } from "../../services/productService";
+import { obtenerMiWishlist } from "../../services/wishlistService";
+import AddToListDialog from "../../components/organisms/AddToListDialog/AddToListDialog";
 
 const POR_PAGINA = 12;
 
@@ -111,6 +113,13 @@ const CatalogScreen = () => {
   const estadoUrl = estadoParam === "oferta" ? "" : estadoParam;
   // /catalogo?q=texto viene de la barra de búsqueda del Header
   const busqueda = (params.get("q") ?? "").trim();
+  // El orden, el precio y la página también viven en la URL (?orden=&min=&max=&pagina=): al volver atrás desde una
+  // ficha el catálogo queda como estaba, y el enlace se puede compartir con los filtros puestos
+  const soloDigitos = (valor) => (valor ?? "").replace(/\D/g, "").slice(0, 9);
+  const ordenUrl = comparadores[params.get("orden")] ? params.get("orden") : "";
+  const precioMinUrl = soloDigitos(params.get("min"));
+  const precioMaxUrl = soloDigitos(params.get("max"));
+  const paginaUrl = Number(params.get("pagina")) || 1;
 
   const [items, setItems] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -120,8 +129,16 @@ const CatalogScreen = () => {
   const [intento, setIntento] = useState(0);
 
   // Los filtros se aplican apenas se cambian
-  const [filtros, setFiltros] = useState({ ...FILTROS_VACIOS, categoria: categoriaUrl, estado: estadoUrl, oferta: ofertaUrl });
-  const [pagina, setPagina] = useState(1);
+  const [filtros, setFiltros] = useState({
+    ...FILTROS_VACIOS,
+    categoria: categoriaUrl,
+    estado: estadoUrl,
+    oferta: ofertaUrl,
+    precioMin: precioMinUrl,
+    precioMax: precioMaxUrl,
+    orden: ordenUrl,
+  });
+  const [pagina, setPagina] = useState(paginaUrl);
   const [vista, setVista] = useState(leerVista);
   const claveUrl = `${categoriaUrl}|${estadoParam}|${params.get("oferta") ?? ""}|${busqueda}`;
   const [urlVista, setUrlVista] = useState(claveUrl);
@@ -165,28 +182,40 @@ const CatalogScreen = () => {
     setIntento((n) => n + 1);
   };
 
-  // La categoría, el tipo y las ofertas elegidos quedan en la URL, así volver a elegirlos en el Header siempre funciona.
-  // Solo "En oferta" (sin tipo) usa la forma ?estado=oferta, que es la que usa el Header.
-  const paramsDe = (f) => ({
+  // Los filtros y la página quedan en la URL, así volver a elegirlos en el Header siempre funciona y el catálogo
+  // recuerda dónde estabas. Solo "En oferta" (sin tipo) usa la forma ?estado=oferta, que es la que usa el Header.
+  const paramsDe = (f, paginaActual) => ({
     ...(f.categoria ? { categoria: f.categoria } : {}),
     ...(f.estado ? { estado: f.estado } : f.oferta ? { estado: "oferta" } : {}),
     ...(f.estado && f.oferta ? { oferta: "1" } : {}),
     ...(busqueda ? { q: busqueda } : {}),
+    ...(f.precioMin ? { min: f.precioMin } : {}),
+    ...(f.precioMax ? { max: f.precioMax } : {}),
+    ...(f.orden ? { orden: f.orden } : {}),
+    ...(paginaActual > 1 ? { pagina: String(paginaActual) } : {}),
   });
+
+  // La pantalla responde al instante; la URL se actualiza un instante después (sin llenar el historial ni
+  // escribir en la dirección una vez por cada número que se teclea en el precio)
+  useEffect(() => {
+    const nueva = paramsDe(filtros, pagina);
+    if (new URLSearchParams(nueva).toString() === params.toString()) return undefined;
+    const temporizador = setTimeout(() => setParams(nueva, { replace: true }), 250);
+    return () => clearTimeout(temporizador);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros, pagina, busqueda, params]);
 
   // Cada cambio se aplica al instante (puede cambiar varios campos a la vez, como el rango de precio)
   const cambiarFiltros = (cambios) => {
-    const nuevos = { ...filtros, ...cambios };
-    setFiltros(nuevos);
+    setFiltros({ ...filtros, ...cambios });
     setPagina(1);
-    setParams(paramsDe(nuevos));
   };
   const cambiarFiltro = (campo, valor) => cambiarFiltros({ [campo]: valor });
 
   const limpiarFiltros = () => {
     setFiltros(FILTROS_VACIOS);
     setPagina(1);
-    setParams({});
+    setParams({}, { replace: true });
   };
 
   const elegirRango = (id) => {
@@ -211,6 +240,61 @@ const CatalogScreen = () => {
   };
 
   const verDetalle = (item) => navigate(rutaDetalle(item));
+
+  // ---------- Lista de deseos: corazón en cada tarjeta ----------
+  // Claves ("producto-5") de lo que el usuario ya guardó en alguna lista, para dibujar el corazón lleno
+  const [guardados, setGuardados] = useState(() => new Set());
+  const [itemParaLista, setItemParaLista] = useState(null);
+  const rutUsuario = user?.rut ?? null;
+
+  useEffect(() => {
+    if (!rutUsuario) {
+      setGuardados(new Set());
+      return undefined;
+    }
+    let activo = true;
+
+    obtenerMiWishlist()
+      .then((wishlist) => {
+        if (!activo) return;
+        setGuardados(
+          new Set([
+            ...wishlist.productos.map((p) => `producto-${p.id}`),
+            ...wishlist.servicios.map((s) => `servicio-${s.id}`),
+          ])
+        );
+      })
+      .catch(() => {
+        /* sin la lista los corazones salen vacíos; guardar sigue funcionando */
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [rutUsuario]);
+
+  const abrirListas = (item) => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    setItemParaLista(item);
+  };
+
+  const alGuardarEnListas = ({ enAlguna, cantidad }) => {
+    if (!itemParaLista) return;
+    setGuardados((actuales) => {
+      const nuevos = new Set(actuales);
+      if (enAlguna) nuevos.add(itemParaLista.clave);
+      else nuevos.delete(itemParaLista.clave);
+      return nuevos;
+    });
+    mostrarToast(
+      cantidad === 0
+        ? `${itemParaLista.nombre} se quitó de tus listas de deseos`
+        : `${itemParaLista.nombre} se guardó en ${cantidad} ${cantidad === 1 ? "lista" : "listas"}`
+    );
+  };
 
   const agregarAlCarro = async (item) => {
     if (!user) {
@@ -454,6 +538,8 @@ const CatalogScreen = () => {
             vista={vista}
             onVerDetalle={verDetalle}
             onAgregar={agregarAlCarro}
+            onGuardarEnLista={abrirListas}
+            guardados={guardados}
             vacio={mensajeVacio}
           />
 
@@ -471,6 +557,14 @@ const CatalogScreen = () => {
         </>
       )}
       </Box>
+
+      <AddToListDialog
+        open={Boolean(itemParaLista)}
+        onClose={() => setItemParaLista(null)}
+        tipo={itemParaLista?.tipo ?? "producto"}
+        itemId={itemParaLista?.id}
+        onGuardado={alGuardarEnListas}
+      />
 
       <Footer />
     </>
