@@ -707,6 +707,9 @@ public class VentasController : ControllerBase
                 cliente = v.cliente,
                 direccion = v.despacho == null ? null : $"{v.despacho.calle} {v.despacho.numero}, {v.despacho.comuna}",
                 seguimiento = Seguimiento(logistica),
+                // Solo una venta que aún no se paga ('Pendiente') se puede cancelar: una 'Pagado' queda registrada
+                // y el trigger 18 de la base solo la deja pasar a 'Entregado'
+                puede_cancelar = string.Equals(v.estado.Trim(), "Pendiente", StringComparison.OrdinalIgnoreCase),
                 nota = v.nota,
                 neto = v.neto,
                 total = Math.Round(v.neto + v.neto * v.iva, MidpointRounding.AwayFromZero),
@@ -752,6 +755,14 @@ public class VentasController : ControllerBase
 
         if (nuevo == "cancelado" && actual != "pendiente" && actual != "preparacion")
             return BadRequest(new { success = false, message = "Solo se pueden cancelar pedidos pendientes o en preparación." });
+
+        // Trigger 18: una venta pagada no se puede modificar (solo pasar a Entregado). Se avisa antes de llegar a la base.
+        if (nuevo == "cancelado" && EstadosVentaConcretada.Contains(venta.estado))
+            return BadRequest(new
+            {
+                success = false,
+                message = "Una venta pagada no se puede cancelar: queda registrada y solo puede pasar a Entregado. Si el cliente la reclama, se gestiona como devolución."
+            });
 
         if (despacho == null && (nuevo == "preparacion" || nuevo == "enviado"))
             return BadRequest(new { success = false, message = "Este pedido no requiere despacho: solo puede quedar pendiente, entregado o cancelado." });
@@ -809,13 +820,20 @@ public class VentasController : ControllerBase
         {
             await transaction.RollbackAsync();
             // Los RAISE EXCEPTION de los triggers (p. ej. "Stock insuficiente...") vienen en la excepción interna
-            return Conflict(new { success = false, message = ex.InnerException?.Message ?? ex.Message });
+            return Conflict(new { success = false, message = MensajeDeBase(ex) });
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
             return StatusCode(500, new { success = false, message = "Error interno al actualizar el pedido.", errors = new[] { ex.InnerException?.Message ?? ex.Message } });
         }
+    }
+
+    // Los RAISE EXCEPTION de la base llegan como "P0001: mensaje"; al usuario solo le sirve el mensaje
+    private static string MensajeDeBase(Exception ex)
+    {
+        var texto = ex.InnerException?.Message ?? ex.Message;
+        return System.Text.RegularExpressions.Regex.Replace(texto, @"^[0-9A-Z]{5}:\s*", "");
     }
 
     // Suma de vuelta al inventario del vendedor las unidades de los productos de una venta cancelada

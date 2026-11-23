@@ -19,6 +19,7 @@ const adaptarPedido = (v) => ({
     estado: v.estado,
     seguimiento: v.seguimiento ?? '',
     requiereDespacho: Boolean(v.requiere_despacho),
+    puedeCancelar: Boolean(v.puede_cancelar), // solo las ventas aún no pagadas
     neto: Number(v.neto ?? 0),
     total: Number(v.total ?? 0), // neto + IVA
     items: (v.items ?? []).map((i) => ({

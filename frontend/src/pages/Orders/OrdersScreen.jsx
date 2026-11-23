@@ -13,6 +13,7 @@ import ListPageSkeleton from "../../components/organisms/ListPageSkeleton/ListPa
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import { soloCodigo } from "../../services/validaciones";
+import { useToast } from "../../context/ToastContext";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import { listarMisPedidos, actualizarEstadoPedido } from "../../services/orderService";
 import "../../styles/Inventory.css";
@@ -181,6 +182,7 @@ const OrdersScreen = () => {
   const [cargando, setCargando] = useState(true);
   // Esqueleto solo en la primera carga: si ya hay pedidos, se siguen mostrando mientras se actualiza
   const cargandoInicial = cargando && pedidos.length === 0;
+  const { mostrarToast } = useToast();
   const [error, setError] = useState("");
   // Si la API falló y no hay nada que mostrar, solo se ve el aviso de error (sin tarjetas en cero)
   const sinDatosPorError = Boolean(error) && pedidos.length === 0;
@@ -223,7 +225,7 @@ const OrdersScreen = () => {
       await actualizarEstadoPedido({ id: pedidoACancelar.id, estado: "cancelado" });
       await recargar({ silencioso: true });
     } catch (e) {
-      alert(e.message);
+      mostrarToast(e.message, "error");
     }
     setPedidoACancelar(null);
   };
@@ -356,7 +358,10 @@ const OrdersScreen = () => {
 
               {visibles.map((p) => {
                 const puedeActualizar = ["pendiente", "preparacion", "enviado"].includes(p.estado);
-                const puedeCancelar = ["pendiente", "preparacion"].includes(p.estado);
+                // Cancelar solo aplica a pedidos que aún no se pagan: una venta pagada queda registrada y la base
+                // solo la deja pasar a Entregado, así que un reclamo se gestiona como devolución
+                const cancelable = ["pendiente", "preparacion"].includes(p.estado);
+                const puedeCancelar = cancelable && p.puedeCancelar;
                 const unidades = p.items.reduce((acc, i) => acc + i.cantidad, 0);
 
                 return (
@@ -382,17 +387,20 @@ const OrdersScreen = () => {
                           <EditIcon fontSize="small" />
                         </button>
                       )}
-                      {puedeCancelar && (
+                      {cancelable && (
                         <button
                           type="button"
                           className="inv-icon-btn"
                           onClick={() => setPedidoACancelar(p)}
+                          disabled={!puedeCancelar}
+                          title={puedeCancelar ? undefined : "Una venta pagada no se puede cancelar: se gestiona como devolución"}
+                          style={puedeCancelar ? undefined : { opacity: 0.35, cursor: "not-allowed" }}
                           aria-label="Cancelar pedido"
                         >
                           <DeleteOutlineIcon fontSize="small" />
                         </button>
                       )}
-                      {!puedeActualizar && !puedeCancelar && "-"}
+                      {!puedeActualizar && !cancelable && "-"}
                     </td>
                   </tr>
                 );
