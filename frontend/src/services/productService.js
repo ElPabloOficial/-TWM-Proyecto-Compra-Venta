@@ -61,12 +61,17 @@ export async function listarCategorias() {
 
 // ---------- De la pantalla a la API ----------
 
-const armarCaracteristicas = (datos) => ({
-    ...(datos._caracteristicas ?? { visibilidad: 'Activo' }),
-    sku: datos.sku,
-    descripcion: datos.descripcion,
-    precio: datos.precio,
-});
+// "descripcion" solo va en el JSON si el producto tiene una; si está vacía, se omite la clave
+const armarCaracteristicas = (datos) => {
+    const { descripcion: _anterior, ...resto } = datos._caracteristicas ?? { visibilidad: 'Activo' };
+    const descripcion = (datos.descripcion ?? '').trim();
+    return {
+        ...resto,
+        sku: datos.sku,
+        ...(descripcion ? { descripcion } : {}),
+        precio: datos.precio,
+    };
+};
 
 const armarProducto = (datos) => ({
     nombre: datos.nombre,

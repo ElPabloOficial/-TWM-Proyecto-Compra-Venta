@@ -230,3 +230,8 @@
   gap: 8px;
   margin-top: 24px;
 }
+/* ---------- Características (varían según el producto) ---------- */
+.addp-carac { display: flex; flex-direction: column; gap: 10px; }
+.addp-carac-fila { display: grid; grid-template-columns: 1fr 1fr 36px; gap: 10px; align-items: center; }
+.addp-carac-vacio { font-size: 13px; color: #777; }
+@media (max-width: 700px) { .addp-carac-fila { grid-template-columns: 1fr 1fr 36px; } }

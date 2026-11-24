@@ -1,7 +1,7 @@
 import { Box } from "@mui/material";
 
 // Claves del JSON "caracteristicas" que no son características del producto (se usan en otra parte de la ficha)
-const CLAVES_OCULTAS = ["descripcion", "precio", "visibilidad", "stock"];
+export const CLAVES_OCULTAS = ["descripcion", "precio", "visibilidad", "stock"];
 
 // Orden en que se muestran; las que no están aquí van después, en el orden en que vengan
 const ORDEN = [
@@ -10,7 +10,7 @@ const ORDEN = [
 ];
 
 // Nombre legible de cada clave (sin el sufijo de unidad: "alto_cm" se busca como "alto")
-const NOMBRES = {
+export const NOMBRES = {
   color: "Color",
   material: "Material",
   talla: "Talla",
@@ -32,13 +32,13 @@ const NOMBRES = {
 
 const UNIDADES = { cm: "cm", kg: "kg", g: "g", gb: "GB", mb: "MB" };
 
-const humanizar = (texto) => {
+export const humanizar = (texto) => {
   const limpio = texto.replace(/_/g, " ").trim();
   return limpio.charAt(0).toUpperCase() + limpio.slice(1);
 };
 
 // "alto_cm" -> { base: "alto", unidad: "cm" }
-const separarUnidad = (clave) => {
+export const separarUnidad = (clave) => {
   const coincidencia = clave.match(/^(.*)_(cm|kg|g|gb|mb)$/i);
   return coincidencia
     ? { base: coincidencia[1], unidad: UNIDADES[coincidencia[2].toLowerCase()] }

@@ -2,6 +2,10 @@ import { useState } from "react";
 import CustomButton from "../../atoms/Button/CustomButton";
 import ImageUpload from "../../molecules/ImageUpload/ImageUpload";
 import DateField from "../../atoms/DateField/DateField";
+import CaracteristicasEditor, {
+  caracteristicasAFilas,
+  filasACaracteristicas,
+} from "../../molecules/CaracteristicasEditor/CaracteristicasEditor";
 import { soloDigitos, soloPorcentaje, soloCodigo } from "../../../services/validaciones";
 
 const inicial = {
@@ -13,6 +17,9 @@ const inicial = {
   stock: "",
   imagen: null,
   restriccionEdad: false,
+  peso: "",
+  alto: "",
+  ancho: "",
   oferta: 0,
   ofertaInicio: "",
   ofertaFin: "",
@@ -21,7 +28,22 @@ const inicial = {
 // Si recibe "producto", el formulario se abre con sus datos (modo edición).
 const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }) => {
   const editando = Boolean(producto);
-  const [form, setForm] = useState(producto ? { ...inicial, ...producto } : inicial);
+  // Peso (g), alto y ancho (cm) viven en el JSON de características y son obligatorios (cálculo del envío)
+  const [form, setForm] = useState(() => {
+    if (!producto) return inicial;
+    const c = producto._caracteristicas ?? {};
+    return {
+      ...inicial,
+      ...producto,
+      peso: c.peso != null ? String(c.peso) : "",
+      alto: c.alto_cm != null ? String(c.alto_cm) : "",
+      ancho: c.ancho_cm != null ? String(c.ancho_cm) : "",
+    };
+  });
+  // Las características cambian de un producto a otro: se editan como filas "nombre / valor / unidad"
+  const [filasCarac, setFilasCarac] = useState(() =>
+    caracteristicasAFilas(producto?._caracteristicas)
+  );
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
@@ -56,6 +78,11 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
       return;
     }
 
+    if (!(Number(form.peso) > 0) || !(Number(form.alto) > 0) || !(Number(form.ancho) > 0)) {
+      setError("El peso, el alto y el ancho son obligatorios y deben ser mayores a 0 (se usan para calcular el envío).");
+      return;
+    }
+
     const oferta = editando ? Number(form.oferta || 0) : 0;
     if (oferta < 0 || oferta > 100) {
       setError("La oferta debe estar entre 0 y 100.");
@@ -83,6 +110,12 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
       oferta,
       ofertaInicio: oferta > 0 ? form.ofertaInicio : "",
       ofertaFin: oferta > 0 ? form.ofertaFin : "",
+      _caracteristicas: {
+        ...filasACaracteristicas(filasCarac, producto?._caracteristicas),
+        peso: Number(form.peso),
+        alto_cm: Number(form.alto),
+        ancho_cm: Number(form.ancho),
+      },
     };
     console.log(
       `[ProductForm] handleGuardar() - ${editando ? "ACTUALIZAR" : "CREAR"} producto:`,
@@ -198,6 +231,37 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
           />
         </div>
       </div>
+
+      <div className="addp-section-title">Peso y medidas</div>
+      <div className="addp-section-desc">
+        Obligatorios: se usan para calcular el costo de envío.
+      </div>
+      <div className="addp-row">
+        {[
+          ["peso", "Peso (g)", 7],
+          ["alto", "Alto (cm)", 4],
+          ["ancho", "Ancho (cm)", 4],
+        ].map(([campo, etiqueta, max]) => (
+          <div className="addp-field" key={campo}>
+            <label className="addp-label" htmlFor={campo}>{etiqueta}</label>
+            <input
+              id={campo}
+              className="addp-input"
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={form[campo]}
+              onChange={cambiarFiltrado(campo, (t) => soloDigitos(t, max))}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="addp-section-title">Otras características</div>
+      <div className="addp-section-desc">
+        Detalles propios de este producto (color, material, garantía, etc.). Agrega o quita las que correspondan.
+      </div>
+      <CaracteristicasEditor filas={filasCarac} onChange={setFilasCarac} />
 
       <div className="addp-subtitle">Imagen del Producto</div>
       <ImageUpload
