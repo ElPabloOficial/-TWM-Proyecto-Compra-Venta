@@ -1,7 +1,7 @@
 /* Página  */
 .addp-page {
   min-height: 100vh;
-  background: #fff;
+  background: #f4f4f4;
 }
 
 .addp-content {
@@ -13,7 +13,7 @@
 
 .addp-top {
   width: 100%;
-  max-width: 680px;
+  max-width: 820px;
 }
 
 .addp-breadcrumb {
@@ -47,11 +47,13 @@
 
 /*Tarjeta del formulario  */
 .addp-card {
-  background: #f4f4f4;
-  padding: 24px;
-  max-width: 680px;
+  background: #fff;
+  padding: 24px 36px 32px;
+  max-width: 820px;
   width: 100%;
   box-sizing: border-box;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .addp-section-title {
@@ -103,11 +105,12 @@
 .addp-input {
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 14px;
+  padding: 10px 16px;
   border: 1px solid #333;
   border-radius: 999px;
   background: #fffafa;
-  font-size: 13px;
+  font-size: 0.8rem;
+  transition: box-shadow 0.15s ease;
 }
 
 .addp-input:focus {
@@ -153,6 +156,7 @@
   box-sizing: border-box;
   cursor: pointer;
   overflow: hidden;
+  border-radius: 20px;
 }
 
 .addp-upload.arrastrando {
