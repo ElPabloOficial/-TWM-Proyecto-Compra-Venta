@@ -1,0 +1,39 @@
+DO $$
+DECLARE
+    r    RECORD;
+    seq  text;
+    mx   bigint;
+BEGIN
+    FOR r IN
+        SELECT c.table_schema, c.table_name, c.column_name
+        FROM information_schema.columns c
+        WHERE c.table_schema = 'public'
+          AND (c.is_identity = 'YES' OR c.column_default LIKE 'nextval%')
+    LOOP
+        -- pg_get_serial_sequence parsea el string como identificador,
+        -- así que hay que pasarlo ya entrecomillado correctamente.
+        seq := pg_get_serial_sequence(
+                   format('%I.%I', r.table_schema, r.table_name),
+                   r.column_name);
+
+        IF seq IS NULL THEN
+            RAISE NOTICE 'Sin secuencia asociada a %.% (se omite)',
+                         r.table_name, r.column_name;
+            CONTINUE;
+        END IF;
+
+        -- MAX para secuencias ascendentes. Si algún día hay descendentes,
+        -- aquí iría MIN según pg_sequence.seqincrement.
+        EXECUTE format('SELECT MAX(%I) FROM %I.%I',
+                       r.column_name, r.table_schema, r.table_name)
+           INTO mx;
+
+        -- Si la tabla está vacía: setval(seq, 1, false) → próximo = 1
+        -- Si no:                 setval(seq, mx, true) → próximo = mx+1
+        PERFORM setval(seq, COALESCE(mx, 1), mx IS NOT NULL);
+
+        RAISE NOTICE 'Contador de %.% ajustado a % (próximo %)',
+                     r.table_name, r.column_name,
+                     COALESCE(mx, 1), COALESCE(mx, 0) + 1;
+    END LOOP;
+END $$;
