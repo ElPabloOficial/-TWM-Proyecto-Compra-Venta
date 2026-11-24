@@ -8,13 +8,13 @@ import {
   obtenerDirecciones,
   crearDireccion,
   actualizarDireccion,
+  eliminarDireccion,
   obtenerComunas,
 } from "../../services/addressService";
 import "../../styles/Addresses.css";
 
 // Direcciones de despacho del usuario, guardadas en la base de datos.
-// - La primera dirección que se guarda es la principal (la misma que se edita en el perfil).
-// - Se pueden crear y editar, pero no eliminar (permisos del rol Cliente).
+// - Se pueden crear, editar y eliminar.
 // - La región y la provincia salen de la comuna: se elige la región y después una de sus comunas.
 
 const formVacio = {
@@ -43,6 +43,8 @@ const AddressesScreen = () => {
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState("");
+  const [eliminandoId, setEliminandoId] = useState(null);
+  const [errorEliminar, setErrorEliminar] = useState("");
   const formRef = useRef(null);
 
   const editando = editandoId !== null;
@@ -162,6 +164,24 @@ const AddressesScreen = () => {
     }
   };
 
+  const eliminar = async (d) => {
+    if (!window.confirm(`¿Eliminar la dirección ${d.calle} ${d.numero}?`)) return;
+    try {
+      setEliminandoId(d.id);
+      setAviso("");
+      setErrorEliminar("");
+      await eliminarDireccion(d.id);
+      if (editandoId === d.id) cerrarForm();
+      setAviso("Dirección eliminada.");
+      setVersion((n) => n + 1);
+    } catch (err) {
+      setAviso("");
+      setErrorEliminar(err.message);
+    } finally {
+      setEliminandoId(null);
+    }
+  };
+
   if (!haySesion) return <Navigate to="/login" replace />;
 
   return (
@@ -174,8 +194,7 @@ const AddressesScreen = () => {
             <div>
               <h1 className="dir-title">Mis direcciones</h1>
               <div className="dir-subtitle">
-                Guarda tus direcciones de despacho para comprar más rápido. La primera que guardes es tu dirección
-                principal.
+                Guarda tus direcciones de despacho para comprar más rápido.
               </div>
             </div>
 
@@ -185,6 +204,7 @@ const AddressesScreen = () => {
           </div>
 
           {aviso && <div className="dir-ok">{aviso}</div>}
+          {errorEliminar && <div className="dir-error">{errorEliminar}</div>}
 
           {/* ---------- Formulario: crear o editar ---------- */}
           {mostrarForm && (
@@ -308,14 +328,13 @@ const AddressesScreen = () => {
             <div className="dir-lista">
               {direcciones.length === 0 && <div className="dir-vacio">Aún no tienes direcciones guardadas.</div>}
 
-              {direcciones.map((d, i) => (
-                <article key={d.id} className={`dir-card ${i === 0 ? "principal" : ""}`}>
+              {direcciones.map((d) => (
+                <article key={d.id} className="dir-card">
                   <div className="dir-card-head">
                     <div className="dir-alias">
                       <LocationOnIcon fontSize="small" />
                       {d.calle} {d.numero}
                     </div>
-                    {i === 0 && <span className="dir-badge">Principal</span>}
                   </div>
 
                   {(d.pasaje || d.sector) && (
@@ -327,6 +346,14 @@ const AddressesScreen = () => {
                   <div className="dir-acciones">
                     <button type="button" className="dir-link" onClick={() => abrirEditar(d)}>
                       Editar
+                    </button>
+                    <button
+                      type="button"
+                      className="dir-link"
+                      onClick={() => eliminar(d)}
+                      disabled={eliminandoId === d.id}
+                    >
+                      {eliminandoId === d.id ? "Eliminando..." : "Eliminar"}
                     </button>
                   </div>
                 </article>

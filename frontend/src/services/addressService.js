@@ -1,10 +1,10 @@
 // src/services/addressService.js
 //
 // Direcciones de despacho del usuario (API: /direcciones) y la lista de comunas (/comunas).
-//   GET  /direcciones        -> mis direcciones (la primera es la principal)
+//   GET  /direcciones        -> mis direcciones
 //   POST /direcciones        -> crea una dirección y la vincula al usuario
 //   PUT  /direcciones/{id}   -> actualiza una de mis direcciones
-// El cliente no puede eliminar direcciones (permisos del rol Cliente: Perfil y Direcciones).
+//   DELETE /direcciones/{id} -> elimina una de mis direcciones
 
 import { pedir } from './apiClient';
 
@@ -40,6 +40,10 @@ export async function crearDireccion(form) {
 
 export async function actualizarDireccion(id, form) {
     await pedir(`/direcciones/${id}`, { method: 'PUT', body: aCuerpo(form) });
+}
+
+export async function eliminarDireccion(id) {
+    await pedir(`/direcciones/${id}`, { method: 'DELETE' });
 }
 
 // [{ id, nombre, provincia, region }]
