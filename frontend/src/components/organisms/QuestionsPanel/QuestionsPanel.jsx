@@ -11,7 +11,7 @@ import { useState } from "react";
 //
 //   ahora                       -> hora actual en milisegundos (la pantalla la fija una sola vez)
 //   onResponder(id, texto)      -> el vendedor publicó su respuesta
-//   onVerProducto(productoId)   -> botón opcional "Ver producto"
+//   onVerProducto(productoId, pregunta) -> botón opcional "Ver producto"
 
 const LIMITE_HORAS = 48; // pasado este plazo sin respuesta, la pregunta se marca con alerta
 const MAX_CARACTERES = 200; // largo máximo de Preguntas.Respuesta en la base de datos
@@ -179,7 +179,7 @@ const QuestionsPanel = ({ preguntas, rol, ahora, onResponder, onVerProducto }) =
             )}
 
             {onVerProducto && (
-              <button type="button" className="msg-link" onClick={() => onVerProducto(p.productoId)}>
+              <button type="button" className="msg-link" onClick={() => onVerProducto(p.productoId, p)}>
                 Ver producto
               </button>
             )}

@@ -1,12 +1,4 @@
-// src/services/adminService.js
-//
-// Servicios del panel de administración: usuarios (API real) y estadísticas (datos de ejemplo).
-//
-// Estadísticas del panel de administración.
-// TEMPORAL: la API todavía no tiene un endpoint de estadísticas (AdminController solo
-// entrega usuarios, reseñas, mensajes y devoluciones). Mientras tanto se usan datos de
-// ejemplo; al crearlo (p. ej. GET /admin/estadisticas), solo hay que cambiar esta función
-// por: return pedir('/admin/estadisticas');
+// Servicios del panel de administración: usuarios y estadísticas.
 
 import { pedir } from './apiClient';
 

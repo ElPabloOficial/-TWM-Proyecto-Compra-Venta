@@ -199,9 +199,14 @@ export default function ProductInfo({
             flexWrap: "wrap",
           }}
         >
-          <Box sx={{ color: "#F5B400" }}>★★★★★</Box>
+          <Box sx={{ color: "#F5B400" }}>
+            {"★".repeat(Math.round(product.rating || 0))}
+            <Box component="span" sx={{ color: "#ccc" }}>
+              {"★".repeat(5 - Math.round(product.rating || 0))}
+            </Box>
+          </Box>
 
-          <Box>{product.rating}</Box>
+          <Box>{Number(product.rating || 0).toFixed(1)}</Box>
 
           <Box sx={{ color: "#777", fontSize: 12 }}>
             ({product.cantidadResenas} reseñas de clientes)

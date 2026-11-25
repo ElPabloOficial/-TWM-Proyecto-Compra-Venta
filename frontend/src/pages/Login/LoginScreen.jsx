@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import LoginTemplate from "../../components/templates/LoginTemplate/LoginTemplate";
@@ -9,8 +10,10 @@ import "../../styles/Login.css";
 
 const LoginScreen = () => {
   const navigate = useNavigate();
+  const [errorLogin, setErrorLogin] = useState("");
 
   const handleLogin = async (data) => {
+    setErrorLogin("");
     try {
       // La contraseña nunca se imprime: solo se confirma que se capturó
       console.log("[LoginScreen] handleLogin():", { rut: data.rut, password: "[oculta]", remember: data.remember });
@@ -28,14 +31,14 @@ const LoginScreen = () => {
 
     } catch (error) {
       console.error("[LoginScreen] Inicio fallido:", error.message);
-      alert(error.message || "Ocurrió un error al iniciar sesión");
+      setErrorLogin(error.message || "Ocurrió un error al iniciar sesión");
     }
   };
 
   return (
     <LoginTemplate
       brand={<LoginBrand />}
-      form={<LoginForm onSubmit={handleLogin} />}
+      form={<LoginForm onSubmit={handleLogin} error={errorLogin} />}
     />
   );
 };

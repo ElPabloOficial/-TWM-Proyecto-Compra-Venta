@@ -77,147 +77,155 @@ public class CatalogoController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetCatalogo()
     {
-        var hoy = DateOnly.FromDateTime(DateTime.Today);
-
-        // ---------- Datos de la base ----------
-        var productosDb = await _context.productos
-            .AsNoTracking()
-            .Select(p => new
-            {
-                p.id,
-                p.nombre,
-                p.restriccionedad,
-                p.caracteristicas,
-                imagen = p.rutaimagen,
-                p.fechainicio,
-                p.fechafin,
-                ofertaActiva = p.id_ofertaNavigation != null && p.id_ofertaNavigation.estado == true,
-                descuento = p.id_ofertaNavigation != null ? (decimal?)p.id_ofertaNavigation.preciooferta : null,
-                categorias = p.id_categoria.Select(c => new { c.id, c.nombre }).ToList()
-            })
-            .ToListAsync();
-
-        var serviciosDb = await _context.servicios
-            .AsNoTracking()
-            .Select(s => new
-            {
-                s.id,
-                s.nombre,
-                s.restriccionedad,
-                s.caracteristicas,
-                imagen = s.rutaimagen,
-                categorias = s.id_categoria.Select(c => new { c.id, c.nombre }).ToList()
-            })
-            .ToListAsync();
-
-        var vendedoresProducto = await _context.ofrecer1s
-            .AsNoTracking()
-            .Select(o => new { o.id_producto, rut = o.id_usuario, nombre = o.id_usuarioNavigation.nombre })
-            .ToListAsync();
-
-        var vendedoresServicio = await _context.ofrecer2s
-            .AsNoTracking()
-            .Select(o => new { o.id_servicio, rut = o.id_usuario, nombre = o.id_usuarioNavigation.nombre })
-            .ToListAsync();
-
-        var preciosServicio = await _context.valorars
-            .AsNoTracking()
-            .Select(v => new { v.id_servicio, v.id_usuario, v.precio })
-            .ToListAsync();
-
-        // Ubicación: comuna de la primera dirección de cada vendedor
-        var ruts = vendedoresProducto.Select(v => v.rut)
-            .Concat(vendedoresServicio.Select(v => v.rut))
-            .Distinct()
-            .ToList();
-
-        var direcciones = await _context.usuarios
-            .AsNoTracking()
-            .Where(u => ruts.Contains(u.rut))
-            .SelectMany(u => u.id_direccions, (u, d) => new { u.rut, d.id, comuna = d.id_comunaNavigation.nombre })
-            .ToListAsync();
-
-        var ubicacionPorRut = direcciones
-            .GroupBy(d => d.rut)
-            .ToDictionary(g => g.Key, g => g.OrderBy(d => d.id).First().comuna);
-
-        string? UbicacionDe(string? rut)
+        try
         {
-            if (rut == null) return null;
-            return ubicacionPorRut.TryGetValue(rut, out var comuna) ? comuna : null;
-        }
+            var hoy = DateOnly.FromDateTime(DateTime.Today);
 
-        // ---------- Productos ----------
-        var items = new List<object>();
+            // ---------- Datos de la base ----------
+            var productosDb = await _context.productos
+                .AsNoTracking()
+                .Select(p => new
+                {
+                    p.id,
+                    p.nombre,
+                    p.restriccionedad,
+                    p.caracteristicas,
+                    imagen = p.rutaimagen,
+                    p.fechainicio,
+                    p.fechafin,
+                    ofertaActiva = p.id_ofertaNavigation != null && p.id_ofertaNavigation.estado == true,
+                    descuento = p.id_ofertaNavigation != null ? (decimal?)p.id_ofertaNavigation.preciooferta : null,
+                    categorias = p.id_categoria.Select(c => new { c.id, c.nombre }).ToList()
+                })
+                .ToListAsync();
 
-        foreach (var p in productosDb)
-        {
-            var json = LeerJson(p.caracteristicas);
-            var precioBase = Numero(json, "precio");
+            var serviciosDb = await _context.servicios
+                .AsNoTracking()
+                .Select(s => new
+                {
+                    s.id,
+                    s.nombre,
+                    s.restriccionedad,
+                    s.caracteristicas,
+                    imagen = s.rutaimagen,
+                    categorias = s.id_categoria.Select(c => new { c.id, c.nombre }).ToList()
+                })
+                .ToListAsync();
 
-            var vigente = p.ofertaActiva
-                && (p.fechainicio == null || p.fechainicio <= hoy)
-                && (p.fechafin == null || hoy <= p.fechafin);
+            var vendedoresProducto = await _context.ofrecer1s
+                .AsNoTracking()
+                .Select(o => new { o.id_producto, rut = o.id_usuario, nombre = o.id_usuarioNavigation.nombre })
+                .ToListAsync();
 
-            decimal? descuento = vigente ? p.descuento : null;
+            var vendedoresServicio = await _context.ofrecer2s
+                .AsNoTracking()
+                .Select(o => new { o.id_servicio, rut = o.id_usuario, nombre = o.id_usuarioNavigation.nombre })
+                .ToListAsync();
 
-            int? precio = null;
-            int? precioAnterior = null;
-            if (precioBase != null)
+            var preciosServicio = await _context.valorars
+                .AsNoTracking()
+                .Select(v => new { v.id_servicio, v.id_usuario, v.precio })
+                .ToListAsync();
+
+            // Ubicación: comuna de la primera dirección de cada vendedor
+            var ruts = vendedoresProducto.Select(v => v.rut)
+                .Concat(vendedoresServicio.Select(v => v.rut))
+                .Distinct()
+                .ToList();
+
+            var direcciones = await _context.usuarios
+                .AsNoTracking()
+                .Where(u => ruts.Contains(u.rut))
+                .SelectMany(u => u.id_direccions, (u, d) => new { u.rut, d.id, comuna = d.id_comunaNavigation.nombre })
+                .ToListAsync();
+
+            var ubicacionPorRut = direcciones
+                .GroupBy(d => d.rut)
+                .ToDictionary(g => g.Key, g => g.OrderBy(d => d.id).First().comuna);
+
+            string? UbicacionDe(string? rut)
             {
-                precio = (int)Math.Round(precioBase.Value * (1 - (descuento ?? 0)), MidpointRounding.AwayFromZero);
-                if (descuento != null) precioAnterior = (int)Math.Round(precioBase.Value, MidpointRounding.AwayFromZero);
+                if (rut == null) return null;
+                return ubicacionPorRut.TryGetValue(rut, out var comuna) ? comuna : null;
             }
 
-            var vendedor = vendedoresProducto.FirstOrDefault(v => v.id_producto == p.id);
+            // ---------- Productos ----------
+            var items = new List<object>();
 
-            items.Add(new
+            foreach (var p in productosDb)
             {
-                tipo = "producto",
-                p.id,
-                p.nombre,
-                descripcion = Descripcion(json),
-                precio,
-                precio_anterior = precioAnterior,
-                descuento,
-                p.imagen,
-                p.restriccionedad,
-                p.categorias,
-                ubicacion = UbicacionDe(vendedor?.rut),
-                vendedor = vendedor == null ? null : new { vendedor.rut, vendedor.nombre }
-            });
-        }
+                var json = LeerJson(p.caracteristicas);
+                var precioBase = Numero(json, "precio");
 
-        // ---------- Servicios ----------
-        foreach (var s in serviciosDb)
+                var vigente = p.ofertaActiva
+                    && (p.fechainicio == null || p.fechainicio <= hoy)
+                    && (p.fechafin == null || hoy <= p.fechafin);
+
+                decimal? descuento = vigente ? p.descuento : null;
+
+                int? precio = null;
+                int? precioAnterior = null;
+                if (precioBase != null)
+                {
+                    precio = (int)Math.Round(precioBase.Value * (1 - (descuento ?? 0)), MidpointRounding.AwayFromZero);
+                    if (descuento != null) precioAnterior = (int)Math.Round(precioBase.Value, MidpointRounding.AwayFromZero);
+                }
+
+                var vendedor = vendedoresProducto.FirstOrDefault(v => v.id_producto == p.id);
+
+                items.Add(new
+                {
+                    tipo = "producto",
+                    p.id,
+                    p.nombre,
+                    descripcion = Descripcion(json),
+                    precio,
+                    precio_anterior = precioAnterior,
+                    descuento,
+                    p.imagen,
+                    p.restriccionedad,
+                    p.categorias,
+                    ubicacion = UbicacionDe(vendedor?.rut),
+                    vendedor = vendedor == null ? null : new { vendedor.rut, vendedor.nombre }
+                });
+            }
+
+            // ---------- Servicios ----------
+            foreach (var s in serviciosDb)
+            {
+                var json = LeerJson(s.caracteristicas);
+                var vendedor = vendedoresServicio.FirstOrDefault(v => v.id_servicio == s.id);
+
+                int? precio = null;
+                if (vendedor != null)
+                    precio = preciosServicio
+                        .Where(v => v.id_servicio == s.id && v.id_usuario == vendedor.rut)
+                        .Select(v => (int?)v.precio)
+                        .FirstOrDefault();
+
+                items.Add(new
+                {
+                    tipo = "servicio",
+                    s.id,
+                    s.nombre,
+                    descripcion = Descripcion(json),
+                    precio,
+                    precio_anterior = (int?)null,
+                    descuento = (decimal?)null,
+                    s.imagen,
+                    s.restriccionedad,
+                    s.categorias,
+                    ubicacion = UbicacionDe(vendedor?.rut),
+                    vendedor = vendedor == null ? null : new { vendedor.rut, vendedor.nombre }
+                });
+            }
+
+            return Ok(new { success = true, message = "Catálogo obtenido.", data = items, errors = (object?)null });
+    
+        }
+        catch (Exception ex)
         {
-            var json = LeerJson(s.caracteristicas);
-            var vendedor = vendedoresServicio.FirstOrDefault(v => v.id_servicio == s.id);
-
-            int? precio = null;
-            if (vendedor != null)
-                precio = preciosServicio
-                    .Where(v => v.id_servicio == s.id && v.id_usuario == vendedor.rut)
-                    .Select(v => (int?)v.precio)
-                    .FirstOrDefault();
-
-            items.Add(new
-            {
-                tipo = "servicio",
-                s.id,
-                s.nombre,
-                descripcion = Descripcion(json),
-                precio,
-                precio_anterior = (int?)null,
-                descuento = (decimal?)null,
-                s.imagen,
-                s.restriccionedad,
-                s.categorias,
-                ubicacion = UbicacionDe(vendedor?.rut),
-                vendedor = vendedor == null ? null : new { vendedor.rut, vendedor.nombre }
-            });
+            return this.ErrorInterno(ex);
         }
-
-        return Ok(new { success = true, message = "Catálogo obtenido.", data = items, errors = (object?)null });
     }
 }

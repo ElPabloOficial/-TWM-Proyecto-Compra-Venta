@@ -35,74 +35,82 @@ public class ReportesVentasController : ControllerBase
     [HttpGet("ventas")]
     public async Task<IActionResult> GetVentasDelVendedor([FromQuery] DateOnly? desde, [FromQuery] DateOnly? hasta)
     {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut))
-            return Unauthorized(new { success = false, message = "Usuario no autenticado." });
-
-        var hastaFecha = hasta ?? DateOnly.FromDateTime(DateTime.Today);
-        var desdeFecha = desde ?? hastaFecha.AddDays(-(DiasPorDefecto - 1));
-
-        if (desdeFecha > hastaFecha)
-            return BadRequest(new { success = false, message = "La fecha de inicio no puede ser posterior a la de término." });
-        if (hastaFecha.DayNumber - desdeFecha.DayNumber >= MaxDias)
-            return BadRequest(new { success = false, message = $"El período no puede superar {MaxDias} días." });
-
-        var inicio = desdeFecha.ToDateTime(TimeOnly.MinValue);
-        var finExclusivo = hastaFecha.AddDays(1).ToDateTime(TimeOnly.MinValue);
-
-        var productos = await _context.generar3s
-            .AsNoTracking()
-            .Where(g => g.id_ventaNavigation.id_vendedor == rut
-                     && EstadosQueCuentan.Contains(g.id_ventaNavigation.estado)
-                     && g.id_ventaNavigation.fecha >= inicio
-                     && g.id_ventaNavigation.fecha < finExclusivo)
-            .Select(g => new
-            {
-                g.id_venta,
-                fecha = g.id_ventaNavigation.fecha!.Value,
-                nombre = g.id_productoNavigation.nombre,
-                categoria = g.id_productoNavigation.id_categoria.OrderBy(c => c.id).Select(c => c.nombre).FirstOrDefault(),
-                g.cantidad,
-                g.totalfinal
-            })
-            .ToListAsync();
-
-        var servicios = await _context.generar4s
-            .AsNoTracking()
-            .Where(g => g.id_ventaNavigation.id_vendedor == rut
-                     && EstadosQueCuentan.Contains(g.id_ventaNavigation.estado)
-                     && g.id_ventaNavigation.fecha >= inicio
-                     && g.id_ventaNavigation.fecha < finExclusivo)
-            .Select(g => new
-            {
-                g.id_venta,
-                fecha = g.id_ventaNavigation.fecha!.Value,
-                nombre = g.id_servicioNavigation.nombre,
-                categoria = g.id_servicioNavigation.id_categoria.OrderBy(c => c.id).Select(c => c.nombre).FirstOrDefault(),
-                g.cantidad,
-                g.totalfinal
-            })
-            .ToListAsync();
-
-        var filas = productos
-            .Select(p => new Fila("producto", p.id_venta, p.fecha, p.nombre, p.categoria, p.cantidad, p.totalfinal))
-            .Concat(servicios.Select(s => new Fila("servicio", s.id_venta, s.fecha, s.nombre, s.categoria, s.cantidad, s.totalfinal)))
-            .OrderByDescending(f => f.Fecha)
-            .ThenByDescending(f => f.IdVenta)
-            .ToList();
-
-        var data = filas.Select(f => new
+        try
         {
-            idVenta = f.IdVenta,
-            fecha = f.Fecha.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            tipo = f.Tipo,
-            producto = f.Nombre,
-            categoria = string.IsNullOrWhiteSpace(f.Categoria) ? "Sin categoría" : f.Categoria,
-            cantidad = f.Cantidad,
-            precio = (int)Math.Round((double)f.Total / f.Cantidad),
-            total = f.Total
-        }).ToList();
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut))
+                return Unauthorized(new { success = false, message = "Usuario no autenticado." });
 
-        return Ok(new { success = true, message = "Ventas del período.", data, errors = (object?)null });
+            var hastaFecha = hasta ?? DateOnly.FromDateTime(DateTime.Today);
+            var desdeFecha = desde ?? hastaFecha.AddDays(-(DiasPorDefecto - 1));
+
+            if (desdeFecha > hastaFecha)
+                return BadRequest(new { success = false, message = "La fecha de inicio no puede ser posterior a la de término." });
+            if (hastaFecha.DayNumber - desdeFecha.DayNumber >= MaxDias)
+                return BadRequest(new { success = false, message = $"El período no puede superar {MaxDias} días." });
+
+            var inicio = desdeFecha.ToDateTime(TimeOnly.MinValue);
+            var finExclusivo = hastaFecha.AddDays(1).ToDateTime(TimeOnly.MinValue);
+
+            var productos = await _context.generar3s
+                .AsNoTracking()
+                .Where(g => g.id_ventaNavigation.id_vendedor == rut
+                         && EstadosQueCuentan.Contains(g.id_ventaNavigation.estado)
+                         && g.id_ventaNavigation.fecha >= inicio
+                         && g.id_ventaNavigation.fecha < finExclusivo)
+                .Select(g => new
+                {
+                    g.id_venta,
+                    fecha = g.id_ventaNavigation.fecha!.Value,
+                    nombre = g.id_productoNavigation.nombre,
+                    categoria = g.id_productoNavigation.id_categoria.OrderBy(c => c.id).Select(c => c.nombre).FirstOrDefault(),
+                    g.cantidad,
+                    g.totalfinal
+                })
+                .ToListAsync();
+
+            var servicios = await _context.generar4s
+                .AsNoTracking()
+                .Where(g => g.id_ventaNavigation.id_vendedor == rut
+                         && EstadosQueCuentan.Contains(g.id_ventaNavigation.estado)
+                         && g.id_ventaNavigation.fecha >= inicio
+                         && g.id_ventaNavigation.fecha < finExclusivo)
+                .Select(g => new
+                {
+                    g.id_venta,
+                    fecha = g.id_ventaNavigation.fecha!.Value,
+                    nombre = g.id_servicioNavigation.nombre,
+                    categoria = g.id_servicioNavigation.id_categoria.OrderBy(c => c.id).Select(c => c.nombre).FirstOrDefault(),
+                    g.cantidad,
+                    g.totalfinal
+                })
+                .ToListAsync();
+
+            var filas = productos
+                .Select(p => new Fila("producto", p.id_venta, p.fecha, p.nombre, p.categoria, p.cantidad, p.totalfinal))
+                .Concat(servicios.Select(s => new Fila("servicio", s.id_venta, s.fecha, s.nombre, s.categoria, s.cantidad, s.totalfinal)))
+                .OrderByDescending(f => f.Fecha)
+                .ThenByDescending(f => f.IdVenta)
+                .ToList();
+
+            var data = filas.Select(f => new
+            {
+                idVenta = f.IdVenta,
+                fecha = f.Fecha.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                tipo = f.Tipo,
+                producto = f.Nombre,
+                categoria = string.IsNullOrWhiteSpace(f.Categoria) ? "Sin categoría" : f.Categoria,
+                cantidad = f.Cantidad,
+                precio = (int)Math.Round((double)f.Total / f.Cantidad),
+                total = f.Total
+            }).ToList();
+
+            return Ok(new { success = true, message = "Ventas del período.", data, errors = (object?)null });
+    
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 }

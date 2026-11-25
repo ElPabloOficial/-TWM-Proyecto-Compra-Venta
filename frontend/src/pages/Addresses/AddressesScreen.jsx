@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import Header from "../../components/organisms/Header/Header";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
 import { authService } from "../../services/authService";
 import {
   obtenerDirecciones,
@@ -44,6 +45,7 @@ const AddressesScreen = () => {
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState("");
   const [eliminandoId, setEliminandoId] = useState(null);
+  const [porEliminar, setPorEliminar] = useState(null); // dirección que espera confirmación
   const [errorEliminar, setErrorEliminar] = useState("");
   const formRef = useRef(null);
 
@@ -164,8 +166,13 @@ const AddressesScreen = () => {
     }
   };
 
-  const eliminar = async (d) => {
-    if (!window.confirm(`¿Eliminar la dirección ${d.calle} ${d.numero}?`)) return;
+  // "Eliminar" solo abre el diálogo de confirmación; el borrado ocurre en confirmarEliminar
+  const eliminar = (d) => setPorEliminar(d);
+
+  const confirmarEliminar = async () => {
+    const d = porEliminar;
+    setPorEliminar(null);
+    if (!d) return;
     try {
       setEliminandoId(d.id);
       setAviso("");
@@ -187,6 +194,15 @@ const AddressesScreen = () => {
   return (
     <>
       <Header />
+
+      <ConfirmDialog
+        open={Boolean(porEliminar)}
+        titulo="Eliminar dirección"
+        mensaje={porEliminar ? `¿Eliminar la dirección ${porEliminar.calle} ${porEliminar.numero}?` : ""}
+        textoConfirmar="Eliminar"
+        onConfirmar={confirmarEliminar}
+        onCancelar={() => setPorEliminar(null)}
+      />
 
       <div className="dir-page">
         <div className="dir-content">

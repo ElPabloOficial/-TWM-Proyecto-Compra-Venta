@@ -1,10 +1,4 @@
-// src/services/addressService.js
-//
 // Direcciones de despacho del usuario (API: /direcciones) y la lista de comunas (/comunas).
-//   GET  /direcciones        -> mis direcciones
-//   POST /direcciones        -> crea una dirección y la vincula al usuario
-//   PUT  /direcciones/{id}   -> actualiza una de mis direcciones
-//   DELETE /direcciones/{id} -> elimina una de mis direcciones
 
 import { pedir } from './apiClient';
 

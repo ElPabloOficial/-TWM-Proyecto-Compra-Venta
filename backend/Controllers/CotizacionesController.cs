@@ -140,76 +140,100 @@ public class CotizacionesController : ControllerBase
     [HttpGet("mias")]
     public async Task<IActionResult> GetMisCotizaciones()
     {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut)) return SinSesion();
+        try
+        {
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut)) return SinSesion();
 
-        var cotizaciones = await ConDetalle(true)
-            .Where(c => c.solicitar1s.Any(s => s.id_usuario == rut) || c.solicitar2s.Any(s => s.id_usuario == rut))
-            .OrderByDescending(c => c.fechacreacion).ThenByDescending(c => c.id)
-            .ToListAsync();
+            var cotizaciones = await ConDetalle(true)
+                .Where(c => c.solicitar1s.Any(s => s.id_usuario == rut) || c.solicitar2s.Any(s => s.id_usuario == rut))
+                .OrderByDescending(c => c.fechacreacion).ThenByDescending(c => c.id)
+                .ToListAsync();
 
-        var vendedores = await VendedoresDeProductos(cotizaciones.SelectMany(c => c.solicitar1s).Select(s => s.id_producto).Distinct().ToList());
-        var hoy = Hoy();
-        var data = cotizaciones.Select(c => Armar(c, vendedores, null, hoy)).ToList();
+            var vendedores = await VendedoresDeProductos(cotizaciones.SelectMany(c => c.solicitar1s).Select(s => s.id_producto).Distinct().ToList());
+            var hoy = Hoy();
+            var data = cotizaciones.Select(c => Armar(c, vendedores, null, hoy)).ToList();
 
-        return Ok(new { success = true, message = "Cotizaciones obtenidas.", data, errors = (object?)null });
+            return Ok(new { success = true, message = "Cotizaciones obtenidas.", data, errors = (object?)null });
+    
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 
     // GET: api/cotizaciones/recibidas (las que me pidieron a mí como vendedor; solo se ven mis ítems)
     [HttpGet("recibidas")]
     public async Task<IActionResult> GetCotizacionesRecibidas()
     {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut)) return SinSesion();
+        try
+        {
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut)) return SinSesion();
 
-        var cotizaciones = await ConDetalle(true)
-            .Where(c => c.solicitar1s.Any(s => _context.ofrecer1s.Any(o => o.id_producto == s.id_producto && o.id_usuario == rut))
-                     || c.solicitar2s.Any(s => s.id_oferente == rut))
-            .OrderByDescending(c => c.fechacreacion).ThenByDescending(c => c.id)
-            .ToListAsync();
+            var cotizaciones = await ConDetalle(true)
+                .Where(c => c.solicitar1s.Any(s => _context.ofrecer1s.Any(o => o.id_producto == s.id_producto && o.id_usuario == rut))
+                         || c.solicitar2s.Any(s => s.id_oferente == rut))
+                .OrderByDescending(c => c.fechacreacion).ThenByDescending(c => c.id)
+                .ToListAsync();
 
-        var vendedores = await VendedoresDeProductos(cotizaciones.SelectMany(c => c.solicitar1s).Select(s => s.id_producto).Distinct().ToList());
-        var hoy = Hoy();
-        var data = cotizaciones.Select(c => Armar(c, vendedores, rut, hoy)).ToList();
+            var vendedores = await VendedoresDeProductos(cotizaciones.SelectMany(c => c.solicitar1s).Select(s => s.id_producto).Distinct().ToList());
+            var hoy = Hoy();
+            var data = cotizaciones.Select(c => Armar(c, vendedores, rut, hoy)).ToList();
 
-        return Ok(new { success = true, message = "Cotizaciones recibidas obtenidas.", data, errors = (object?)null });
+            return Ok(new { success = true, message = "Cotizaciones recibidas obtenidas.", data, errors = (object?)null });
+    
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 
     // GET: api/cotizaciones/5 (detalle; lo ve el cliente que la pidió o el vendedor al que se la pidieron)
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetCotizacion(int id)
     {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut)) return SinSesion();
-
-        var c = await ConDetalle(true).FirstOrDefaultAsync(x => x.id == id);
-        if (c == null)
-            return NotFound(new { success = false, message = "Cotización no encontrada." });
-
-        var vendedores = await VendedoresDeProductos(c.solicitar1s.Select(s => s.id_producto).ToList());
-
-        string? soloVendedor = null;
-        if (!EsCliente(c, rut))
+        try
         {
-            if (!EsVendedor(c, rut, vendedores)) return Forbid();
-            soloVendedor = rut;
-        }
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut)) return SinSesion();
 
-        // El cliente ve cuánto stock queda de cada producto cotizado (para saber si puede comprar)
-        Dictionary<int, int>? stock = null;
-        if (soloVendedor == null)
+            var c = await ConDetalle(true).FirstOrDefaultAsync(x => x.id == id);
+            if (c == null)
+                return NotFound(new { success = false, message = "Cotización no encontrada." });
+
+            var vendedores = await VendedoresDeProductos(c.solicitar1s.Select(s => s.id_producto).ToList());
+
+            string? soloVendedor = null;
+            if (!EsCliente(c, rut))
+            {
+                if (!EsVendedor(c, rut, vendedores)) return Forbid();
+                soloVendedor = rut;
+            }
+
+            // El cliente ve cuánto stock queda de cada producto cotizado (para saber si puede comprar)
+            Dictionary<int, int>? stock = null;
+            if (soloVendedor == null)
+            {
+                var idsProductos = c.solicitar1s.Select(s => s.id_producto).ToList();
+                var totales = await _context.almacenars
+                    .AsNoTracking()
+                    .Where(a => idsProductos.Contains(a.id_producto))
+                    .GroupBy(a => a.id_producto)
+                    .Select(g => new { id = g.Key, total = g.Sum(a => a.stockactual) })
+                    .ToListAsync();
+                stock = totales.ToDictionary(x => x.id, x => x.total);
+            }
+
+            return Ok(new { success = true, message = "Cotización obtenida.", data = Armar(c, vendedores, soloVendedor, Hoy(), stock), errors = (object?)null });
+    
+        }
+        catch (Exception ex)
         {
-            var idsProductos = c.solicitar1s.Select(s => s.id_producto).ToList();
-            var totales = await _context.almacenars
-                .AsNoTracking()
-                .Where(a => idsProductos.Contains(a.id_producto))
-                .GroupBy(a => a.id_producto)
-                .Select(g => new { id = g.Key, total = g.Sum(a => a.stockactual) })
-                .ToListAsync();
-            stock = totales.ToDictionary(x => x.id, x => x.total);
+            return this.ErrorInterno(ex);
         }
-
-        return Ok(new { success = true, message = "Cotización obtenida.", data = Armar(c, vendedores, soloVendedor, Hoy(), stock), errors = (object?)null });
     }
 
     // POST: api/cotizaciones (Solicitar cotización)
@@ -217,120 +241,128 @@ public class CotizacionesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CrearCotizacion([FromBody] CotizacionCreateDto dto)
     {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut)) return SinSesion();
-
-        if (dto.items == null || dto.items.Count == 0)
-            return BadRequest(new { success = false, message = "La cotización debe tener al menos un ítem." });
-
-        // Validar los ítems y juntar los repetidos
-        var pedidos = new Dictionary<(string tipo, int id), (int precio, int cantidad)>();
-        foreach (var item in dto.items)
-        {
-            var tipo = (item.tipo ?? "").ToLower();
-            if (tipo != "producto" && tipo != "servicio")
-                return BadRequest(new { success = false, message = "Tipo de ítem inválido." });
-            if (item.cantidad < 1 || item.cantidad > MaxCantidad)
-                return BadRequest(new { success = false, message = "La cantidad de cada ítem debe ser de 1 o más." });
-            if (item.precio < 0)
-                return BadRequest(new { success = false, message = "El precio no puede ser negativo." });
-
-            var clave = (tipo, item.id_item);
-            pedidos[clave] = pedidos.TryGetValue(clave, out var previo)
-                ? (previo.precio, previo.cantidad + item.cantidad)
-                : (item.precio, item.cantidad);
-        }
-
-        var idsProductos = pedidos.Keys.Where(k => k.tipo == "producto").Select(k => k.id).ToList();
-        var idsServicios = pedidos.Keys.Where(k => k.tipo == "servicio").Select(k => k.id).ToList();
-
-        var productos = await _context.productos.AsNoTracking()
-            .Where(p => idsProductos.Contains(p.id)).Select(p => new { p.id, p.nombre }).ToListAsync();
-        var servicios = await _context.servicios.AsNoTracking()
-            .Where(s => idsServicios.Contains(s.id)).Select(s => new { s.id, s.nombre }).ToListAsync();
-        var vendedoresProductos = await VendedoresDeProductos(idsProductos);
-
-        // Un servicio solo se puede cotizar con un oferente que tenga precio en Valorar (clave foránea de Solicitar2)
-        var oferentes = await _context.ofrecer2s.AsNoTracking()
-            .Where(o => idsServicios.Contains(o.id_servicio)
-                && _context.valorars.Any(v => v.id_servicio == o.id_servicio && v.id_usuario == o.id_usuario))
-            .Select(o => new { o.id_servicio, rut = o.id_usuario })
-            .ToListAsync();
-
-        // Separar por vendedor
-        var porVendedor = new Dictionary<string, List<(string tipo, int id, int precio, int cantidad)>>();
-        foreach (var par in pedidos)
-        {
-            var (tipo, id) = par.Key;
-            string? vendedor;
-
-            if (tipo == "producto")
-            {
-                var producto = productos.FirstOrDefault(p => p.id == id);
-                if (producto == null)
-                    return NotFound(new { success = false, message = $"El producto {id} no existe." });
-                vendedor = vendedoresProductos.FirstOrDefault(v => v.IdProducto == id)?.Rut;
-                if (vendedor == null)
-                    return BadRequest(new { success = false, message = $"«{producto.nombre}» no tiene un vendedor asignado y no se puede cotizar." });
-            }
-            else
-            {
-                var servicio = servicios.FirstOrDefault(s => s.id == id);
-                if (servicio == null)
-                    return NotFound(new { success = false, message = $"El servicio {id} no existe." });
-                vendedor = oferentes.FirstOrDefault(o => o.id_servicio == id)?.rut;
-                if (vendedor == null)
-                    return BadRequest(new { success = false, message = $"«{servicio.nombre}» no tiene un vendedor con precio asignado y no se puede cotizar." });
-            }
-
-            if (!porVendedor.TryGetValue(vendedor, out var grupo))
-                porVendedor[vendedor] = grupo = new List<(string, int, int, int)>();
-            grupo.Add((tipo, id, par.Value.precio, par.Value.cantidad));
-        }
-
         try
         {
-            var hoy = Hoy();
-            var creadas = new List<cotizacion>();
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut)) return SinSesion();
 
-            foreach (var grupo in porVendedor)
+            if (dto.items == null || dto.items.Count == 0)
+                return BadRequest(new { success = false, message = "La cotización debe tener al menos un ítem." });
+
+            // Validar los ítems y juntar los repetidos
+            var pedidos = new Dictionary<(string tipo, int id), (int precio, int cantidad)>();
+            foreach (var item in dto.items)
             {
-                var nueva = new cotizacion { fechacreacion = hoy, estado = "Solicitada" };
-                _context.cotizacions.Add(nueva);
+                var tipo = (item.tipo ?? "").ToLower();
+                if (tipo != "producto" && tipo != "servicio")
+                    return BadRequest(new { success = false, message = "Tipo de ítem inválido." });
+                if (item.cantidad < 1 || item.cantidad > MaxCantidad)
+                    return BadRequest(new { success = false, message = "La cantidad de cada ítem debe ser de 1 o más." });
+                if (item.precio < 0)
+                    return BadRequest(new { success = false, message = "El precio no puede ser negativo." });
 
-                foreach (var item in grupo.Value)
-                {
-                    if (item.tipo == "producto")
-                        _context.solicitar1s.Add(new solicitar1
-                        {
-                            id_cotizacionNavigation = nueva,
-                            id_usuario = rut,
-                            id_producto = item.id,
-                            precio = item.precio,
-                            cantidad = item.cantidad
-                        });
-                    else
-                        _context.solicitar2s.Add(new solicitar2
-                        {
-                            id_cotizacionNavigation = nueva,
-                            id_usuario = rut,
-                            id_servicio = item.id,
-                            id_oferente = grupo.Key,
-                            precio = item.precio,
-                            cantidad = item.cantidad
-                        });
-                }
-                creadas.Add(nueva);
+                var clave = (tipo, item.id_item);
+                pedidos[clave] = pedidos.TryGetValue(clave, out var previo)
+                    ? (previo.precio, previo.cantidad + item.cantidad)
+                    : (item.precio, item.cantidad);
             }
 
-            // Un solo guardado: se crean todas las cotizaciones o ninguna
-            await _context.SaveChangesAsync();
+            var idsProductos = pedidos.Keys.Where(k => k.tipo == "producto").Select(k => k.id).ToList();
+            var idsServicios = pedidos.Keys.Where(k => k.tipo == "servicio").Select(k => k.id).ToList();
 
-            return Ok(new { success = true, message = "Cotización creada.", data = new { ids = creadas.Select(c => c.id).ToList() }, errors = (object?)null });
+            var productos = await _context.productos.AsNoTracking()
+                .Where(p => idsProductos.Contains(p.id)).Select(p => new { p.id, p.nombre }).ToListAsync();
+            var servicios = await _context.servicios.AsNoTracking()
+                .Where(s => idsServicios.Contains(s.id)).Select(s => new { s.id, s.nombre }).ToListAsync();
+            var vendedoresProductos = await VendedoresDeProductos(idsProductos);
+
+            // Un servicio solo se puede cotizar con un oferente que tenga precio en Valorar (clave foránea de Solicitar2)
+            var oferentes = await _context.ofrecer2s.AsNoTracking()
+                .Where(o => idsServicios.Contains(o.id_servicio)
+                    && _context.valorars.Any(v => v.id_servicio == o.id_servicio && v.id_usuario == o.id_usuario))
+                .Select(o => new { o.id_servicio, rut = o.id_usuario })
+                .ToListAsync();
+
+            // Separar por vendedor
+            var porVendedor = new Dictionary<string, List<(string tipo, int id, int precio, int cantidad)>>();
+            foreach (var par in pedidos)
+            {
+                var (tipo, id) = par.Key;
+                string? vendedor;
+
+                if (tipo == "producto")
+                {
+                    var producto = productos.FirstOrDefault(p => p.id == id);
+                    if (producto == null)
+                        return NotFound(new { success = false, message = $"El producto {id} no existe." });
+                    vendedor = vendedoresProductos.FirstOrDefault(v => v.IdProducto == id)?.Rut;
+                    if (vendedor == null)
+                        return BadRequest(new { success = false, message = $"«{producto.nombre}» no tiene un vendedor asignado y no se puede cotizar." });
+                }
+                else
+                {
+                    var servicio = servicios.FirstOrDefault(s => s.id == id);
+                    if (servicio == null)
+                        return NotFound(new { success = false, message = $"El servicio {id} no existe." });
+                    vendedor = oferentes.FirstOrDefault(o => o.id_servicio == id)?.rut;
+                    if (vendedor == null)
+                        return BadRequest(new { success = false, message = $"«{servicio.nombre}» no tiene un vendedor con precio asignado y no se puede cotizar." });
+                }
+
+                if (!porVendedor.TryGetValue(vendedor, out var grupo))
+                    porVendedor[vendedor] = grupo = new List<(string, int, int, int)>();
+                grupo.Add((tipo, id, par.Value.precio, par.Value.cantidad));
+            }
+
+            try
+            {
+                var hoy = Hoy();
+                var creadas = new List<cotizacion>();
+
+                foreach (var grupo in porVendedor)
+                {
+                    var nueva = new cotizacion { fechacreacion = hoy, estado = "Solicitada" };
+                    _context.cotizacions.Add(nueva);
+
+                    foreach (var item in grupo.Value)
+                    {
+                        if (item.tipo == "producto")
+                            _context.solicitar1s.Add(new solicitar1
+                            {
+                                id_cotizacionNavigation = nueva,
+                                id_usuario = rut,
+                                id_producto = item.id,
+                                precio = item.precio,
+                                cantidad = item.cantidad
+                            });
+                        else
+                            _context.solicitar2s.Add(new solicitar2
+                            {
+                                id_cotizacionNavigation = nueva,
+                                id_usuario = rut,
+                                id_servicio = item.id,
+                                id_oferente = grupo.Key,
+                                precio = item.precio,
+                                cantidad = item.cantidad
+                            });
+                    }
+                    creadas.Add(nueva);
+                }
+
+                // Un solo guardado: se crean todas las cotizaciones o ninguna
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, message = "Cotización creada.", data = new { ids = creadas.Select(c => c.id).ToList() }, errors = (object?)null });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Error al crear la cotización.", errors = new[] { ex.Message } });
+            }
+    
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { success = false, message = "Error al crear la cotización.", errors = new[] { ex.Message } });
+            return this.ErrorInterno(ex);
         }
     }
 
@@ -338,90 +370,114 @@ public class CotizacionesController : ControllerBase
     [HttpPut("{id:int}/responder")]
     public async Task<IActionResult> ResponderCotizacion(int id, [FromBody] CotizacionResponderDto dto)
     {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut)) return SinSesion();
-
-        var c = await ConDetalle(false).FirstOrDefaultAsync(x => x.id == id);
-        if (c == null)
-            return NotFound(new { success = false, message = "Cotización no encontrada." });
-
-        var vendedores = await VendedoresDeProductos(c.solicitar1s.Select(s => s.id_producto).ToList());
-        if (!EsVendedor(c, rut, vendedores)) return Forbid();
-
-        var hoy = Hoy();
-        if (EstadoVisible(c, hoy) != "Solicitada")
-            return BadRequest(new { success = false, message = "Esta cotización ya no se puede responder." });
-
-        var precios = dto.precios ?? new List<PrecioItemCotizacionDto>();
-
-        foreach (var item in c.solicitar1s.Where(s => vendedores.Any(v => v.IdProducto == s.id_producto && v.Rut == rut)))
+        try
         {
-            var respuesta = precios.FirstOrDefault(p => (p.tipo ?? "").ToLower() == "producto" && p.id_item == item.id_producto);
-            if (respuesta == null || respuesta.precio <= 0)
-                return BadRequest(new { success = false, message = "Indica el precio unitario de todos los productos y servicios." });
-            item.precio = respuesta.precio;
-        }
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut)) return SinSesion();
 
-        foreach (var item in c.solicitar2s.Where(s => s.id_oferente == rut))
+            var c = await ConDetalle(false).FirstOrDefaultAsync(x => x.id == id);
+            if (c == null)
+                return NotFound(new { success = false, message = "Cotización no encontrada." });
+
+            var vendedores = await VendedoresDeProductos(c.solicitar1s.Select(s => s.id_producto).ToList());
+            if (!EsVendedor(c, rut, vendedores)) return Forbid();
+
+            var hoy = Hoy();
+            if (EstadoVisible(c, hoy) != "Solicitada")
+                return BadRequest(new { success = false, message = "Esta cotización ya no se puede responder." });
+
+            var precios = dto.precios ?? new List<PrecioItemCotizacionDto>();
+
+            foreach (var item in c.solicitar1s.Where(s => vendedores.Any(v => v.IdProducto == s.id_producto && v.Rut == rut)))
+            {
+                var respuesta = precios.FirstOrDefault(p => (p.tipo ?? "").ToLower() == "producto" && p.id_item == item.id_producto);
+                if (respuesta == null || respuesta.precio <= 0)
+                    return BadRequest(new { success = false, message = "Indica el precio unitario de todos los productos y servicios." });
+                item.precio = respuesta.precio;
+            }
+
+            foreach (var item in c.solicitar2s.Where(s => s.id_oferente == rut))
+            {
+                var respuesta = precios.FirstOrDefault(p => (p.tipo ?? "").ToLower() == "servicio" && p.id_item == item.id_servicio);
+                if (respuesta == null || respuesta.precio <= 0)
+                    return BadRequest(new { success = false, message = "Indica el precio unitario de todos los productos y servicios." });
+                item.precio = respuesta.precio;
+            }
+
+            c.estado = "Respondida";
+            c.fechaultimaactualizacion = hoy; // desde aquí corren los 15 días de vigencia
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Cotización respondida.", data = (object?)null, errors = (object?)null });
+    
+        }
+        catch (Exception ex)
         {
-            var respuesta = precios.FirstOrDefault(p => (p.tipo ?? "").ToLower() == "servicio" && p.id_item == item.id_servicio);
-            if (respuesta == null || respuesta.precio <= 0)
-                return BadRequest(new { success = false, message = "Indica el precio unitario de todos los productos y servicios." });
-            item.precio = respuesta.precio;
+            return this.ErrorInterno(ex);
         }
-
-        c.estado = "Respondida";
-        c.fechaultimaactualizacion = hoy; // desde aquí corren los 15 días de vigencia
-        await _context.SaveChangesAsync();
-
-        return Ok(new { success = true, message = "Cotización respondida.", data = (object?)null, errors = (object?)null });
     }
 
     // PUT: api/cotizaciones/5/aceptar (el cliente acepta una cotización respondida y vigente)
     [HttpPut("{id:int}/aceptar")]
     public async Task<IActionResult> AceptarCotizacion(int id)
     {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut)) return SinSesion();
+        try
+        {
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut)) return SinSesion();
 
-        var c = await ConDetalle(false).FirstOrDefaultAsync(x => x.id == id);
-        if (c == null)
-            return NotFound(new { success = false, message = "Cotización no encontrada." });
+            var c = await ConDetalle(false).FirstOrDefaultAsync(x => x.id == id);
+            if (c == null)
+                return NotFound(new { success = false, message = "Cotización no encontrada." });
 
-        if (!EsCliente(c, rut)) return Forbid();
+            if (!EsCliente(c, rut)) return Forbid();
 
-        var hoy = Hoy();
-        if (EstadoVisible(c, hoy) != "Respondida")
-            return BadRequest(new { success = false, message = "Solo puedes aceptar cotizaciones respondidas y vigentes." });
+            var hoy = Hoy();
+            if (EstadoVisible(c, hoy) != "Respondida")
+                return BadRequest(new { success = false, message = "Solo puedes aceptar cotizaciones respondidas y vigentes." });
 
-        c.estado = "Aceptada";
-        c.fechaultimaactualizacion = hoy;
-        await _context.SaveChangesAsync();
+            c.estado = "Aceptada";
+            c.fechaultimaactualizacion = hoy;
+            await _context.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "Cotización aceptada.", data = (object?)null, errors = (object?)null });
+            return Ok(new { success = true, message = "Cotización aceptada.", data = (object?)null, errors = (object?)null });
+    
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 
     // PUT: api/cotizaciones/5/estado (cambio manual de estado; solo quien participa en la cotización)
     [HttpPut("{id:int}/estado")]
     public async Task<IActionResult> ActualizarEstado(int id, [FromBody] CotizacionEstadoDto dto)
     {
-        var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(rut)) return SinSesion();
+        try
+        {
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut)) return SinSesion();
 
-        var c = await ConDetalle(false).FirstOrDefaultAsync(x => x.id == id);
-        if (c == null)
-            return NotFound(new { success = false, message = "Cotización no encontrada." });
+            var c = await ConDetalle(false).FirstOrDefaultAsync(x => x.id == id);
+            if (c == null)
+                return NotFound(new { success = false, message = "Cotización no encontrada." });
 
-        var vendedores = await VendedoresDeProductos(c.solicitar1s.Select(s => s.id_producto).ToList());
-        if (!EsCliente(c, rut) && !EsVendedor(c, rut, vendedores)) return Forbid();
+            var vendedores = await VendedoresDeProductos(c.solicitar1s.Select(s => s.id_producto).ToList());
+            if (!EsCliente(c, rut) && !EsVendedor(c, rut, vendedores)) return Forbid();
 
-        if (string.IsNullOrWhiteSpace(dto.estado) || dto.estado.Length > 20)
-            return BadRequest(new { success = false, message = "Estado inválido." });
+            if (string.IsNullOrWhiteSpace(dto.estado) || dto.estado.Length > 20)
+                return BadRequest(new { success = false, message = "Estado inválido." });
 
-        c.estado = dto.estado.Trim();
-        c.fechaultimaactualizacion = Hoy();
-        await _context.SaveChangesAsync();
+            c.estado = dto.estado.Trim();
+            c.fechaultimaactualizacion = Hoy();
+            await _context.SaveChangesAsync();
 
-        return Ok(new { success = true, message = "Estado actualizado.", data = (object?)null, errors = (object?)null });
+            return Ok(new { success = true, message = "Estado actualizado.", data = (object?)null, errors = (object?)null });
+    
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 }

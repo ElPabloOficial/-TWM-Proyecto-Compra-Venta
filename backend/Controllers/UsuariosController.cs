@@ -28,60 +28,76 @@ public class UsuariosController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetUsuarios()
     {
-        var usuarios = await _context.usuarios
-            .Select(u => new UsuarioDto
-            {
-                rut = u.rut,
-                nombre = u.nombre,
-                fechanacimiento = u.fechanacimiento,
-                tipousuario = u.tipousuario,
-                descuentos = u.descuentos
-            })
-            .ToListAsync();
-
-        return Ok(new
+        try
         {
-            success = true,
-            message = "Usuarios obtenidos.",
-            data = usuarios,
-            errors = (object?)null
-        });
+            var usuarios = await _context.usuarios
+                .Select(u => new UsuarioDto
+                {
+                    rut = u.rut,
+                    nombre = u.nombre,
+                    fechanacimiento = u.fechanacimiento,
+                    tipousuario = u.tipousuario,
+                    descuentos = u.descuentos
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Usuarios obtenidos.",
+                data = usuarios,
+                errors = (object?)null
+            });
+    
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 
     // GET: api/usuarios/{rut}
     [HttpGet("{rut}")]
     public async Task<IActionResult> GetUsuario(string rut)
     {
-        var usuarioDto = await _context.usuarios
-            .Where(u => u.rut == rut)
-            .Select(u => new UsuarioDto
-            {
-                rut = u.rut,
-                nombre = u.nombre,
-                fechanacimiento = u.fechanacimiento,
-                tipousuario = u.tipousuario,
-                descuentos = u.descuentos
-            })
-            .FirstOrDefaultAsync();
-
-        if (usuarioDto == null)
+        try
         {
-            return NotFound(new
+            var usuarioDto = await _context.usuarios
+                .Where(u => u.rut == rut)
+                .Select(u => new UsuarioDto
+                {
+                    rut = u.rut,
+                    nombre = u.nombre,
+                    fechanacimiento = u.fechanacimiento,
+                    tipousuario = u.tipousuario,
+                    descuentos = u.descuentos
+                })
+                .FirstOrDefaultAsync();
+
+            if (usuarioDto == null)
             {
-                success = false,
-                message = "Usuario no encontrado.",
-                data = (object?)null,
-                errors = new[] { "RUT no existe." }
+                return NotFound(new
+                {
+                    success = false,
+                    message = "Usuario no encontrado.",
+                    data = (object?)null,
+                    errors = new[] { "RUT no existe." }
+                });
+            }
+
+            return Ok(new
+            {
+                success = true,
+                message = "Usuario encontrado.",
+                data = usuarioDto,
+                errors = (object?)null
             });
+    
         }
-
-        return Ok(new
+        catch (Exception ex)
         {
-            success = true,
-            message = "Usuario encontrado.",
-            data = usuarioDto,
-            errors = (object?)null
-        });
+            return this.ErrorInterno(ex);
+        }
     }
 
     // POST: api/usuarios
@@ -89,57 +105,65 @@ public class UsuariosController : ControllerBase
     public async Task<IActionResult> CreateUsuario(
         [FromBody] UsuarioCreateDto dto)
     {
-        if (await _context.usuarios
-            .AnyAsync(u => u.rut == dto.rut))
+        try
         {
-            return Conflict(new
+            if (await _context.usuarios
+                .AnyAsync(u => u.rut == dto.rut))
             {
-                success = false,
-                message = "El RUT ya está registrado.",
-                data = (object?)null,
-                errors = new[] { "rut: ya existe." }
-            });
-        }
-
-        string hashedPassword =
-            BCrypt.Net.BCrypt.HashPassword(dto.clave);
-
-        var nuevoUsuario = new usuario
-        {
-            rut = dto.rut,
-            nombre = dto.nombre,
-            clave = hashedPassword,
-            fechanacimiento = dto.fechanacimiento,
-            fechacreacion = DateOnly.FromDateTime(DateTime.Now),
-            tipousuario = dto.tipousuario,
-            descuentos = "{}",
-            secioniniciada = false
-        };
-
-        _context.usuarios.Add(nuevoUsuario);
-
-        await _context.SaveChangesAsync();
-
-        var usuarioDto = new UsuarioDto
-        {
-            rut = nuevoUsuario.rut,
-            nombre = nuevoUsuario.nombre,
-            fechanacimiento = nuevoUsuario.fechanacimiento,
-            tipousuario = nuevoUsuario.tipousuario,
-            descuentos = nuevoUsuario.descuentos
-        };
-
-        return CreatedAtAction(
-            nameof(GetUsuario),
-            new { rut = nuevoUsuario.rut },
-            new
-            {
-                success = true,
-                message = "Usuario creado.",
-                data = usuarioDto,
-                errors = (object?)null
+                return Conflict(new
+                {
+                    success = false,
+                    message = "El RUT ya está registrado.",
+                    data = (object?)null,
+                    errors = new[] { "rut: ya existe." }
+                });
             }
-        );
+
+            string hashedPassword =
+                BCrypt.Net.BCrypt.HashPassword(dto.clave);
+
+            var nuevoUsuario = new usuario
+            {
+                rut = dto.rut,
+                nombre = dto.nombre,
+                clave = hashedPassword,
+                fechanacimiento = dto.fechanacimiento,
+                fechacreacion = DateOnly.FromDateTime(DateTime.Now),
+                tipousuario = dto.tipousuario,
+                descuentos = "{}",
+                secioniniciada = false
+            };
+
+            _context.usuarios.Add(nuevoUsuario);
+
+            await _context.SaveChangesAsync();
+
+            var usuarioDto = new UsuarioDto
+            {
+                rut = nuevoUsuario.rut,
+                nombre = nuevoUsuario.nombre,
+                fechanacimiento = nuevoUsuario.fechanacimiento,
+                tipousuario = nuevoUsuario.tipousuario,
+                descuentos = nuevoUsuario.descuentos
+            };
+
+            return CreatedAtAction(
+                nameof(GetUsuario),
+                new { rut = nuevoUsuario.rut },
+                new
+                {
+                    success = true,
+                    message = "Usuario creado.",
+                    data = usuarioDto,
+                    errors = (object?)null
+                }
+            );
+    
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 
     // POST: api/usuarios/login
@@ -147,133 +171,141 @@ public class UsuariosController : ControllerBase
     public async Task<IActionResult> Login(
         [FromBody] LoginDto dto)
     {
-        // 1. Buscar usuario
-        var usuario = await _context.usuarios
-            .FirstOrDefaultAsync(u => u.rut == dto.rut);
-
-        if (usuario == null)
-        {
-            return Unauthorized(new
-            {
-                success = false,
-                message = "RUT o contraseña incorrectos.",
-                data = (object?)null,
-                errors = (object?)null
-            });
-        }
-
-        // 2. Verificar contraseña
-        //    Si la clave guardada no es un hash BCrypt (p. ej. los usuarios antiguos del seed tienen
-        //    la clave en texto plano), Verify lanza una excepción: se responde 401 y no 500.
-        bool contraseñaCorrecta;
         try
         {
-            contraseñaCorrecta = BCrypt.Net.BCrypt.Verify(dto.clave, usuario.clave);
-        }
-        catch (BCrypt.Net.SaltParseException)
-        {
-            contraseñaCorrecta = false;
-        }
+            // 1. Buscar usuario
+            var usuario = await _context.usuarios
+                .FirstOrDefaultAsync(u => u.rut == dto.rut);
 
-        if (!contraseñaCorrecta)
-        {
-            return Unauthorized(new
+            if (usuario == null)
             {
-                success = false,
-                message = "RUT o contraseña incorrectos.",
-                data = (object?)null,
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = "RUT o contraseña incorrectos.",
+                    data = (object?)null,
+                    errors = (object?)null
+                });
+            }
+
+            // 2. Verificar contraseña
+            //    Si la clave guardada no es un hash BCrypt (p. ej. los usuarios antiguos del seed tienen
+            //    la clave en texto plano), Verify lanza una excepción: se responde 401 y no 500.
+            bool contraseñaCorrecta;
+            try
+            {
+                contraseñaCorrecta = BCrypt.Net.BCrypt.Verify(dto.clave, usuario.clave);
+            }
+            catch (BCrypt.Net.SaltParseException)
+            {
+                contraseñaCorrecta = false;
+            }
+
+            if (!contraseñaCorrecta)
+            {
+                return Unauthorized(new
+                {
+                    success = false,
+                    message = "RUT o contraseña incorrectos.",
+                    data = (object?)null,
+                    errors = (object?)null
+                });
+            }
+
+            // 3. Marcar sesión iniciada
+            usuario.secioniniciada = true;
+
+            await _context.SaveChangesAsync();
+
+            // 4. Obtener clave JWT
+            var jwtKey = _configuration["Jwt:Key"];
+
+            if (string.IsNullOrEmpty(jwtKey))
+            {
+                throw new InvalidOperationException(
+                    "La clave Jwt:Key no está configurada."
+                );
+            }
+
+            // 5. Crear claims
+            //    La BD guarda el tipo en minúsculas ('admin', 'administrador', 'vendedor', 'cliente', 'ambos'),
+            //    pero los controladores piden "Administrador", "Vendedor"... y la comparación de roles
+            //    distingue mayúsculas. Por eso se traduce aquí, al armar el token.
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, usuario.rut),
+                new Claim(ClaimTypes.Name, usuario.nombre)
+            };
+
+            switch (usuario.tipousuario.Trim().ToLowerInvariant())
+            {
+                case "admin":
+                case "administrador":
+                    claims.Add(new Claim(ClaimTypes.Role, "Administrador"));
+                    break;
+                case "vendedor":
+                    claims.Add(new Claim(ClaimTypes.Role, "Vendedor"));
+                    break;
+                case "ambos":
+                    claims.Add(new Claim(ClaimTypes.Role, "Vendedor"));
+                    claims.Add(new Claim(ClaimTypes.Role, "Cliente"));
+                    break;
+                default:
+                    claims.Add(new Claim(ClaimTypes.Role, "Cliente"));
+                    break;
+            }
+
+            // 6. Crear clave de firma
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtKey)
+            );
+
+            var credentials = new SigningCredentials(
+                key,
+                SecurityAlgorithms.HmacSha256
+            );
+
+            // 7. Crear JWT
+            var token = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(2),
+                signingCredentials: credentials
+            );
+
+            // 8. Convertir JWT a texto
+            var tokenString =
+                new JwtSecurityTokenHandler()
+                    .WriteToken(token);
+
+            // 9. Crear DTO del usuario
+            var usuarioDto = new UsuarioDto
+            {
+                rut = usuario.rut,
+                nombre = usuario.nombre,
+                fechanacimiento = usuario.fechanacimiento,
+                tipousuario = usuario.tipousuario,
+                descuentos = usuario.descuentos
+            };
+
+            // 10. Devolver JWT + usuario
+            return Ok(new
+            {
+                success = true,
+                message = "Inicio de sesión exitoso.",
+
+                data = new
+                {
+                    token = tokenString,
+                    usuario = usuarioDto
+                },
+
                 errors = (object?)null
             });
+    
         }
-
-        // 3. Marcar sesión iniciada
-        usuario.secioniniciada = true;
-
-        await _context.SaveChangesAsync();
-
-        // 4. Obtener clave JWT
-        var jwtKey = _configuration["Jwt:Key"];
-
-        if (string.IsNullOrEmpty(jwtKey))
+        catch (Exception ex)
         {
-            throw new InvalidOperationException(
-                "La clave Jwt:Key no está configurada."
-            );
+            return this.ErrorInterno(ex);
         }
-
-        // 5. Crear claims
-        //    La BD guarda el tipo en minúsculas ('admin', 'administrador', 'vendedor', 'cliente', 'ambos'),
-        //    pero los controladores piden "Administrador", "Vendedor"... y la comparación de roles
-        //    distingue mayúsculas. Por eso se traduce aquí, al armar el token.
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, usuario.rut),
-            new Claim(ClaimTypes.Name, usuario.nombre)
-        };
-
-        switch (usuario.tipousuario.Trim().ToLowerInvariant())
-        {
-            case "admin":
-            case "administrador":
-                claims.Add(new Claim(ClaimTypes.Role, "Administrador"));
-                break;
-            case "vendedor":
-                claims.Add(new Claim(ClaimTypes.Role, "Vendedor"));
-                break;
-            case "ambos":
-                claims.Add(new Claim(ClaimTypes.Role, "Vendedor"));
-                claims.Add(new Claim(ClaimTypes.Role, "Cliente"));
-                break;
-            default:
-                claims.Add(new Claim(ClaimTypes.Role, "Cliente"));
-                break;
-        }
-
-        // 6. Crear clave de firma
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtKey)
-        );
-
-        var credentials = new SigningCredentials(
-            key,
-            SecurityAlgorithms.HmacSha256
-        );
-
-        // 7. Crear JWT
-        var token = new JwtSecurityToken(
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(2),
-            signingCredentials: credentials
-        );
-
-        // 8. Convertir JWT a texto
-        var tokenString =
-            new JwtSecurityTokenHandler()
-                .WriteToken(token);
-
-        // 9. Crear DTO del usuario
-        var usuarioDto = new UsuarioDto
-        {
-            rut = usuario.rut,
-            nombre = usuario.nombre,
-            fechanacimiento = usuario.fechanacimiento,
-            tipousuario = usuario.tipousuario,
-            descuentos = usuario.descuentos
-        };
-
-        // 10. Devolver JWT + usuario
-        return Ok(new
-        {
-            success = true,
-            message = "Inicio de sesión exitoso.",
-
-            data = new
-            {
-                token = tokenString,
-                usuario = usuarioDto
-            },
-
-            errors = (object?)null
-        });
     }
 }

@@ -20,18 +20,26 @@ public class ComunasController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetComunas()
     {
-        var comunas = await _context.comunas
-            .AsNoTracking()
-            .OrderBy(c => c.nombre)
-            .Select(c => new
-            {
-                c.id,
-                c.nombre,
-                provincia = c.id_provinciaNavigation.nombre,
-                region = c.id_provinciaNavigation.id_regionNavigation.nombre
-            })
-            .ToListAsync();
+        try
+        {
+            var comunas = await _context.comunas
+                .AsNoTracking()
+                .OrderBy(c => c.nombre)
+                .Select(c => new
+                {
+                    c.id,
+                    c.nombre,
+                    provincia = c.id_provinciaNavigation.nombre,
+                    region = c.id_provinciaNavigation.id_regionNavigation.nombre
+                })
+                .ToListAsync();
 
-        return Ok(new { success = true, message = "Comunas obtenidas.", data = comunas, errors = (object?)null });
+            return Ok(new { success = true, message = "Comunas obtenidas.", data = comunas, errors = (object?)null });
+    
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 }

@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
 import Header from "../../components/organisms/Header/Header";
 import MessageTabs from "../../components/molecules/MessageTabs/MessageTabs";
 import ConversationPanel from "../../components/organisms/ConversationPanel/ConversationPanel";
 import QuestionsPanel from "../../components/organisms/QuestionsPanel/QuestionsPanel";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import { messageService } from "../../services/messageService";
 import { authService } from "../../services/authService";
 
 import "../../styles/Inventory.css"; // estilo del selector de filtro (inv-select)
@@ -16,116 +18,96 @@ import "../../styles/ClientMessages.css";
 //     solo se puede escribir sobre algo que ya compró).
 //   - Mis preguntas: las preguntas públicas que hizo en las fichas de producto y si ya le respondieron.
 // (El vendedor tiene su bandeja en /mensajes/vendedor.)
-
-// TEMPORAL: conversaciones de ejemplo. Con el backend se cargan desde la API (solo las del cliente).
-// La cuarta es una compra a la que todavía no le ha escrito al vendedor.
-const conversacionesIniciales = [
-  {
-    id: 1,
-    contraparte: "Tecnomarket Osorno",
-    asunto: "Compra #1042 · Notebook Lenovo",
-    fecha: "2026-10-10",
-    mensajes: [
-      { id: 1, autor: "cliente", texto: "Hola, ¿el notebook viene con garantía?", fecha: "2026-10-13", hora: "10:15", leido: true },
-      { id: 2, autor: "vendedor", texto: "¡Hola! Sí, tiene 12 meses de garantía directa con nosotros.", fecha: "2026-10-13", hora: "10:22", leido: false },
-    ],
-  },
-  {
-    id: 2,
-    contraparte: "Sonido Sur",
-    asunto: "Compra #1038 · Audífonos Bluetooth",
-    fecha: "2026-10-08",
-    mensajes: [
-      { id: 3, autor: "cliente", texto: "Compré los audífonos y no conectan con mi celular.", fecha: "2026-10-12", hora: "18:40", leido: true },
-      { id: 4, autor: "vendedor", texto: "Mantén presionado el botón 10 segundos para reiniciarlos y vuelve a emparejarlos.", fecha: "2026-10-12", hora: "19:05", leido: false },
-    ],
-  },
-  {
-    id: 3,
-    contraparte: "Casa Hogar Chile",
-    asunto: "Compra #1031 · Hervidor eléctrico",
-    fecha: "2026-10-05",
-    mensajes: [
-      { id: 5, autor: "cliente", texto: "¿Cuándo llega mi pedido?", fecha: "2026-10-11", hora: "09:05", leido: true },
-    ],
-  },
-  {
-    id: 4,
-    contraparte: "Papelería El Roble",
-    asunto: "Compra #1027 · Mouse inalámbrico",
-    fecha: "2026-10-01",
-    mensajes: [],
-  },
-];
-
-// TEMPORAL: preguntas de ejemplo. Las horas son relativas a "ahora".
-const haceHoras = (horas) => new Date(Date.now() - horas * 3600000).toISOString();
-
-const preguntasIniciales = [
-  { id: 1, producto: "Hervidor eléctrico", productoId: 3, texto: "¿Lo tienen en color negro?", fecha: haceHoras(6), respuesta: null },
-  {
-    id: 2,
-    producto: "Notebook Lenovo",
-    productoId: 1,
-    texto: "¿Incluye el cargador original?",
-    fecha: haceHoras(72),
-    respuesta: { texto: "Sí, viene con su cargador original de 65 W.", fecha: haceHoras(60) },
-  },
-  {
-    id: 3,
-    producto: "Audífonos Bluetooth",
-    productoId: 2,
-    texto: "¿Cuánto dura la batería con carga completa?",
-    fecha: haceHoras(120),
-    respuesta: { texto: "Unas 20 horas de reproducción continua.", fecha: haceHoras(100) },
-  },
-];
+//
+// Datos desde la API:
+//   GET  /mensajes/mias?rol=cliente   -> conversaciones (una por compra) con sus mensajes
+//   PUT  /mensajes/venta/{id}/leer    -> al abrir una conversación
+//   POST /mensajes                    -> enviar un mensaje
+//   GET  /preguntas/mias              -> las preguntas públicas del cliente
 
 // Fecha de hoy en formato YYYY-MM-DD usando la hora local (no UTC)
 const hoyLocal = () => new Date().toLocaleDateString("sv-SE");
 
-const horaActual = () =>
-  new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", hour12: false });
-
 const ClientMessagesScreen = () => {
   const navigate = useNavigate();
+  const usuario = authService.getCurrentUser();
   const [vista, setVista] = useState("conversaciones");
-  // TEMPORAL: todo vive solo en memoria (se pierde al recargar la página).
-  const [conversaciones, setConversaciones] = useState(conversacionesIniciales);
-  const [preguntas] = useState(preguntasIniciales);
+  const [conversaciones, setConversaciones] = useState([]);
+  const [preguntas, setPreguntas] = useState([]);
   const [ahora] = useState(() => Date.now());
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const [errorEnvio, setErrorEnvio] = useState("");
+  const [recarga, setRecarga] = useState(0);
 
-  if (!authService.getCurrentUser()) return <Navigate to="/login" replace />;
+  // Carga las conversaciones y las preguntas del cliente
+  useEffect(() => {
+    if (!usuario) return;
+    let activo = true;
+
+    setCargando(true);
+    setError("");
+    Promise.all([messageService.obtenerConversaciones("cliente"), messageService.obtenerMisPreguntas()])
+      .then(([convs, pregs]) => {
+        if (!activo) return;
+        setConversaciones(convs);
+        setPreguntas(pregs);
+      })
+      .catch((e) => {
+        if (activo) setError(e.message);
+      })
+      .finally(() => {
+        if (activo) setCargando(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recarga]);
+
+  if (!usuario) return <Navigate to="/login" replace />;
 
   // ---------- Acciones ----------
-  // TEMPORAL: solo modifican el estado local. Con el backend pasan a ser llamadas a la API
-  // (PUT de leído y POST del mensaje).
   const abrirConversacion = (id) => {
+    const conversacion = conversaciones.find((c) => c.id === id);
+    const hayPendientes = conversacion?.mensajes.some((m) => m.autor === "vendedor" && !m.leido);
+    if (!hayPendientes) return;
+
     // Al abrirla, las respuestas del vendedor quedan como leídas
     setConversaciones((actuales) =>
       actuales.map((c) =>
         c.id === id ? { ...c, mensajes: c.mensajes.map((m) => ({ ...m, leido: true })) } : c
       )
     );
+    messageService.marcarLeida(id).catch(() => {
+      // Si falla, se vuelve a mostrar como sin leer
+      setRecarga((n) => n + 1);
+    });
   };
 
-  const enviarMensaje = (id, texto) => {
+  const enviarMensaje = async (id, texto) => {
     console.log("[Mensajes] Enviar mensaje:", { conversacionId: id, autor: "cliente", texto });
+    setErrorEnvio("");
 
-    setConversaciones((actuales) =>
-      actuales.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              mensajes: [
-                ...c.mensajes,
-                // TEMPORAL: el id, la fecha y la hora los pondrá la base de datos
-                { id: Date.now(), autor: "cliente", texto, fecha: hoyLocal(), hora: horaActual(), leido: true },
-              ],
-            }
-          : c
-      )
-    );
+    try {
+      const creado = await messageService.enviarMensaje(id, texto);
+      setConversaciones((actuales) =>
+        actuales.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                mensajes: [
+                  ...c.mensajes,
+                  { id: creado?.id ?? Date.now(), autor: "cliente", texto, fecha: hoyLocal(), hora: "", leido: true },
+                ],
+              }
+            : c
+        )
+      );
+    } catch (e) {
+      setErrorEnvio(e.message);
+    }
   };
 
   // Lo que el cliente todavía no ha leído de los vendedores
@@ -154,12 +136,22 @@ const ClientMessagesScreen = () => {
 
         <MessageTabs tabs={tabs} activa={vista} onCambiar={setVista} />
 
-        {vista === "conversaciones" ? (
+        {cargando ? (
+          <p className="cm-nota" role="status">Cargando tus mensajes...</p>
+        ) : error ? (
+          <ErrorState titulo="No pudimos cargar tus mensajes" detalle={error} onReintentar={() => setRecarga((n) => n + 1)} />
+        ) : vista === "conversaciones" ? (
           <>
             <div className="cm-nota">
               Aquí hay una conversación por cada compra que hiciste. Si quieres consultar algo antes de comprar,
               usa la sección de preguntas en la ficha del producto.
             </div>
+
+            {errorEnvio && (
+              <div className="cm-nota" role="alert">
+                No se pudo enviar el mensaje: {errorEnvio}
+              </div>
+            )}
 
             <ConversationPanel
               conversaciones={conversaciones}
@@ -194,7 +186,7 @@ const ClientMessagesScreen = () => {
               preguntas={preguntas}
               rol="cliente"
               ahora={ahora}
-              onVerProducto={(productoId) => navigate(`/producto/${productoId}`)}
+              onVerProducto={(itemId, pregunta) => navigate(`/${pregunta?.tipo === "servicio" ? "servicio" : "producto"}/${itemId}`)}
             />
           </>
         )}

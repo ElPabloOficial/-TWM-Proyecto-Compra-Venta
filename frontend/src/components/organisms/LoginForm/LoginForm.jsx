@@ -6,7 +6,7 @@ import CustomButton from "../../atoms/Button/CustomButton";
 import formatRut, { isValidRut } from "../../../services/format";
 
 
-const LoginForm = ({ onSubmit }) => {
+const LoginForm = ({ onSubmit, error = "" }) => {
   const [rut, setRut] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -47,6 +47,11 @@ const LoginForm = ({ onSubmit }) => {
         onChange={(e) => setPassword(e.target.value)}
         errorMessage={rutSubmitted && !password ? "Ingresa tu contraseña." : ""}
       />
+      {error && (
+        <p className="login-error" role="alert">
+          {error}
+        </p>
+      )}
       <RememberUser
         checked={remember}
         onChange={(e) => setRemember(e.target.checked)}

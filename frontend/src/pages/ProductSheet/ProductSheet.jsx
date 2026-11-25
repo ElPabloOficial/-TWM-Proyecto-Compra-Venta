@@ -212,6 +212,15 @@ console.log(
 
         setReviews(reseniasAdaptadas);
 
+        // El resumen de arriba (promedio y cantidad) sale de las mismas reseñas que se muestran abajo
+        const promedio =
+          reseniasAdaptadas.length > 0
+            ? reseniasAdaptadas.reduce((total, r) => total + (r.rating || 0), 0) / reseniasAdaptadas.length
+            : 0;
+        setCurrentItem((actual) =>
+          actual ? { ...actual, rating: promedio, cantidadResenas: reseniasAdaptadas.length } : actual
+        );
+
       } catch (err) {
         console.error("Error al cargar detalle:", err);
         setError(
