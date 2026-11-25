@@ -1,0 +1,780 @@
+{
+  "info": {
+    "_postman_id": "de0aed05-adc9-4b7b-880f-b075d90a5567",
+    "name": "CompraVenta por Perfil",
+    "description": "Colección generada a partir de los controladores y DTO del backend entregado. Incluye rutas públicas, autenticadas y restringidas por rol. El endpoint de login del código es POST /api/usuarios/login (no GET). Ejecuta primero el login para guardar automáticamente el JWT en la variable token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "60259528",
+    "_collection_link": "https://go.postman.co/collection/60259528-de0aed05-adc9-4b7b-880f-b075d90a5567?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Login",
+      "item": [
+        {
+          "name": "POST api/usuarios/login (Cliente)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rut\": \"{{rutCliente}}\",\n  \"clave\": \"{{claveCliente}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios",
+                "login"
+              ]
+            },
+            "description": "Acceso: Público. Acción del controlador: Login."
+          },
+          "response": []
+        },
+        {
+          "name": "POST api/usuarios/login (Vendedor)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rut\": \"{{rutVendedor}}\",\n  \"clave\": \"{{claveVendedor}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios",
+                "login"
+              ]
+            },
+            "description": "Acceso: Público. Acción del controlador: Login."
+          },
+          "response": []
+        },
+        {
+          "name": "POST api/usuarios/login (Admin)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rut\": \"{{rutAdmin}}\",\n  \"clave\": \"{{claveAdmin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "usuarios",
+                "login"
+              ]
+            },
+            "description": "Acceso: Público. Acción del controlador: Login."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Carrito (Cliente)",
+      "item": [
+        {
+          "name": "GET api/carrito",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/carrito",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "carrito"
+              ]
+            },
+            "description": "Acceso: Autenticado. Acción del controlador: GetMiCarrito."
+          },
+          "response": []
+        },
+        {
+          "name": "POST api/carrito/agregar",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"producto\",\n  \"id_item\": 100,\n  \"cantidad\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/carrito/agregar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "carrito",
+                "agregar"
+              ]
+            },
+            "description": "Acceso: Autenticado. Acción del controlador: AgregarAlCarrito."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT api/carrito/actualizar",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"producto\",\n  \"id_item\": 100,\n  \"cantidad\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/carrito/actualizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "carrito",
+                "actualizar"
+              ]
+            },
+            "description": "Acceso: Autenticado. Acción del controlador: ActualizarCantidad."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE api/carrito/eliminar/<tipo>/<idItem>",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/carrito/eliminar/{{tipo}}/{{idItem}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "carrito",
+                "eliminar",
+                "{{tipo}}",
+                "{{idItem}}"
+              ]
+            },
+            "description": "Acceso: Autenticado. Acción del controlador: EliminarDelCarrito."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Productos (Vendedor)",
+      "item": [
+        {
+          "name": "GET api/productos/<id>",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/productos/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "productos",
+                "{{id}}"
+              ]
+            },
+            "description": "Acceso: Público. Acción del controlador: GetProducto."
+          },
+          "response": []
+        },
+        {
+          "name": "GET api/productos/mis-productos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenVendedor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/productos/mis-productos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "productos",
+                "mis-productos"
+              ]
+            },
+            "description": "Acceso: Rol: Vendedor,Administrador. Acción del controlador: GetMisProductos."
+          },
+          "response": []
+        },
+        {
+          "name": "POST api/productos",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenVendedor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Producto de prueva\",\n  \"restriccionedad\": false,\n  \"caracteristicas\": {\n    \"color\": \"azul\",\n    \"talla\": \"M\"\n  },\n  \"imagen\": null,\n  \"id_categoria\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/productos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "productos"
+              ]
+            },
+            "description": "Acceso: Rol: Vendedor,Administrador. Acción del controlador: CreateProducto."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT api/productos/<id>",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenVendedor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Producto de prueba\",\n  \"restriccionedad\": false,\n  \"caracteristicas\": {\n    \"color\": \"azul\",\n    \"talla\": \"M\"\n  },\n  \"imagen\": null,\n  \"id_categoria\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/productos/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "productos",
+                "{{id}}"
+              ]
+            },
+            "description": "Acceso: Rol: Vendedor,Administrador. Acción del controlador: UpdateProducto."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE api/productos/<id>",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenVendedor}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/productos/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "productos",
+                "{{id}}"
+              ]
+            },
+            "description": "Acceso: Rol: Vendedor,Administrador. Acción del controlador: DeleteProducto."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Categorias (Admin)",
+      "item": [
+        {
+          "name": "GET api/categorias",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias"
+              ]
+            },
+            "description": "Acceso: Público. Acción del controlador: GetCategorias."
+          },
+          "response": []
+        },
+        {
+          "name": "GET api/categorias/<id>",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias",
+                "{{id}}"
+              ]
+            },
+            "description": "Acceso: Público. Acción del controlador: GetCategoria."
+          },
+          "response": []
+        },
+        {
+          "name": "POST api/categorias",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Categoria de prueva\",\n  \"id_categoria_padre\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias"
+              ]
+            },
+            "description": "Acceso: Rol: Administrador. Acción del controlador: CrearCategoria."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT api/categorias/<id>",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Categoria de prueba\",\n  \"id_categoria_padre\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias",
+                "{{id}}"
+              ]
+            },
+            "description": "Acceso: Rol: Administrador. Acción del controlador: ActualizarCategoria."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE api/categorias/<id>",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categorias/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categorias",
+                "{{id}}"
+              ]
+            },
+            "description": "Acceso: Rol: Administrador. Acción del controlador: EliminarCategoria."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5097"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "rutLogin",
+      "value": "22222222-2"
+    },
+    {
+      "key": "claveLogin",
+      "value": "comprador123"
+    },
+    {
+      "key": "claveNueva",
+      "value": "NuevaClave123!"
+    },
+    {
+      "key": "rutNuevo",
+      "value": "33333333-3"
+    },
+    {
+      "key": "rut",
+      "value": "22222222-2"
+    },
+    {
+      "key": "rutVendedor",
+      "value": "11111111-K"
+    },
+    {
+      "key": "tipo",
+      "value": "producto"
+    },
+    {
+      "key": "idItem",
+      "value": "1"
+    },
+    {
+      "key": "caracteristica",
+      "value": "color"
+    },
+    {
+      "key": "producto",
+      "value": "producto de prueba"
+    },
+    {
+      "key": "servicio",
+      "value": "servicio de prueba"
+    },
+    {
+      "key": "categoria",
+      "value": "Hogar"
+    },
+    {
+      "key": "palabra",
+      "value": "bueno"
+    },
+    {
+      "key": "modalidad",
+      "value": "presencial"
+    },
+    {
+      "key": "medioPago",
+      "value": "Transferencia"
+    },
+    {
+      "key": "medioEvaluado",
+      "value": "Visa"
+    },
+    {
+      "key": "llave",
+      "value": "color"
+    },
+    {
+      "key": "fechaInicio",
+      "value": "2026-01-01"
+    },
+    {
+      "key": "fechaFin",
+      "value": "2026-11-24"
+    },
+    {
+      "key": "fecha",
+      "value": "2026-11-24"
+    },
+    {
+      "key": "anio",
+      "value": "2026"
+    },
+    {
+      "key": "id",
+      "value": "1"
+    },
+    {
+      "key": "idVenta",
+      "value": "1"
+    },
+    {
+      "key": "idProducto",
+      "value": "1"
+    },
+    {
+      "key": "idServicio",
+      "value": "1"
+    },
+    {
+      "key": "idLista",
+      "value": "1"
+    },
+    {
+      "key": "idPregunta",
+      "value": "1"
+    },
+    {
+      "key": "idComuna",
+      "value": "1"
+    },
+    {
+      "key": "idCategoria",
+      "value": "1"
+    },
+    {
+      "key": "idCategoriaPrincipal",
+      "value": "1"
+    },
+    {
+      "key": "idRaiz",
+      "value": "1"
+    },
+    {
+      "key": "pesoMinimo",
+      "value": "10"
+    },
+    {
+      "key": "comision",
+      "value": "0.05"
+    },
+    {
+      "key": "seguimiento",
+      "value": "TRACK-123456"
+    }
+  ]
+}
