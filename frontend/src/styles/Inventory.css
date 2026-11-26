@@ -248,6 +248,13 @@
   color: #ef4444;
 }
 
+.inv-estado-oculto {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
 .inv-icon-btn {
   background: none;
   border: none;

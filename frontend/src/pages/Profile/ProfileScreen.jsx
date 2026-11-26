@@ -11,7 +11,6 @@ import { isValidRut } from "../../services/format";
 import { esNombreValido, esTelefonoValido, esCorreoValido, esUrlValida } from "../../services/validaciones";
 import {
   obtenerPerfil,
-  listarComunas,
   guardarPerfil,
   cambiarClave,
   convertirEnVendedor,
@@ -24,7 +23,6 @@ const validarPerfil = (f, esVendedor, tieneEmpresa) => {
   if (!esNombreValido(f.nombre)) return "El nombre solo puede tener letras y debe tener al menos 3 caracteres.";
   if (f.telefonos.some((t) => t && !esTelefonoValido(t))) return "Cada teléfono debe tener 9 dígitos, por ejemplo 912345678.";
   if (f.correo.trim() && !esCorreoValido(f.correo)) return "Ingresa un correo válido, por ejemplo nombre@dominio.cl.";
-  if (f.numero !== "" && Number(f.numero) <= 0) return "El número de la dirección debe ser mayor a 0.";
   if (esVendedor) {
     // Con el interruptor de empresa en "Sí", para agregarla hacen falta el RUT y el nombre
     if (!tieneEmpresa && !(f.rutEmpresa && f.nombreEmpresa.trim())) return "Indica el RUT y el nombre de tu empresa, o cambia la opción a \"No\".";
@@ -39,7 +37,6 @@ const ProfileScreen = () => {
   const haySesion = Boolean(authService.getCurrentUser());
 
   const [perfil, setPerfil] = useState(null);
-  const [comunas, setComunas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -57,16 +54,9 @@ const ProfileScreen = () => {
 
     const cargar = async () => {
       try {
-        const [datos, listaComunas] = await Promise.all([
-          obtenerPerfil(),
-          listarComunas().catch(() => {
-            mostrarToast("No se pudo cargar la lista de comunas.", "error");
-            return [];
-          }),
-        ]);
+        const datos = await obtenerPerfil();
         if (!activo) return;
         setPerfil(datos);
-        setComunas(listaComunas);
       } catch (e) {
         if (activo) setError(e.message);
       } finally {
@@ -189,7 +179,6 @@ const ProfileScreen = () => {
         <ProfileConfigCard
           key={version}
           user={perfil}
-          comunas={comunas}
           guardando={guardando}
           onGuardar={handleGuardar}
           onCancelar={handleCancelar}

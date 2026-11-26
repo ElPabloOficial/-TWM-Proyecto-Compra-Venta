@@ -99,6 +99,10 @@ public class CatalogoController : ControllerBase
                 })
                 .ToListAsync();
 
+            // Los productos ocultos no se muestran en el catálogo. La visibilidad la mantiene la base de datos
+            // con sus triggers (sin stock o más de 40 días sin ventas => "Oculto").
+            productosDb = productosDb.Where(p => !VisibilidadProducto.EstaOculto(p.caracteristicas)).ToList();
+
             var serviciosDb = await _context.servicios
                 .AsNoTracking()
                 .Select(s => new

@@ -30,6 +30,8 @@ const adaptarProducto = (p) => {
         stock: Number(p.stockactual ?? 0),
         imagen: null, // TEMPORAL: las imágenes aún no se guardan en la API
         restriccionEdad: Boolean(p.restriccionedad),
+        // "visibilidad" vive en el JSON: "Oculto" = no aparece en la tienda (los triggers lo ponen solos al quedar sin stock)
+        visible: c.visibilidad !== 'Oculto',
         oferta: hayOferta ? Math.round(p.preciooferta * 100) : 0,
         ofertaInicio: hayOferta ? p.fechainicio ?? '' : '',
         ofertaFin: hayOferta ? p.fechafin ?? '' : '',
@@ -63,10 +65,13 @@ export async function listarCategorias() {
 
 // "descripcion" solo va en el JSON si el producto tiene una; si está vacía, se omite la clave
 const armarCaracteristicas = (datos) => {
-    const { descripcion: _anterior, ...resto } = datos._caracteristicas ?? { visibilidad: 'Activo' };
+    const { descripcion: _anterior, ...resto } = datos._caracteristicas ?? {};
     const descripcion = (datos.descripcion ?? '').trim();
+    // Sin stock el producto siempre queda oculto (igual que hace el trigger de la base de datos)
+    const visible = datos.visible !== false && Number(datos.stock) > 0;
     return {
         ...resto,
+        visibilidad: visible ? 'Activo' : 'Oculto',
         sku: datos.sku,
         ...(descripcion ? { descripcion } : {}),
         precio: datos.precio,
@@ -155,8 +160,10 @@ export async function crearProducto(datos) {
 export async function actualizarProducto(datos, original) {
     validarOferta(datos);
 
-    await pedir(`/productos/${datos.id}`, { method: 'PUT', body: armarProducto(datos) });
+    // Primero el stock y después el producto: al guardar el stock el trigger de la base de datos
+    // recalcula la visibilidad, y así lo que eligió el vendedor es lo que queda al final.
     await guardarStock(datos.id, datos.stock);
+    await pedir(`/productos/${datos.id}`, { method: 'PUT', body: armarProducto(datos) });
     await sincronizarOferta(datos, original);
 }
 

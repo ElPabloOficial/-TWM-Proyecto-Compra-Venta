@@ -1,10 +1,16 @@
+// src/services/authService.js
+//
 // Inicio de sesión contra la API (.NET): POST /usuarios/login (LoginDto) y luego JWT (Bearer).
+// Mantiene la misma interfaz que la versión con datos de prueba (login, logout,
+// getCurrentUser) y el mismo formato de usuario { id, name, rut, role }, para no
+// tener que cambiar el resto de la aplicación.
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5097/api';
 
-// "12.345.678-k" -> "12345678-K" 
+// "12.345.678-k" -> "12345678-K" (así se guardan los RUT en la base de datos)
 export const limpiarRut = (rut) => String(rut).replace(/[.\s]/g, '').toUpperCase();
 
+// Convierte el usuario que entrega la API al formato que ya usa la aplicación.
 // El rol dual de la base de datos ("ambos") se trata como "vendedor", porque ese
 // usuario ve todo lo del cliente y además el panel de vendedor.
 const adaptarUsuario = (u) => ({
@@ -82,19 +88,21 @@ export const authService = {
     },
 
     // true si el usuario con sesión iniciada es administrador.
-    // "tipousuario" viene de la base de datos
+    // "tipousuario" viene de la base de datos ('admin' o 'administrador'); las sesiones
+    // guardadas antes de agregarlo solo tienen "role".
     esAdmin() {
         const usuario = authService.getCurrentUser();
         const tipo = String(usuario?.tipousuario ?? usuario?.role ?? '').trim().toLowerCase();
         return ['admin', 'administrador'].includes(tipo);
     },
 
-    // Reemplaza el JWT guardado.
+    // Reemplaza el JWT guardado (por ejemplo, el nuevo token con el rol actualizado al pasar de
+    // cliente a vendedor; con el token anterior la API seguiría tratando la cuenta como cliente).
     setToken(token) {
         localStorage.setItem('authToken', token);
     },
 
-    // Actualiza datos del usuario guardado en la sesión
+    // Actualiza datos del usuario guardado en la sesión (p. ej. el nombre tras editar el perfil)
     // sin tener que volver a iniciar sesión.
     actualizarUsuario(cambios) {
         const actual = authService.getCurrentUser();

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net.Mail;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -506,10 +507,46 @@ public class PerfilController : ControllerBase
     {
         var u = await _context.usuarios.AsNoTracking()
             .Where(x => x.rut == rut)
-            .Select(x => new { x.rut, x.nombre, x.fechanacimiento, x.tipousuario })
+            .Select(x => new { x.rut, x.nombre, x.fechanacimiento, x.fechacreacion, x.tipousuario, x.descuentos })
             .FirstOrDefaultAsync();
 
         if (u == null) return null;
+
+        // Cuántas direcciones tiene registradas (se administran en "Mis direcciones")
+        var cantidadDirecciones = await _context.usuarios.AsNoTracking()
+            .Where(x => x.rut == rut)
+            .SelectMany(x => x.id_direccions)
+            .CountAsync();
+
+        // Descuentos vigentes. Hoy existe "descuento5%": la BD guarda la fecha en que se asignó y dura 45 días.
+        var descuentos = new List<object>();
+        if (!string.IsNullOrWhiteSpace(u.descuentos))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(u.descuentos);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object
+                    && doc.RootElement.TryGetProperty("descuento5%", out var marca)
+                    && marca.ValueKind == JsonValueKind.String
+                    && DateOnly.TryParse(marca.GetString(), out var desde))
+                {
+                    var vence = desde.AddDays(45);
+                    if (vence >= DateOnly.FromDateTime(DateTime.Today))
+                    {
+                        descuentos.Add(new
+                        {
+                            nombre = "Descuento 5%",
+                            descripcion = "Por volver a comprar",
+                            vence = vence.ToString("yyyy-MM-dd")
+                        });
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // Si el JSON de descuentos está mal formado, simplemente no se muestran
+            }
+        }
 
         var correo = await _context.correos.AsNoTracking()
             .Where(c => c.id_usuario == rut)
@@ -569,7 +606,10 @@ public class PerfilController : ControllerBase
             u.rut,
             u.nombre,
             u.fechanacimiento,
+            fechacreacion = u.fechacreacion.ToString("yyyy-MM-dd"),
             u.tipousuario,
+            cantidadDirecciones,
+            descuentos,
             correo,
             telefonos = numerosTelefono.Select(n => n.ToString()).ToList(),
             direccion,

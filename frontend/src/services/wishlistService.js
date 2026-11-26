@@ -11,6 +11,7 @@ export async function listarListasDeseos() {
 }
 
 // Crea una lista con su primer producto o servicio.
+// datos: { nombre, descripcion, publica, tipo: "producto" | "servicio", id }
 export async function crearListaDeseos({ nombre, descripcion, publica, tipo, id }) {
     return pedir('/wishlist/listas', {
         method: 'POST',
@@ -36,6 +37,7 @@ export async function obtenerMiWishlist() {
 }
 
 // Guarda un producto o servicio en una lista (sin idLista, en "Mis Favoritos"). tipo: "producto" | "servicio".
+// La API responde 400 ("ya está en tu lista") si ya estaba guardado en esa lista.
 export async function agregarAWishlist(tipo, id, idLista) {
     await pedir('/wishlist/agregar', {
         method: 'POST',

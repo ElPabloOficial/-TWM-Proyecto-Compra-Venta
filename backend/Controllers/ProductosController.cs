@@ -36,6 +36,9 @@ public class ProductosController : ControllerBase
                 .Include(p => p.ofrecer1s)
                 .ToListAsync();
 
+            // Los productos ocultos no aparecen en el listado público. La visibilidad la mantienen los triggers de la BD.
+            productosDb = productosDb.Where(p => !VisibilidadProducto.EstaOculto(p.caracteristicas)).ToList();
+
             var productos = productosDb.Select(p => {
                 var oferta = p.ofrecer1s.FirstOrDefault();
             
@@ -84,6 +87,16 @@ public class ProductosController : ControllerBase
                 return NotFound(new { success = false, message = "Producto no encontrado.", data = (object?)null, errors = (object?)null });
 
             var vendedor = producto.ofrecer1s.FirstOrDefault();
+
+            // Un producto oculto solo lo puede abrir su vendedor o un administrador; para el resto no existe
+            if (VisibilidadProducto.EstaOculto(producto.caracteristicas))
+            {
+                var rutActual = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var esDueno = rutActual != null && vendedor?.id_usuario == rutActual;
+
+                if (!esDueno && !User.IsInRole("Administrador"))
+                    return NotFound(new { success = false, message = "Producto no encontrado.", data = (object?)null, errors = (object?)null });
+            }
 
             // El stock real vive en la tabla "almacenar" (inventario del vendedor), no en "caracteristicas".
             var stockVendedor = vendedor == null

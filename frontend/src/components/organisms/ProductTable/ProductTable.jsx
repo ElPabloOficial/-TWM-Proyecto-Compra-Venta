@@ -89,6 +89,7 @@ const ProductTable = ({ productos, categorias = [], error = "", onEditar, onElim
                 </td>
                 <td className={`inv-estado ${p.stock > 0 ? "ok" : "sin"}`}>
                   {p.stock > 0 ? "En Stock" : "Sin stock"}
+                  {p.visible === false && <div className="inv-estado-oculto">Oculto en tienda</div>}
                 </td>
                 <td>
                   <button

@@ -1,8 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
-import Autocomplete from '@mui/material/Autocomplete';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import CustomAvatar from '../../atoms/Avatar/CustomAvatar';
 import CustomButton from '../../atoms/Button/CustomButton';
@@ -16,9 +15,16 @@ import { soloLetras, soloDigitos, telefonoADigitos } from '../../../services/val
 
 const MAX_TELEFONOS = 5; // el mismo máximo que acepta la API
 
-// "comunas" viene de la API: [{ id, nombre, provincia, region }]. Al elegir una comuna, su provincia
-// y su región se completan solas (así la dirección siempre apunta a una comuna que existe).
-export default function ProfileConfigCard({ user = {}, comunas = [], guardando = false, onGuardar, onCancelar, onCambiarTipo }) {
+// "2022-08-19" -> "19 de agosto de 2022" (se lee como UTC para que la zona horaria no cambie el día)
+const fechaLarga = (iso) =>
+  iso
+    ? new Date(`${String(iso).slice(0, 10)}T00:00:00Z`).toLocaleDateString('es-CL', {
+        day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+      })
+    : '';
+
+// Las direcciones del usuario ya no se editan aquí: se administran en "Mis direcciones" (/direcciones).
+export default function ProfileConfigCard({ user = {}, guardando = false, onGuardar, onCancelar, onCambiarTipo }) {
   const [form, setForm] = useState({
     nombre: user.name || '',
     rut: user.rut || '',
@@ -33,18 +39,15 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
     giroComercial: user.giroComercial || '',
     paginaWeb: user.paginaWeb || '',
     direccionLocal: user.direccionLocal || '',
-    calle: user.calle || '',
-    numero: user.numero || '',
-    pasaje: user.pasaje || '',
-    descripcion: user.descripcion || '',
-    sector: user.sector || '',
-    idComuna: user.idComuna ?? '',
     passwordActual: '',
     passwordNueva: '',
     passwordConfirmar: '',
   });
 
+  const navigate = useNavigate();
   const esVendedor = user.role === 'vendedor';
+  const descuentos = user.descuentos ?? [];
+  const cantidadDirecciones = user.cantidadDirecciones ?? 0;
 
   const cambiar = (campo) => (e) =>
     setForm((anterior) => ({ ...anterior, [campo]: e.target.value }));
@@ -68,15 +71,9 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
       telefonos: anterior.telefonos.filter((_, i) => i !== indice),
     }));
 
-  // El número de la dirección solo admite dígitos (la base de datos lo guarda como entero)
-  const cambiarNumero = (e) =>
-    setForm((anterior) => ({ ...anterior, numero: soloDigitos(e.target.value, 6) }));
-
   // Aplica un filtro de validaciones.js a lo que se escribe (por ejemplo, solo letras en el nombre)
   const cambiarFiltrado = (campo, filtro) => (e) =>
     setForm((anterior) => ({ ...anterior, [campo]: filtro(e.target.value) }));
-
-  const comunaSeleccionada = comunas.find((c) => c.id === Number(form.idComuna)) ?? null;
 
   const handleGuardar = () => {
     console.log('[Perfil] Guardar cambios del perfil:', form);
@@ -94,6 +91,7 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, alignItems: 'start' }}>
             <ProfileField label="Nombre Completo" value={form.nombre} onChange={cambiarFiltrado('nombre', soloLetras)} placeholder="Ingresa tu nombre" />
             <ProfileField label="RUT" value={form.rut} readOnly />
+            {user.miembroDesde && <ProfileField label="Miembro desde" value={fechaLarga(user.miembroDesde)} readOnly />}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#000' }}>
                 {form.telefonos.length > 1 ? 'Teléfonos de Contacto' : 'Teléfono de Contacto'}
@@ -166,41 +164,39 @@ export default function ProfileConfigCard({ user = {}, comunas = [], guardando =
         </Box>
       )}
 
-      <ProfileSection title="Dirección y Número">
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(6, 1fr)' }, gap: 2 }}>
-          <Box sx={{ gridColumn: { md: 'span 2' } }}><ProfileField label="Calle" value={form.calle} onChange={cambiar('calle')} placeholder="Calle" /></Box>
-          <Box sx={{ gridColumn: { md: 'span 2' } }}><ProfileField label="Número" value={form.numero} onChange={cambiarNumero} placeholder="Número" inputProps={{ inputMode: 'numeric' }} /></Box>
-          <Box sx={{ gridColumn: { md: 'span 2' } }}><ProfileField label="Pasaje" value={form.pasaje} onChange={cambiar('pasaje')} placeholder="Pasaje" /></Box>
-          <Box sx={{ gridColumn: { md: 'span 3' } }}><ProfileField label="Descripción" value={form.descripcion} onChange={cambiar('descripcion')} placeholder="Descripción" /></Box>
-          <Box sx={{ gridColumn: { md: 'span 3' } }}><ProfileField label="Sector" value={form.sector} onChange={cambiar('sector')} placeholder="Sector" /></Box>
-          <Box sx={{ gridColumn: { md: 'span 2' }, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#000' }}>Comuna</Typography>
-            <Autocomplete
-              options={comunas}
-              value={comunaSeleccionada}
-              onChange={(_, nueva) => setForm((anterior) => ({ ...anterior, idComuna: nueva?.id ?? '' }))}
-              getOptionLabel={(opcion) => opcion.nombre}
-              isOptionEqualToValue={(opcion, valor) => opcion.id === valor.id}
-              noOptionsText="Sin resultados"
-              size="small"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Selecciona tu comuna"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '999px',
-                      fontSize: '0.85rem',
-                      '& fieldset': { borderColor: '#333' },
-                    },
-                  }}
-                />
-              )}
-            />
-          </Box>
-          <Box sx={{ gridColumn: { md: 'span 2' } }}><ProfileField label="Región" value={comunaSeleccionada?.region ?? ''} placeholder="Se completa al elegir la comuna" readOnly /></Box>
-          <Box sx={{ gridColumn: { md: 'span 2' } }}><ProfileField label="Provincia" value={comunaSeleccionada?.provincia ?? ''} placeholder="Se completa al elegir la comuna" readOnly /></Box>
+      <ProfileSection title="Mis Direcciones">
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+          <Typography sx={{ fontSize: '0.85rem', color: '#333' }}>
+            {cantidadDirecciones === 0
+              ? 'Aún no tienes direcciones registradas.'
+              : `Tienes ${cantidadDirecciones} ${cantidadDirecciones === 1 ? 'dirección registrada' : 'direcciones registradas'}.`}
+          </Typography>
+          <CustomButton variant="secondary" size="small" onClick={() => navigate('/direcciones')}>
+            Administrar direcciones
+          </CustomButton>
         </Box>
+      </ProfileSection>
+
+      <ProfileSection title="Mis Descuentos">
+        {descuentos.length === 0 ? (
+          <Typography sx={{ fontSize: '0.85rem', color: '#757575' }}>
+            No tienes descuentos activos por ahora.
+          </Typography>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {descuentos.map((d) => (
+              <Box
+                key={d.nombre}
+                sx={{ border: '1px solid #EC3333', borderRadius: '20px', px: 2, py: 1, display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}
+              >
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: '#EC3333' }}>
+                  {d.nombre} <Typography component="span" sx={{ fontSize: '0.8rem', color: '#555', fontWeight: 400 }}>· {d.descripcion}</Typography>
+                </Typography>
+                <Typography sx={{ fontSize: '0.8rem', color: '#555' }}>Válido hasta el {fechaLarga(d.vence)}</Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
       </ProfileSection>
 
       <ProfileSection title="Acceso">

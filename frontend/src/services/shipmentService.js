@@ -1,5 +1,16 @@
+// src/services/shipmentService.js
+//
 // Despachos (envíos) de las ventas. Los estados son los de la tabla Despacho de la BD:
 // 'En Preparación' -> 'Despachado' -> 'En reparto' -> 'Entregado'.
+//
+// TEMPORAL: la API todavía no tiene un endpoint que liste los despachos del vendedor ni uno que
+// cambie el estado (solo existe GET /despachos/venta/{id}). Mientras tanto se usan datos de ejemplo
+// en memoria, con la misma forma que devolvería la API, y se pierden al recargar la página.
+// El costo de envío no existe hasta que el vendedor despacha: la BD lo calcula con las medidas del
+// paquete (DatosLogisticos.costo_envio). Al crear los endpoints, solo hay que cambiar estas tres funciones:
+//   listarDespachosVendedor  -> GET  /despachos/mis-despachos
+//   obtenerDespacho          -> GET  /despachos/venta/{idVenta}
+//   avanzarDespacho          -> PUT  /despachos/{id}/estado
 
 export const ETAPAS_DESPACHO = ['En Preparación', 'Despachado', 'En reparto', 'Entregado'];
 

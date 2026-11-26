@@ -1,83 +1,87 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialog";
+import { shippingService } from "../../services/shippingService";
+import { soloDigitos } from "../../services/validaciones";
 import "../../styles/Inventory.css";
 import "../../styles/Shipping.css";
-import { soloDigitos, soloAlfanumerico } from "../../services/validaciones";
 
-// TEMPORAL: estos catálogos vendrán de la base de datos cuando se conecte el backend.
-const transportistas = ["Chilexpress", "Starken", "Correos de Chile", "Blue Express"];
+// Pantalla del administrador: empresas de despacho y sus límites volumétricos
+// (medidas y peso máximos de un paquete). Datos desde la API:
+//   GET    /empresas-despacho        -> lista
+//   POST   /empresas-despacho        -> crear
+//   PUT    /empresas-despacho/{id}   -> editar
+//   DELETE /empresas-despacho/{id}   -> eliminar (solo si no tiene despachos)
 
-const comunas = [
-  { nombre: "Osorno", region: "Los Lagos" },
-  { nombre: "Puerto Montt", region: "Los Lagos" },
-  { nombre: "Puerto Varas", region: "Los Lagos" },
-  { nombre: "Valdivia", region: "Los Ríos" },
-  { nombre: "Temuco", region: "La Araucanía" },
-  { nombre: "Santiago", region: "Metropolitana" },
-];
+const formVacio = { nombre: "", alto: "", ancho: "", fondo: "", peso: "" };
 
-// TEMPORAL: estas tarifas son de ejemplo y viven solo en memoria (se pierden al recargar).
-// Con el backend se cargan desde la API.
-const tarifasIniciales = [
-  { id: 1, empresa: "Chilexpress", comuna: "Osorno", region: "Los Lagos", costoFijo: 2500, tarifaBase: 0, costoMinimo: 0, tiempo: "1-2 días", estado: "Activa" },
-  { id: 2, empresa: "Starken", comuna: "Osorno", region: "Los Lagos", costoFijo: 2100, tarifaBase: 0, costoMinimo: 0, tiempo: "1 día", estado: "Activa" },
-  { id: 3, empresa: "Chilexpress", comuna: "Puerto Montt", region: "Los Lagos", costoFijo: 3800, tarifaBase: 0, costoMinimo: 0, tiempo: "2-3 días", estado: "Activa" },
-];
-
-const formVacio = {
-  empresa: "",
-  comuna: "Todas",
-  costoFijo: "",
-  tarifaBase: "",
-  costoMinimo: "",
-  tiempo: "",
-  estado: "Activa",
-};
-
-const formatoPrecio = (n) => `$${Number(n).toLocaleString("es-CL")}`;
+const numero = (n) => Number(n).toLocaleString("es-CL");
 
 const ShippingCostsScreen = () => {
-  const [tarifas, setTarifas] = useState(tarifasIniciales);
+  const [empresas, setEmpresas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState("");
+  const [recarga, setRecarga] = useState(0);
+
   const [form, setForm] = useState(formVacio);
   const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [porEliminar, setPorEliminar] = useState(null); // empresa que espera confirmación
   const formRef = useRef(null);
 
   const editando = editandoId !== null;
 
-  const handleChange = (campo) => (e) => {
-    setForm({ ...form, [campo]: e.target.value });
-  };
+  // Carga las empresas de despacho
+  useEffect(() => {
+    let activo = true;
 
-  // Aplica un filtro de validaciones.js a lo que se escribe (por ejemplo, solo dígitos en los costos)
-  const handleFiltrado = (campo, filtro) => (e) => {
-    setForm({ ...form, [campo]: filtro(e.target.value) });
-  };
+    setCargando(true);
+    setErrorCarga("");
+    shippingService
+      .listarEmpresas()
+      .then((lista) => {
+        if (activo) setEmpresas(lista);
+      })
+      .catch((e) => {
+        if (activo) setErrorCarga(e.message);
+      })
+      .finally(() => {
+        if (activo) setCargando(false);
+      });
 
-  const irAlFormulario = () => {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+    return () => {
+      activo = false;
+    };
+  }, [recarga]);
+
+  const handleChange = (campo) => (e) => setForm({ ...form, [campo]: e.target.value });
+
+  // Medidas y peso solo admiten dígitos
+  const handleNumero = (campo, max) => (e) => setForm({ ...form, [campo]: soloDigitos(e.target.value, max) });
+
+  const irAlFormulario = () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // El volumen máximo es alto × ancho × fondo (se calcula, no se escribe)
+  const volumen = Number(form.alto || 0) * Number(form.ancho || 0) * Number(form.fondo || 0);
 
   // ---------- Acciones ----------
-  // TEMPORAL: crear y editar solo modifican el estado local.
-  // Con el backend pasan a ser llamadas a la API (POST / PUT de la tarifa).
-  const nuevaTarifa = () => {
+  const nuevaEmpresa = () => {
     setEditandoId(null);
     setForm(formVacio);
     setError("");
     irAlFormulario();
   };
 
-  const editarTarifa = (t) => {
-    setEditandoId(t.id);
+  const editarEmpresa = (e) => {
+    setEditandoId(e.id);
     setForm({
-      empresa: t.empresa,
-      comuna: t.comuna,
-      costoFijo: String(t.costoFijo),
-      tarifaBase: String(t.tarifaBase),
-      costoMinimo: String(t.costoMinimo),
-      tiempo: t.tiempo,
-      estado: t.estado,
+      nombre: e.nombre,
+      alto: String(e.alto),
+      ancho: String(e.ancho),
+      fondo: String(e.fondo),
+      peso: String(e.peso),
     });
     setError("");
     irAlFormulario();
@@ -89,68 +93,53 @@ const ShippingCostsScreen = () => {
     setError("");
   };
 
-  const guardar = (e) => {
+  const guardar = async (e) => {
     e.preventDefault();
+    if (guardando) return;
 
-    const costoFijo = Number(form.costoFijo || 0);
-    const tarifaBase = Number(form.tarifaBase || 0);
-    const costoMinimo = Number(form.costoMinimo || 0);
-
-    if (!form.empresa) {
-      setError("Selecciona la empresa de despacho.");
-      return;
+    const nombre = form.nombre.trim();
+    if (!nombre) return setError("Escribe el nombre de la empresa de despacho.");
+    if (nombre.length > 50) return setError("El nombre no puede tener más de 50 caracteres.");
+    if (!(Number(form.alto) > 0) || !(Number(form.ancho) > 0) || !(Number(form.fondo) > 0)) {
+      return setError("El alto, el ancho y el fondo máximos deben ser mayores a 0.");
     }
-    if ([costoFijo, tarifaBase, costoMinimo].some((n) => Number.isNaN(n) || n < 0)) {
-      setError("Los costos deben ser números mayores o iguales a 0.");
-      return;
-    }
-    if (costoFijo === 0 && tarifaBase === 0) {
-      setError("Indica un costo fijo o una tarifa base por kg.");
-      return;
-    }
+    if (!(Number(form.peso) > 0)) return setError("El peso máximo debe ser mayor a 0.");
 
-    // TEMPORAL: validación de duplicados en el frontend. Con la base de datos
-    // la respalda una restricción UNIQUE (empresa, comuna).
-    const repetida = tarifas.some(
-      (t) => t.empresa === form.empresa && t.comuna === form.comuna && t.id !== editandoId
-    );
-    if (repetida) {
-      setError("Ya existe una tarifa para esa empresa y esa comuna.");
-      return;
-    }
+    const datos = { ...(editando ? { id: editandoId } : {}), ...form, nombre };
 
-    // La región se deduce de la comuna; "Todas" es la regla general de respaldo
-    const region =
-      form.comuna === "Todas"
-        ? "Todas"
-        : comunas.find((c) => c.nombre === form.comuna)?.region ?? "";
+    // Requisito del proyecto: se muestra en la consola lo que se envía a la API
+    console.log(editando ? "[Envíos] Actualizar empresa:" : "[Envíos] Crear empresa:", datos);
 
-    const datos = {
-      ...(editando ? { id: editandoId } : {}),
-      empresa: form.empresa,
-      comuna: form.comuna,
-      region,
-      costoFijo,
-      tarifaBase,
-      costoMinimo,
-      tiempo: form.tiempo.trim(),
-      estado: form.estado,
-    };
-
-    // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados.
-    // Con el backend esto se reemplaza por la llamada a la API (POST al crear, PUT al editar).
-    console.log(editando ? "[Envíos] Actualizar tarifa:" : "[Envíos] Crear tarifa:", datos);
-
-    if (editando) {
-      setTarifas(tarifas.map((t) => (t.id === editandoId ? datos : t)));
-    } else {
-      // TEMPORAL: el id lo genera la base de datos, no Date.now()
-      setTarifas([...tarifas, { ...datos, id: Date.now() }]);
-    }
-
-    setEditandoId(null);
-    setForm(formVacio);
+    setGuardando(true);
     setError("");
+    try {
+      if (editando) await shippingService.actualizarEmpresa(datos);
+      else await shippingService.crearEmpresa(datos);
+
+      setEditandoId(null);
+      setForm(formVacio);
+      setRecarga((n) => n + 1);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const confirmarEliminar = async () => {
+    const empresa = porEliminar;
+    setPorEliminar(null);
+    if (!empresa) return;
+
+    console.log("[Envíos] Eliminar empresa:", { id: empresa.id });
+    setError("");
+    try {
+      await shippingService.eliminarEmpresa(empresa.id);
+      if (editandoId === empresa.id) cancelar();
+      setRecarga((n) => n + 1);
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
@@ -158,194 +147,152 @@ const ShippingCostsScreen = () => {
       <div className="env-content">
         <div className="env-head">
           <div>
-            <h1 className="env-title">Gestión de costos de envío</h1>
+            <h1 className="env-title">Empresas de despacho</h1>
             <div className="env-subtitle">
-              Configura tarifas fijas por comuna/región y un método de respaldo por cálculo dinámico.
+              Define el tamaño y el peso máximos de un paquete para cada empresa de despacho.
+              Con estos límites se valida si un producto puede enviarse.
             </div>
           </div>
 
-          <button type="button" className="env-btn-nueva" onClick={nuevaTarifa}>
-            + Nueva tarifa
+          <button type="button" className="env-btn-nueva" onClick={nuevaEmpresa}>
+            + Nueva empresa
           </button>
         </div>
 
-        {/* ---------- Tabla de tarifas ---------- */}
-        <div className="env-card env-tabla-wrap">
-          <table className="env-tabla">
-            <thead>
-              <tr>
-                <th>Empresa despacho</th>
-                <th>Región</th>
-                <th>Comuna</th>
-                <th>Costo fijo</th>
-                <th>Tiempo est.</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tarifas.length === 0 && (
+        {cargando ? (
+          <p role="status">Cargando empresas de despacho...</p>
+        ) : errorCarga ? (
+          <ErrorState
+            titulo="No pudimos cargar las empresas de despacho"
+            detalle={errorCarga}
+            onReintentar={() => setRecarga((n) => n + 1)}
+          />
+        ) : (
+          <div className="env-card env-tabla-wrap">
+            <table className="env-tabla">
+              <thead>
                 <tr>
-                  <td colSpan={7} className="env-vacio">
-                    No hay tarifas registradas.
-                  </td>
+                  <th>Empresa</th>
+                  <th>Alto máx.</th>
+                  <th>Ancho máx.</th>
+                  <th>Fondo máx.</th>
+                  <th>Peso máx.</th>
+                  <th>Volumen máx.</th>
+                  <th>Acciones</th>
                 </tr>
-              )}
+              </thead>
+              <tbody>
+                {empresas.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="env-vacio">
+                      No hay empresas de despacho registradas.
+                    </td>
+                  </tr>
+                )}
 
-              {tarifas.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.empresa}</td>
-                  <td>{t.region}</td>
-                  <td>{t.comuna}</td>
-                  <td>
-                    {t.costoFijo > 0 ? formatoPrecio(t.costoFijo) : "-"}
-                    {t.tarifaBase > 0 && (
-                      <div className="env-dinamico">
-                        + {formatoPrecio(t.tarifaBase)}/kg (mín. {formatoPrecio(t.costoMinimo)})
-                      </div>
-                    )}
-                  </td>
-                  <td>{t.tiempo || "-"}</td>
-                  <td>
-                    <span className={`env-estado ${t.estado === "Activa" ? "activa" : "inactiva"}`}>
-                      {t.estado}
-                    </span>
-                  </td>
-                  <td>
-                    <button type="button" className="env-link" onClick={() => editarTarifa(t)}>
-                      Editar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* ---------- Formulario: nueva tarifa o regla dinámica ---------- */}
-        <form className="env-form" ref={formRef} onSubmit={guardar}>
-          <div className="env-form-titulo">
-            {editando ? "Editar tarifa" : "Nueva tarifa / regla dinámica"}
+                {empresas.map((e) => (
+                  <tr key={e.id}>
+                    <td>{e.nombre}</td>
+                    <td>{numero(e.alto)} cm</td>
+                    <td>{numero(e.ancho)} cm</td>
+                    <td>{numero(e.fondo)} cm</td>
+                    <td>{numero(e.peso)} g</td>
+                    <td>{numero(e.volumen)} cm³</td>
+                    <td>
+                      <button type="button" className="env-link" onClick={() => editarEmpresa(e)}>
+                        Editar
+                      </button>
+                      {" · "}
+                      <button
+                        type="button"
+                        className="env-link"
+                        onClick={() => setPorEliminar(e)}
+                        title={e.despachos > 0 ? "Tiene despachos registrados: no se puede eliminar" : undefined}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        )}
+
+        {/* ---------- Formulario: nueva empresa o edición ---------- */}
+        <form className="env-form" ref={formRef} onSubmit={guardar}>
+          <div className="env-form-titulo">{editando ? "Editar empresa de despacho" : "Nueva empresa de despacho"}</div>
 
           <div className="env-card env-form-card">
             <div className="env-fila">
               <label className="env-campo">
-                <span className="env-label">Empresa de despacho *</span>
-                <select
-                  className="env-input"
-                  value={form.empresa}
-                  onChange={handleChange("empresa")}
-                >
-                  <option value="">Seleccionar transportista</option>
-                  {transportistas.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="env-campo">
-                <span className="env-label">Comuna</span>
-                <select
-                  className="env-input"
-                  value={form.comuna}
-                  onChange={handleChange("comuna")}
-                >
-                  <option value="Todas">Todas / seleccionar</option>
-                  {comunas.map((c) => (
-                    <option key={c.nombre} value={c.nombre}>
-                      {c.nombre} ({c.region})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="env-fila">
-              <label className="env-campo">
-                <span className="env-label">Costo fijo</span>
+                <span className="env-label">Nombre *</span>
                 <input
                   type="text"
-                  inputMode="numeric"
                   className="env-input"
-                  placeholder="$0"
-                  value={form.costoFijo}
-                  onChange={handleFiltrado("costoFijo", (t) => soloDigitos(t, 7))}
-                />
-              </label>
-
-              <label className="env-campo">
-                <span className="env-label">Tarifa base ($/kg)</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="env-input"
-                  placeholder="$0"
-                  value={form.tarifaBase}
-                  onChange={handleFiltrado("tarifaBase", (t) => soloDigitos(t, 7))}
-                />
-              </label>
-
-              <label className="env-campo">
-                <span className="env-label">Costo mínimo</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  className="env-input"
-                  placeholder="$0"
-                  value={form.costoMinimo}
-                  onChange={handleFiltrado("costoMinimo", (t) => soloDigitos(t, 7))}
+                  placeholder="Ej. Chilexpress"
+                  maxLength={50}
+                  value={form.nombre}
+                  onChange={handleChange("nombre")}
                 />
               </label>
             </div>
 
             <div className="env-fila">
               <label className="env-campo">
-                <span className="env-label">Tiempo estimado</span>
-                <input
-                  type="text"
-                  className="env-input"
-                  placeholder="Ej. 1-2 días"
-                  value={form.tiempo}
-                  onChange={handleFiltrado("tiempo", (t) => soloAlfanumerico(t, 20))}
-                />
+                <span className="env-label">Alto máximo (cm) *</span>
+                <input type="text" inputMode="numeric" className="env-input" placeholder="0" value={form.alto} onChange={handleNumero("alto", 4)} />
               </label>
-
               <label className="env-campo">
-                <span className="env-label">Estado</span>
-                <select
-                  className="env-input"
-                  value={form.estado}
-                  onChange={handleChange("estado")}
-                >
-                  <option value="Activa">Activa</option>
-                  <option value="Inactiva">Inactiva</option>
-                </select>
+                <span className="env-label">Ancho máximo (cm) *</span>
+                <input type="text" inputMode="numeric" className="env-input" placeholder="0" value={form.ancho} onChange={handleNumero("ancho", 4)} />
+              </label>
+              <label className="env-campo">
+                <span className="env-label">Fondo máximo (cm) *</span>
+                <input type="text" inputMode="numeric" className="env-input" placeholder="0" value={form.fondo} onChange={handleNumero("fondo", 4)} />
+              </label>
+            </div>
+
+            <div className="env-fila">
+              <label className="env-campo">
+                <span className="env-label">Peso máximo (g) *</span>
+                <input type="text" inputMode="numeric" className="env-input" placeholder="0" value={form.peso} onChange={handleNumero("peso", 7)} />
+              </label>
+              <label className="env-campo">
+                <span className="env-label">Volumen máximo (cm³)</span>
+                <input type="text" className="env-input" value={volumen > 0 ? numero(volumen) : ""} placeholder="Se calcula solo" readOnly />
               </label>
             </div>
 
             <div className="env-ayuda">
-              Si la comuna es "Todas", la regla funciona como método de respaldo: el costo se
-              calcula como tarifa base × kg, sin bajar del costo mínimo.
+              El volumen máximo es alto × ancho × fondo. El peso va en gramos, igual que el peso de los productos
+              (por ejemplo, 25.000 g = 25 kg).
             </div>
 
-            {error && <div className="env-error">{error}</div>}
+            {error && <div className="env-error" role="alert">{error}</div>}
 
             <div className="env-acciones">
               {editando && (
-                <button type="button" className="env-btn-secundario" onClick={cancelar}>
+                <button type="button" className="env-btn-secundario" onClick={cancelar} disabled={guardando}>
                   Cancelar
                 </button>
               )}
-              <button type="submit" className="env-btn-nueva">
-                {editando ? "Guardar cambios" : "Guardar tarifa"}
+              <button type="submit" className="env-btn-nueva" disabled={guardando}>
+                {guardando ? "Guardando..." : editando ? "Guardar cambios" : "Guardar empresa"}
               </button>
             </div>
           </div>
         </form>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(porEliminar)}
+        titulo="Eliminar empresa de despacho"
+        mensaje={porEliminar ? `¿Eliminar la empresa ${porEliminar.nombre}?` : ""}
+        textoConfirmar="Eliminar"
+        onConfirmar={confirmarEliminar}
+        onCancelar={() => setPorEliminar(null)}
+      />
     </SellerTemplate>
   );
 };

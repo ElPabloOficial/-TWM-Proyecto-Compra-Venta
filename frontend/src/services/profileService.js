@@ -22,20 +22,13 @@ const adaptarPerfil = (p) => ({
     paginaWeb: p.empresa?.paginaweb ?? '',
     direccionLocal: p.empresa?.direccionlocal ?? '',
     tieneEmpresa: Boolean(p.empresa),
-    calle: p.direccion?.calle ?? '',
-    numero: p.direccion?.numero != null ? String(p.direccion.numero) : '',
-    pasaje: p.direccion?.pasaje ?? '',
-    descripcion: p.direccion?.descripcion ?? '',
-    sector: p.direccion?.sector ?? '',
-    idComuna: p.direccion?.id_comuna ?? '',
+    miembroDesde: p.fechacreacion ?? '',
+    cantidadDirecciones: p.cantidadDirecciones ?? 0,
+    descuentos: p.descuentos ?? [],
 });
 
 export async function obtenerPerfil() {
     return adaptarPerfil(await pedir('/perfil'));
-}
-
-export async function listarComunas() {
-    return (await pedir('/comunas')) ?? [];
 }
 
 // "esVendedor" decide si se mandan los datos de empresa (un cliente no tiene empresa)
@@ -47,14 +40,6 @@ export async function guardarPerfil(form, esVendedor) {
             fechanacimiento: form.fechaNacimiento || null,
             correo: form.correo,
             telefonos: form.telefonos,
-            direccion: {
-                calle: form.calle,
-                numero: form.numero === '' ? null : Number(form.numero),
-                pasaje: form.pasaje,
-                descripcion: form.descripcion,
-                sector: form.sector,
-                id_comuna: form.idComuna === '' ? null : Number(form.idComuna),
-            },
             empresa: esVendedor
                 ? {
                       rut: form.rutEmpresa,

@@ -104,6 +104,9 @@ public class CarritoController : ControllerBase
                 var producto = await _context.productos.FindAsync(dto.id_item);
                 if (producto == null) return NotFound(new { success = false, message = "Producto no encontrado" });
 
+                if (VisibilidadProducto.EstaOculto(producto.caracteristicas))
+                    return BadRequest(new { success = false, message = "Este producto no está disponible por ahora." });
+
                 var existente = await _context.crear3s.FirstOrDefaultAsync(c => c.id_carrito == idCarrito && c.id_producto == dto.id_item);
                 if (existente != null)
                 {

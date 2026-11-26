@@ -17,6 +17,7 @@ const inicial = {
   stock: "",
   imagen: null,
   restriccionEdad: false,
+  visible: true,
   peso: "",
   alto: "",
   ancho: "",
@@ -294,6 +295,32 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
 
       {editando && (
         <>
+          <div className="addp-section-title">Visibilidad en la tienda</div>
+          <div className="addp-section-desc">
+            Un producto oculto no aparece en el catálogo ni se puede comprar, pero lo sigues viendo aquí.
+          </div>
+          <div className="addp-switch-row">
+            <input
+              className="addp-switch"
+              type="checkbox"
+              checked={form.visible && Number(form.stock) > 0}
+              disabled={!(Number(form.stock) > 0)}
+              onChange={(e) => setForm({ ...form, visible: e.target.checked })}
+            />
+            <div>
+              <div className="addp-switch-estado">
+                {form.visible && Number(form.stock) > 0 ? "Visible" : "Oculto"}
+              </div>
+              <div className="addp-switch-texto">
+                {Number(form.stock) > 0
+                  ? form.visible
+                    ? "Los clientes pueden ver y comprar este producto."
+                    : "Los clientes no verán este producto en la tienda."
+                  : "Sin stock el producto se oculta automáticamente. Súbelo para poder mostrarlo."}
+              </div>
+            </div>
+          </div>
+
           <div className="addp-section-title">Oferta</div>
           <div className="addp-section-desc">
             Porcentaje de descuento y fechas en que estará vigente (0 = sin oferta).
