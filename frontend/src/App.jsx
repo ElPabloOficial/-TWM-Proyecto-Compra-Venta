@@ -92,6 +92,7 @@ const App = () => {
                 <Route path="/admin" element={<AdminRoute><AdminScreen /></AdminRoute>} />
                 <Route path="/cotizaciones/nueva" element={<NewQuoteScreen />} />
                 <Route path="/direcciones" element={<AddressesScreen />} />
+                <Route path="/seguimiento" element={<ShipmentTrackingScreen />} />
                 <Route path="/seguimiento-despacho" element={<ShipmentTrackingScreen />} />
                 <Route path="/seguimiento/:idVenta" element={<OrderTrackingScreen />} />
                 <Route path="/historial" element={<PurchaseHistory />} />

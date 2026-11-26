@@ -11,13 +11,13 @@ import {
   ETAPAS_DESPACHO,
   ETIQUETA_ESTADO,
   TRANSPORTISTAS,
-  calcularCostoEnvio,
 } from "../../../services/shipmentService";
 
 /*
  * Ventana del vendedor para pasar un despacho a la etapa siguiente.
- * Para pasar a "Despachado" pide la empresa de transporte, el número de seguimiento y las medidas del
- * paquete: con ellas la base de datos calcula el costo de envío (ancho × alto × fondo / 5000 × 1555).
+ * Para pasar a "Despachado" pide el número de seguimiento y las medidas del paquete (la empresa de
+ * transporte ya viene elegida desde la compra; solo se pregunta si el pedido no la trae). Con las medidas
+ * la base de datos recalcula el costo de envío según la tarifa de la empresa.
  * `onConfirmar` debe devolver una promesa; si se rechaza, el mensaje se muestra en la ventana.
  */
 const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
@@ -30,7 +30,11 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
   useEffect(() => {
     setTransportista(despacho?.transportista ?? "");
     setSeguimiento(despacho?.seguimiento ?? "");
-    setMedidas({ ancho: "", alto: "", fondo: "" });
+    setMedidas({
+      ancho: despacho?.paquete?.ancho ?? "",
+      alto: despacho?.paquete?.alto ?? "",
+      fondo: despacho?.paquete?.fondo ?? "",
+    });
     setError("");
     setGuardando(false);
   }, [despacho]);
@@ -41,13 +45,13 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
   const pideDatos = siguiente === "Despachado";
 
   const medidasValidas = ["ancho", "alto", "fondo"].every((k) => Number(medidas[k]) > 0);
-  const costo = medidasValidas ? calcularCostoEnvio(medidas) : null;
+  const empresaFija = Boolean(despacho.transportista);
   const cambiarMedida = (campo) => (e) =>
     setMedidas({ ...medidas, [campo]: e.target.value.replace(/\D/g, "").slice(0, 3) });
 
   const confirmar = async () => {
     if (pideDatos && (!transportista || !seguimiento.trim())) {
-      setError("Elige la empresa de transporte e indica el número de seguimiento.");
+      setError(empresaFija ? "Indica el número de seguimiento." : "Elige la empresa de transporte e indica el número de seguimiento.");
       return;
     }
     if (pideDatos && !medidasValidas) {
@@ -76,19 +80,23 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: "12px !important" }}>
         {pideDatos ? (
           <>
-            <TextField
-              select
-              label="Empresa de transporte"
-              size="small"
-              value={transportista}
-              onChange={(e) => setTransportista(e.target.value)}
-            >
-              {TRANSPORTISTAS.map((t) => (
-                <MenuItem key={t} value={t}>
-                  {t}
-                </MenuItem>
-              ))}
-            </TextField>
+            {empresaFija ? (
+              <TextField label="Empresa de transporte" size="small" value={despacho.transportista} disabled />
+            ) : (
+              <TextField
+                select
+                label="Empresa de transporte"
+                size="small"
+                value={transportista}
+                onChange={(e) => setTransportista(e.target.value)}
+              >
+                {TRANSPORTISTAS.map((t) => (
+                  <MenuItem key={t} value={t}>
+                    {t}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
             <TextField
               label="Número de seguimiento"
               size="small"
@@ -111,11 +119,9 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
                 />
               ))}
             </div>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>
-              Costo de envío: {costo === null ? "—" : `$${costo.toLocaleString("es-CL")}`}
-            </div>
             <div style={{ fontSize: 12, color: "#777" }}>
-              Se calcula con el volumen del paquete. El cliente verá el costo y el número de seguimiento en su pedido.
+              El costo de envío se calcula con las medidas del paquete y la tarifa de la empresa. El cliente verá el
+              costo y el número de seguimiento en su pedido.
             </div>
           </>
         ) : (

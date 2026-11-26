@@ -11582,9 +11582,7 @@ INSERT INTO Categoria (Id, Nombre, Id_Categoria) VALUES
 (45, 'Ropa, moda y calzado', 2),
 (46, 'Juguetes y Niños', 2),
 (47, 'Útiles y librería', 2),
-(48, 'Otros productos', 2),
-(49, 'Categoría Aislada A', NULL),
-(50, 'Categoría Aislada B', NULL);
+(48, 'Otros productos', 2);
 
 --INSERT PRODUCTO
 INSERT INTO Producto (Id, Nombre, RestriccionEdad, Caracteristicas, Id_Oferta, FechaInicio, FechaFin) VALUES
