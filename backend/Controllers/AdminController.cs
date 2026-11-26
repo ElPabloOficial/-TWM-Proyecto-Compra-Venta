@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using backend.DTOs;
 using backend.Models;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -343,6 +344,136 @@ public class AdminController : ControllerBase
 
             return Ok(new { success = true, message = "Mensajes obtenidos.", data = mensajes, errors = (object?)null });
     
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
+    }
+
+    // ---------- Moderación de mensajes y reseñas ----------
+    // Solo van a moderación los mensajes (chat de cada venta) y las reseñas que contienen alguna
+    // palabra de la lista de FiltroModeracion (no se guarda nada nuevo en la base de datos).
+    // Eliminar borra el contenido de forma definitiva
+    // (las tablas Enviar, Escribir1 y Escribir2 se limpian solas por ON DELETE CASCADE).
+
+    // GET: api/admin/moderacion
+    [HttpGet("moderacion")]
+    public async Task<IActionResult> GetModeracion()
+    {
+        try
+        {
+            var mensajes = await _context.enviars
+                .AsNoTracking()
+                .Select(e => new
+                {
+                    id = e.id_mensaje,
+                    cliente = e.id_usuarioNavigation.nombre,
+                    contenido = e.id_mensajeNavigation.contenido,
+                    fecha = e.id_mensajeNavigation.fechaenvio,
+                    idVenta = e.id_venta
+                })
+                .ToListAsync();
+
+            var resenasProductos = await _context.escribir1s
+                .AsNoTracking()
+                .Select(e => new
+                {
+                    id = e.id_calificacion,
+                    cliente = e.id_usuarioNavigation.nombre,
+                    contenido = e.id_calificacionNavigation.comentario,
+                    fecha = e.id_calificacionNavigation.fecha,
+                    nota = e.id_calificacionNavigation.calificacion1,
+                    item = e.id_productoNavigation.nombre
+                })
+                .ToListAsync();
+
+            var resenasServicios = await _context.escribir2s
+                .AsNoTracking()
+                .Select(e => new
+                {
+                    id = e.id_calificacion,
+                    cliente = e.id_usuarioNavigation.nombre,
+                    contenido = e.id_calificacionNavigation.comentario,
+                    fecha = e.id_calificacionNavigation.fecha,
+                    nota = e.id_calificacionNavigation.calificacion1,
+                    item = e.id_servicioNavigation.nombre
+                })
+                .ToListAsync();
+
+            var todo = mensajes
+                .Select(m => new
+                {
+                    m.id,
+                    tipo = "Mensaje",
+                    m.cliente,
+                    contenido = m.contenido,
+                    fecha = m.fecha.ToString("yyyy-MM-dd"),
+                    detalle = $"Venta VEN-{m.idVenta:D4}"
+                })
+                .Concat(resenasProductos.Concat(resenasServicios).Select(r => new
+                {
+                    r.id,
+                    tipo = "Reseña",
+                    r.cliente,
+                    contenido = r.contenido ?? "",
+                    fecha = r.fecha.ToString("yyyy-MM-dd"),
+                    detalle = $"{r.item} · Calificación {r.nota}/5"
+                }))
+                .ToList();
+
+            // Solo se devuelve lo que contiene palabras de la lista (ver FiltroModeracion)
+            var marcados = todo
+                .Select(x => new
+                {
+                    x.id,
+                    x.tipo,
+                    x.cliente,
+                    x.contenido,
+                    x.fecha,
+                    x.detalle,
+                    palabras = FiltroModeracion.Detectar(x.contenido)
+                })
+                .Where(x => x.palabras.Count > 0)
+                .OrderByDescending(x => x.fecha)
+                .ThenByDescending(x => x.id)
+                .ToList();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Contenido a moderar obtenido.",
+                data = new { revisados = todo.Count, items = marcados },
+                errors = (object?)null
+            });
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
+    }
+
+    // DELETE: api/admin/moderacion/{tipo}/{id}   (tipo: "mensaje" o "resena")
+    [HttpDelete("moderacion/{tipo}/{id:int}")]
+    public async Task<IActionResult> EliminarContenido(string tipo, int id)
+    {
+        try
+        {
+            int filas;
+            switch (tipo.ToLowerInvariant())
+            {
+                case "mensaje":
+                    filas = await _context.mensajes.Where(m => m.id == id).ExecuteDeleteAsync();
+                    break;
+                case "resena":
+                    filas = await _context.calificacions.Where(c => c.id == id).ExecuteDeleteAsync();
+                    break;
+                default:
+                    return BadRequest(Error("Tipo de contenido no válido.", "Usa \"mensaje\" o \"resena\"."));
+            }
+
+            if (filas == 0) return NotFound(Error("No se encontró el contenido a eliminar."));
+            return Ok(new { success = true, message = "Contenido eliminado.", data = (object?)null, errors = (object?)null });
         }
         catch (Exception ex)
         {

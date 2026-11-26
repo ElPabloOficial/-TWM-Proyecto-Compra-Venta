@@ -4,8 +4,7 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import { IconButton, Popover, Box } from "@mui/material";
-import CheckIcon from "@mui/icons-material/Check";
+import { IconButton, Popover, Box, Chip } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CloseIcon from "@mui/icons-material/Close";
@@ -18,7 +17,7 @@ const formatearFecha = (fechaISO) => {
   return `${dia}/${mes}/${anio}`;
 };
 
-const MessageModerationTable = ({ mensajes, onAprobar, onEliminar }) => {
+const MessageModerationTable = ({ mensajes, ocupado = null, onEliminar }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [mensajeSeleccionado, setMensajeSeleccionado] = useState(null);
   const abrirBurbuja = (event, mensaje) => {
@@ -36,30 +35,48 @@ const MessageModerationTable = ({ mensajes, onAprobar, onEliminar }) => {
         <TableHead>
           <TableRow>
             <TableCell>ID</TableCell>
-            <TableCell>Cliente</TableCell>
+            <TableCell>Usuario</TableCell>
             <TableCell>Tipo</TableCell>
             <TableCell>Mensaje</TableCell>
+            <TableCell>Palabras detectadas</TableCell>
             <TableCell>Fecha</TableCell>
             <TableCell align="center">Acciones</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
+          {mensajes.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={7} align="center" sx={{ color: "#666", padding: 3 }}>
+                No hay mensajes ni reseñas con palabras ofensivas para mostrar.
+              </TableCell>
+            </TableRow>
+          )}
+
           {mensajes.map((m) => (
-            <TableRow key={m.id} hover>
+            <TableRow key={m.clave} hover>
               <TableCell>{m.id}</TableCell>
               <TableCell>{m.cliente}</TableCell>
               <TableCell>{m.tipo}</TableCell>
-              <TableCell>{acortar(m.mensaje)}</TableCell>
+              <TableCell>{m.mensaje ? acortar(m.mensaje) : <em style={{ color: "#888" }}>Sin comentario</em>}</TableCell>
+              <TableCell>
+                <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                  {m.palabras.map((p) => (
+                    <Chip
+                      key={p}
+                      label={p}
+                      size="small"
+                      sx={{ backgroundColor: "#e6cad1", color: "#EC3333", fontWeight: 600 }}
+                    />
+                  ))}
+                </Box>
+              </TableCell>
               <TableCell>{formatearFecha(m.fecha)}</TableCell>
 
               <TableCell align="center">
                 <IconButton size="small" onClick={(e) => abrirBurbuja(e, m)} title="Ver">
                   <VisibilityIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={() => onAprobar(m)} title="Aprobar">
-                  <CheckIcon fontSize="small" />
-                </IconButton>
-                <IconButton size="small" onClick={() => onEliminar(m)} title="Eliminar">
+                <IconButton size="small" onClick={() => onEliminar(m)} disabled={ocupado === m.clave} title="Eliminar">
                   <DeleteOutlineIcon fontSize="small" />
                 </IconButton>
               </TableCell>
@@ -83,12 +100,22 @@ const MessageModerationTable = ({ mensajes, onAprobar, onEliminar }) => {
           >
             <CloseIcon fontSize="small" />
           </IconButton>
-          <Box sx={{ fontWeight: 600, marginBottom: 1, paddingRight: 3 }}>
+          <Box sx={{ fontWeight: 600, paddingRight: 3 }}>
             {mensajeSeleccionado?.cliente}
           </Box>
+          {mensajeSeleccionado?.detalle && (
+            <Box sx={{ fontSize: 12, color: "#888", marginBottom: 1 }}>
+              {mensajeSeleccionado.detalle}
+            </Box>
+          )}
           <Box sx={{ fontSize: 14 }}>
-            {mensajeSeleccionado?.mensaje}
+            {mensajeSeleccionado?.mensaje || "Sin comentario"}
           </Box>
+          {mensajeSeleccionado?.palabras?.length > 0 && (
+            <Box sx={{ fontSize: 12, color: "#EC3333", marginTop: 1 }}>
+              Palabras detectadas: {mensajeSeleccionado.palabras.join(", ")}
+            </Box>
+          )}
         </Box>
       </Popover>
     </>

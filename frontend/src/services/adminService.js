@@ -156,6 +156,38 @@ export async function listarVentas() {
     return (datos ?? []).map(aTransaccion);
 }
 
+// ---------- Moderación de mensajes y reseñas (AdminController: /admin/moderacion) ----------
+
+// En la URL el tipo va sin tilde: "mensaje" o "resena"
+const tipoUrl = (tipo) => (tipo === 'Reseña' ? 'resena' : 'mensaje');
+
+// Mensajes y reseñas pueden tener el mismo id, por eso la clave incluye el tipo
+const aContenidoModeracion = (c) => ({
+    clave: `${c.tipo}-${c.id}`,
+    id: c.id,
+    tipo: c.tipo, // "Mensaje" | "Reseña"
+    cliente: c.cliente,
+    mensaje: c.contenido ?? '',
+    fecha: String(c.fecha).slice(0, 10),
+    detalle: c.detalle ?? '',
+    palabras: c.palabras ?? [], // palabras ofensivas detectadas en el texto
+});
+
+// Solo llegan los mensajes y reseñas que contienen palabras ofensivas (lista en el backend).
+// "revisados" es el total de mensajes y reseñas que se analizaron.
+export async function listarContenidoModeracion() {
+    const datos = await pedir('/admin/moderacion');
+    return {
+        revisados: datos?.revisados ?? 0,
+        items: (datos?.items ?? []).map(aContenidoModeracion),
+    };
+}
+
+// Borra el mensaje o la reseña de forma definitiva
+export async function eliminarContenido(contenido) {
+    await pedir(`/admin/moderacion/${tipoUrl(contenido.tipo)}/${contenido.id}`, { method: 'DELETE' });
+}
+
 // ---------- Estadísticas (ReportesController: /reportes/...) ----------
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];

@@ -11,13 +11,15 @@ const MessageToolbar = ({ titulo, total, orden, onOrden, onVerTodos }) => {
       </Box>
 
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-        <Box
-          component="span"
-          onClick={onVerTodos}
-          sx={{ color: "#EC3333", cursor: "pointer", fontSize: 13 }}
-        >
-          Ver Todos
-        </Box>
+        {onVerTodos && (
+          <Box
+            component="span"
+            onClick={onVerTodos}
+            sx={{ color: "#EC3333", cursor: "pointer", fontSize: 13 }}
+          >
+            Ver Todos
+          </Box>
+        )}
 
         <Select
           size="small"
@@ -29,7 +31,7 @@ const MessageToolbar = ({ titulo, total, orden, onOrden, onVerTodos }) => {
           <MenuItem value="">Ordenar</MenuItem>
           <MenuItem value="fechaDesc">Más recientes</MenuItem>
           <MenuItem value="fechaAsc">Más antiguos</MenuItem>
-          <MenuItem value="cliente">Cliente (A-Z)</MenuItem>
+          <MenuItem value="cliente">Usuario (A-Z)</MenuItem>
         </Select>
       </Box>
     </Box>
