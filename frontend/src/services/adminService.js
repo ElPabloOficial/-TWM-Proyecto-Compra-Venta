@@ -1,40 +1,8 @@
 // src/services/adminService.js
 //
-// Servicios del panel de administración: usuarios (API real) y estadísticas (datos de ejemplo).
-//
-// Estadísticas del panel de administración.
-// TEMPORAL: la API todavía no tiene un endpoint de estadísticas (AdminController solo
-// entrega usuarios, reseñas, mensajes y devoluciones). Mientras tanto se usan datos de
-// ejemplo; al crearlo (p. ej. GET /admin/estadisticas), solo hay que cambiar esta función
-// por: return pedir('/admin/estadisticas');
+// Servicios del panel de administración: usuarios, ventas y estadísticas (todos con la API real).
 
 import { pedir } from './apiClient';
-
-const ESTADISTICAS_EJEMPLO = {
-    ingresosMensuales: [
-        { mes: 'Abr', monto: 12200000 },
-        { mes: 'May', monto: 13400000 },
-        { mes: 'Jun', monto: 14000000 },
-        { mes: 'Jul', monto: 15800000 },
-        { mes: 'Ago', monto: 16500000 },
-        { mes: 'Sep', monto: 18500000 },
-    ],
-    ventasCompletadas: 1284,
-    tiempoEntregaDias: 2.4,
-    calificacionPromedio: 4.6,
-    enviosPorEmpresa: [
-        { empresa: 'Chilexpress', cantidad: 420 },
-        { empresa: 'Starken', cantidad: 310 },
-        { empresa: 'Correos de Chile', cantidad: 180 },
-        { empresa: 'Otros', cantidad: 95 },
-    ],
-    calidad: {
-        preguntasSinResponder48h: 7,
-        resenasNuevasSemana: 64,
-        tasaDevoluciones: 3.1,
-        emprendedoresBajo3: 2,
-    },
-};
 
 // ---------- Usuarios (AdminController: /admin/usuarios) ----------
 
@@ -188,8 +156,53 @@ export async function listarVentas() {
     return (datos ?? []).map(aTransaccion);
 }
 
-// ---------- Estadísticas ----------
+// ---------- Estadísticas (ReportesController: /reportes/...) ----------
+
+const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const MESES_EN_GRAFICO = 6;
+
+// La API devuelve solo los meses que tuvieron ventas, ordenados. Aquí se toman los últimos
+// 6 meses (terminando en el último con ventas) y los meses sin ventas se rellenan con 0,
+// para que el gráfico no una dos meses que no son consecutivos.
+const aIngresosMensuales = (filas) => {
+    if (!filas.length) return [];
+    const ultimo = filas[filas.length - 1];
+    const montoPorMes = new Map(filas.map((f) => [f.anio * 12 + (f.mes - 1), Number(f.total) || 0]));
+    const fin = ultimo.anio * 12 + (ultimo.mes - 1);
+
+    const meses = [];
+    for (let i = MESES_EN_GRAFICO - 1; i >= 0; i--) {
+        const indice = fin - i;
+        meses.push({ anio: Math.floor(indice / 12), mes: (indice % 12) + 1, monto: Math.round(montoPorMes.get(indice) ?? 0) });
+    }
+    // Si los meses cruzan de un año a otro, se agrega el año a la etiqueta ("Dic 24")
+    const variosAnios = meses[0].anio !== meses[meses.length - 1].anio;
+    return meses.map((m) => ({
+        mes: variosAnios ? `${MESES[m.mes - 1]} ${String(m.anio).slice(2)}` : MESES[m.mes - 1],
+        monto: m.monto,
+    }));
+};
 
 export async function obtenerEstadisticasAdmin() {
-    return ESTADISTICAS_EJEMPLO;
+    const [dashboard, ingresos, envios, alertas] = await Promise.all([
+        pedir('/reportes/dashboard'),
+        pedir('/reportes/ingresos-mensuales'),
+        pedir('/reportes/envios-por-empresa'),
+        pedir('/reportes/alertas'),
+    ]);
+
+    return {
+        ingresosMes: Math.round(Number(dashboard?.ingresos_mes) || 0),
+        ingresosMensuales: aIngresosMensuales(ingresos ?? []),
+        ventasCompletadas: Number(dashboard?.ventas_completadas) || 0,
+        tiempoEntregaDias: Number(dashboard?.tiempo_entrega_promedio) || 0,
+        calificacionPromedio: Number(dashboard?.calificacion_promedio) || 0,
+        enviosPorEmpresa: (envios ?? []).map((e) => ({ empresa: e.empresa, cantidad: Number(e.cantidad) || 0 })),
+        calidad: {
+            preguntasSinResponder48h: Number(alertas?.preguntas_sin_responder) || 0,
+            resenasNuevasSemana: Number(alertas?.resenas_nuevas_semana) || 0,
+            tasaDevoluciones: Number(alertas?.tasa_devoluciones) || 0,
+            emprendedoresBajo3: Number(alertas?.emprendedores_baja_calificacion) || 0,
+        },
+    };
 }

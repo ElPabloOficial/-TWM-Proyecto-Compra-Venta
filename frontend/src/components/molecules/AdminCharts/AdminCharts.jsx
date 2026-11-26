@@ -22,8 +22,8 @@ const escala = (min, max, divisiones = 5) => {
   return { ini, fin, ticks };
 };
 
-const Marco = ({ children, titulo }) => (
-  <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width="100%" role="img" aria-label={titulo} style={{ display: "block" }}>
+const Marco = ({ children, titulo, alto = ALTO }) => (
+  <svg viewBox={`0 0 ${ANCHO} ${alto}`} width="100%" role="img" aria-label={titulo} style={{ display: "block" }}>
     {children}
   </svg>
 );
@@ -66,27 +66,50 @@ export const LineAreaChart = ({ etiquetas, valores, formato = (v) => v, titulo =
   );
 };
 
+// Con muchas barras los nombres no caben en horizontal: se inclinan y se acortan si son largos.
+const MAX_BARRAS_HORIZONTAL = 6;
+const MAX_LETRAS_ETIQUETA = 16;
+const acortar = (texto) => (texto.length > MAX_LETRAS_ETIQUETA ? `${texto.slice(0, MAX_LETRAS_ETIQUETA - 1)}…` : texto);
+
 export const BarsChart = ({ etiquetas, valores, formato = (v) => v, titulo = "Gráfico de barras" }) => {
+  const inclinar = valores.length > MAX_BARRAS_HORIZONTAL;
+  const abajo = inclinar ? 90 : M.abajo; // espacio para las etiquetas inclinadas
+  const altoTotal = ALTO - M.abajo + abajo;
+
   const { fin, ticks } = escala(0, Math.max(...valores));
   const ancho = ANCHO - M.izq - M.der;
-  const alto = ALTO - M.arriba - M.abajo;
+  const alto = altoTotal - M.arriba - abajo;
   const banda = ancho / valores.length;
   const y = (v) => M.arriba + alto - (v / fin) * alto;
   const grosor = Math.min(34, banda * 0.45);
 
   return (
-    <Marco titulo={titulo}>
+    <Marco titulo={titulo} alto={altoTotal}>
       <Ejes ticks={ticks} y={y} formato={formato} />
       {valores.map((v, i) => {
         const cx = M.izq + banda * i + banda / 2;
+        const yEtiqueta = altoTotal - abajo + 14;
         return (
           <g key={etiquetas[i]}>
             <rect x={cx - grosor / 2} y={y(v)} width={grosor} height={y(0) - y(v)} fill={ROJO} rx="2">
               <title>{`${etiquetas[i]}: ${v}`}</title>
             </rect>
-            <text x={cx} y={ALTO - 8} textAnchor="middle" fontSize="10" fill="#999">
-              {etiquetas[i]}
-            </text>
+            {inclinar ? (
+              <text
+                x={cx}
+                y={yEtiqueta}
+                textAnchor="end"
+                fontSize="10"
+                fill="#999"
+                transform={`rotate(-45 ${cx} ${yEtiqueta})`}
+              >
+                {acortar(etiquetas[i])}
+              </text>
+            ) : (
+              <text x={cx} y={altoTotal - 8} textAnchor="middle" fontSize="10" fill="#999">
+                {etiquetas[i]}
+              </text>
+            )}
           </g>
         );
       })}

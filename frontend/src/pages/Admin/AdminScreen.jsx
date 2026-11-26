@@ -25,10 +25,10 @@ const AdminScreen = () => {
   }, []);
 
   const ingresos = datos?.ingresosMensuales ?? [];
-  const mesActual = ingresos.at(-1);
+  const envios = datos?.enviosPorEmpresa ?? [];
 
   const indicadores = datos && [
-    { titulo: "Ingresos del mes", valor: formatoMoneda(mesActual?.monto ?? 0) },
+    { titulo: "Ingresos del mes", valor: formatoMoneda(datos.ingresosMes) },
     { titulo: "Ventas completadas", valor: datos.ventasCompletadas.toLocaleString("es-CL") },
     { titulo: "Tiempo entrega prom.", valor: `${formatoDecimal(datos.tiempoEntregaDias)} días` },
     { titulo: "Calificación prom.", valor: `${formatoDecimal(datos.calificacionPromedio)} / 5` },
@@ -45,7 +45,7 @@ const AdminScreen = () => {
     <SellerTemplate>
       <h1 className="inv-title">Panel de control estadístico</h1>
       <p className="adm-subtitulo">
-        Análisis comercial, operativo y de calidad de toda la plataforma · último mes
+        Análisis comercial, operativo y de calidad de toda la plataforma
       </p>
 
       {error && <p className="adm-error">{error}</p>}
@@ -63,21 +63,29 @@ const AdminScreen = () => {
             <div className="adm-columna">
               <section className="adm-tarjeta">
                 <h2 className="adm-tarjeta-titulo">Análisis comercial · evolución de ingresos</h2>
-                <LineAreaChart
-                  titulo="Evolución de ingresos por mes"
-                  etiquetas={ingresos.map((i) => i.mes)}
-                  valores={ingresos.map((i) => i.monto)}
-                  formato={(v) => `$${v / 1000000}M`}
-                />
+                {ingresos.length ? (
+                  <LineAreaChart
+                    titulo="Evolución de ingresos por mes"
+                    etiquetas={ingresos.map((i) => i.mes)}
+                    valores={ingresos.map((i) => i.monto)}
+                    formato={(v) => `$${v / 1000000}M`}
+                  />
+                ) : (
+                  <p className="adm-cargando">Aún no hay ventas registradas.</p>
+                )}
               </section>
 
               <section className="adm-tarjeta">
                 <h2 className="adm-tarjeta-titulo">Análisis operativo · envíos por empresa de transporte</h2>
-                <BarsChart
-                  titulo="Envíos por empresa de transporte"
-                  etiquetas={datos.enviosPorEmpresa.map((e) => e.empresa)}
-                  valores={datos.enviosPorEmpresa.map((e) => e.cantidad)}
-                />
+                {envios.length ? (
+                  <BarsChart
+                    titulo="Envíos por empresa de transporte"
+                    etiquetas={envios.map((e) => e.empresa)}
+                    valores={envios.map((e) => e.cantidad)}
+                  />
+                ) : (
+                  <p className="adm-cargando">Aún no hay envíos registrados.</p>
+                )}
               </section>
             </div>
 

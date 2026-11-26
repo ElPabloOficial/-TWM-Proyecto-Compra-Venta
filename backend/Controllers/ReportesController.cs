@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -11,26 +12,25 @@ namespace backend.Controllers;
 public class ReportesController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly FuncionesService _f; // funciones PostgreSQL de bd_proyecto/funciones.txt
 
-    public ReportesController(AppDbContext context)
+    public ReportesController(AppDbContext context, FuncionesService funciones)
     {
         _context = context;
+        _f = funciones;
     }
 
     // GET: api/reportes/dashboard
     [HttpGet("dashboard")]
-    public async Task<IActionResult> GetDashboard()
+    public async Task<IActionResult> GetDashboard(CancellationToken ct = default)
     {
         try
         {
             var hoy = DateTime.Now;
-            var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
-            var inicioSemana = hoy.AddDays(-7);
 
-            // 1. Ingresos del mes (Neto + IVA)
-            var ingresosMes = await _context.venta
-                .Where(v => v.fecha >= inicioMes && v.estado != "Anulado")
-                .SumAsync(v => v.neto + (v.neto * v.iva));
+            // 1. Ingresos del mes (Neto + IVA) -> f_consolidacion_8 (mes de la fecha dada)
+            var variacion = (await _f.VariacionIngresos(DateOnly.FromDateTime(hoy), ct)).FirstOrDefault();
+            var ingresosMes = variacion?.IngresoMesActual ?? 0;
 
             // 2. Ventas completadas (Pagadas o Entregadas)
             var ventasCompletadas = await _context.venta
@@ -40,16 +40,12 @@ public class ReportesController : ControllerBase
             var calificacionPromedio = await _context.calificacions
                 .AverageAsync(c => (double?)c.calificacion1) ?? 0;
 
-            // 4. Tiempo promedio de entrega (Usando la consulta SQL de tu archivo)
-            var tiempoEntregaSql = @"
-            SELECT COALESCE(AVG(EXTRACT(DAY FROM((d.datoslogisticos->>'fecha_llegada_real')::TIMESTAMP - (d.datoslogisticos->>'fecha_salida')::TIMESTAMP))), 0)
-            FROM despacho d
-            WHERE d.datoslogisticos->>'fecha_salida' <> ''
-            AND d.datoslogisticos->>'fecha_llegada_real' <> ''";
-        
-            var tiempoEntregaPromedio = await _context.Database
-                .SqlQueryRaw<double>(tiempoEntregaSql)
-                .FirstOrDefaultAsync();
+            // 4. Tiempo promedio de entrega en días -> f_georreferenciacion_4 (promedio por empresa de
+            //    transporte). Se promedian los promedios de las empresas que tienen despachos con fechas.
+            var promediosEmpresa = await _f.PromedioDiasPorEmpresa(ct);
+            var tiempoEntregaPromedio = promediosEmpresa.Count > 0
+                ? (double)promediosEmpresa.Average(e => e.PromedioDias ?? 0)
+                : 0;
 
             return Ok(new { 
                 success = true, 
@@ -77,9 +73,15 @@ public class ReportesController : ControllerBase
         try
         {
             // Agrupamos las ventas por año y mes
-            var ingresos = await _context.venta
+            // Se traen neto, IVA y fecha y se agrupa en memoria (ver nota en GetDashboard sobre numeric(3,2))
+            var filas = await _context.venta
+                .AsNoTracking()
                 .Where(v => v.fecha != null && v.estado != "Anulado")
-                .GroupBy(v => new { Anio = v.fecha!.Value.Year, Mes = v.fecha.Value.Month })
+                .Select(v => new { fecha = v.fecha!.Value, v.neto, v.iva })
+                .ToListAsync();
+
+            var ingresos = filas
+                .GroupBy(v => new { Anio = v.fecha.Year, Mes = v.fecha.Month })
                 .Select(g => new
                 {
                     anio = g.Key.Anio,
@@ -87,7 +89,7 @@ public class ReportesController : ControllerBase
                     total = g.Sum(v => v.neto + (v.neto * v.iva))
                 })
                 .OrderBy(x => x.anio).ThenBy(x => x.mes)
-                .ToListAsync();
+                .ToList();
 
             return Ok(new { success = true, message = "Ingresos mensuales.", data = ingresos, errors = (object?)null });
     
@@ -126,7 +128,7 @@ public class ReportesController : ControllerBase
 
     // GET: api/reportes/alertas (Para los cuadros laterales del dashboard)
     [HttpGet("alertas")]
-    public async Task<IActionResult> GetAlertas()
+    public async Task<IActionResult> GetAlertas(CancellationToken ct = default)
     {
         try
         {
@@ -146,18 +148,9 @@ public class ReportesController : ControllerBase
             var totalDevoluciones = await _context.devolucions.CountAsync();
             var tasaDevoluciones = totalVentas > 0 ? (double)totalDevoluciones / totalVentas * 100 : 0;
 
-            // Emprendedores con calificación < 3 (Usando la consulta de tu archivo)
-            var emprendedoresBajos = await _context.Database
-                .SqlQueryRaw<int>(@"
-                SELECT COUNT(DISTINCT u.rut)
-                FROM usuario u
-                JOIN ofrecer1 o ON u.rut = o.id_usuario
-                JOIN escribir1 e ON o.id_producto = e.id_producto
-                JOIN calificacion c ON e.id_calificacion = c.id
-                GROUP BY u.rut
-                HAVING AVG(c.calificacion) < 3
-            ")
-                .FirstOrDefaultAsync();
+            // Emprendedores con calificación < 3 -> f_fidelizacion_5 (vendedores con algún producto
+            // o servicio cuya calificación promedio es menor a 3)
+            var emprendedoresBajos = (await _f.VendedoresBajaCalificacion(ct)).Count;
 
             return Ok(new { 
                 success = true, 
