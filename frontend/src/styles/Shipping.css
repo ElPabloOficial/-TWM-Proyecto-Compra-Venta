@@ -60,6 +60,12 @@
   color: #555;
 }
 
+.env-subtitulo {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 4px 0 8px;
+}
+
 .env-ayuda {
   font-size: 11px;
   color: #6b7280;

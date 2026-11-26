@@ -21,7 +21,7 @@ import "../../styles/Shipping.css";
 
 const POR_PAGINA = 6;
 
-const formVacio = { nombre: "", alto: "", ancho: "", fondo: "", peso: "" };
+const formVacio = { nombre: "", alto: "", ancho: "", fondo: "", peso: "", divisor: "5000", tarifaKg: "", tarifaMinima: "", dias: "" };
 
 const numero = (n) => Number(n).toLocaleString("es-CL");
 
@@ -101,6 +101,10 @@ const ShippingCostsScreen = () => {
       ancho: String(e.ancho),
       fondo: String(e.fondo),
       peso: String(e.peso),
+      divisor: String(e.divisor || 5000),
+      tarifaKg: e.tarifaKg ? String(e.tarifaKg) : "",
+      tarifaMinima: e.tarifaMinima != null ? String(e.tarifaMinima) : "",
+      dias: e.dias ? String(e.dias) : "",
     });
     setError("");
     setDialogoAbierto(true);
@@ -125,6 +129,10 @@ const ShippingCostsScreen = () => {
       return setError("El alto, el ancho y el fondo máximos deben ser mayores a 0.");
     }
     if (!(Number(form.peso) > 0)) return setError("El peso máximo debe ser mayor a 0.");
+    if (!(Number(form.divisor) > 0)) return setError("El divisor volumétrico debe ser mayor a 0 (lo habitual es 5000).");
+    if (!(Number(form.tarifaKg) > 0)) return setError("La tarifa por kg debe ser mayor a 0.");
+    if (form.tarifaMinima === "") return setError("Indica la tarifa mínima (puede ser 0).");
+    if (!(Number(form.dias) > 0)) return setError("El plazo de entrega debe ser de al menos 1 día.");
 
     const datos = { ...(editando ? { id: editandoId } : {}), ...form, nombre };
 
@@ -170,8 +178,8 @@ const ShippingCostsScreen = () => {
         <div>
           <h1 className="inv-title">Empresas de despacho</h1>
           <div className="inv-subtitle">
-            Define el tamaño y el peso máximos de un paquete para cada empresa de despacho.
-            Con estos límites se valida si un producto puede enviarse.
+            Define el tamaño y el peso máximos de un paquete y la tarifa de cada empresa de despacho.
+            El comprador elige entre las empresas que pueden llevar su pedido y paga la tarifa al comprar.
           </div>
         </div>
 
@@ -212,7 +220,9 @@ const ShippingCostsScreen = () => {
                     <th>Ancho máx.</th>
                     <th>Fondo máx.</th>
                     <th>Peso máx.</th>
-                    <th>Volumen máx.</th>
+                    <th>Tarifa por kg</th>
+                    <th>Mínimo</th>
+                    <th>Plazo</th>
                     <th>Despachos</th>
                     <th>Acciones</th>
                   </tr>
@@ -220,7 +230,7 @@ const ShippingCostsScreen = () => {
                 <tbody>
                   {empresas.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="inv-empty">
+                      <td colSpan={10} className="inv-empty">
                         No hay empresas de despacho registradas.
                       </td>
                     </tr>
@@ -233,7 +243,9 @@ const ShippingCostsScreen = () => {
                       <td>{numero(e.ancho)} cm</td>
                       <td>{numero(e.fondo)} cm</td>
                       <td>{numero(e.peso)} g</td>
-                      <td>{numero(e.volumen)} cm³</td>
+                      <td>${numero(e.tarifaKg)}</td>
+                      <td>${numero(e.tarifaMinima)}</td>
+                      <td>{e.dias} {e.dias === 1 ? "día" : "días"}</td>
                       <td>{numero(e.despachos)}</td>
                       <td>
                         <button
@@ -360,9 +372,32 @@ const ShippingCostsScreen = () => {
             </label>
           </div>
 
+          <div className="env-subtitulo">Tarifa del envío</div>
+          <div className="env-fila">
+            <label className="env-campo">
+              <span className="env-label">Tarifa por kg ($) *</span>
+              <input type="text" inputMode="numeric" className="env-input" placeholder="1900" value={form.tarifaKg} onChange={handleNumero("tarifaKg", 7)} />
+            </label>
+            <label className="env-campo">
+              <span className="env-label">Tarifa mínima ($) *</span>
+              <input type="text" inputMode="numeric" className="env-input" placeholder="3990" value={form.tarifaMinima} onChange={handleNumero("tarifaMinima", 7)} />
+            </label>
+          </div>
+          <div className="env-fila">
+            <label className="env-campo">
+              <span className="env-label">Divisor volumétrico *</span>
+              <input type="text" inputMode="numeric" className="env-input" placeholder="5000" value={form.divisor} onChange={handleNumero("divisor", 5)} />
+            </label>
+            <label className="env-campo">
+              <span className="env-label">Plazo de entrega (días) *</span>
+              <input type="text" inputMode="numeric" className="env-input" placeholder="3" value={form.dias} onChange={handleNumero("dias", 2)} />
+            </label>
+          </div>
+
           <div className="env-ayuda">
             El volumen máximo es alto × ancho × fondo. El peso va en gramos, igual que el peso de los productos
-            (por ejemplo, 25.000 g = 25 kg).
+            (por ejemplo, 25.000 g = 25 kg). El comprador paga el mayor entre el peso real y el peso volumétrico
+            (alto × ancho × fondo ÷ divisor), por la tarifa por kg, con un mínimo.
           </div>
 
           {error && (

@@ -8,7 +8,7 @@ import ConfirmPurchaseTools from "../../components/molecules/ConfirmPurchaseTool
 import ConfirmPurchaseTable from "../../components/organisms/ConfirmPurchaseTable/ConfirmPurchaseTable";
 import useCart from "../../context/useCart";
 import { useToast } from "../../context/ToastContext";
-import { calcularTotales, crearVenta, listarDirecciones } from "../../services/cartService";
+import { IVA, calcularTotales, crearVenta, listarDirecciones, obtenerOpcionesEnvio } from "../../services/cartService";
 import { obtenerCotizacion } from "../../services/quoteService";
 
 const ROJO = "#EC3333";
@@ -45,6 +45,11 @@ const ConfirmPurchaseScreen = () => {
   const [direcciones, setDirecciones] = useState([]);
   const [direccionId, setDireccionId] = useState("");
   const [cargandoDirecciones, setCargandoDirecciones] = useState(true);
+  // Empresas de despacho que pueden llevar el pedido (las elige el comprador y paga su precio)
+  const [opciones, setOpciones] = useState([]);
+  const [empresaId, setEmpresaId] = useState("");
+  const [cargandoOpciones, setCargandoOpciones] = useState(true);
+  const [errorOpciones, setErrorOpciones] = useState("");
   const [medioPago, setMedioPago] = useState("Tarjeta");
   const [ultimos4, setUltimos4] = useState("");
   const [codigo, setCodigo] = useState("");
@@ -103,6 +108,29 @@ const ConfirmPurchaseScreen = () => {
     };
   }, [user, idCotizacion]);
 
+  // GET /despachos/opciones: empresas que pueden llevar el pedido, con precio y plazo
+  const listoParaEnvio = idCotizacion ? Boolean(cotizacion) : !cargando && cart.length > 0;
+  useEffect(() => {
+    if (!user || !listoParaEnvio) return undefined;
+    let activo = true;
+
+    setCargandoOpciones(true);
+    setErrorOpciones("");
+    obtenerOpcionesEnvio(idCotizacion)
+      .then(({ opciones: lista }) => {
+        if (!activo) return;
+        setOpciones(lista);
+        // Queda marcada la más barata; el comprador puede cambiarla
+        setEmpresaId((actual) => (lista.some((o) => String(o.id) === actual) ? actual : lista[0] ? String(lista[0].id) : ""));
+      })
+      .catch((e) => activo && setErrorOpciones(e.message))
+      .finally(() => activo && setCargandoOpciones(false));
+
+    return () => {
+      activo = false;
+    };
+  }, [user, listoParaEnvio, idCotizacion, cart.length]);
+
   if (!user) return <Navigate to="/login" replace />;
   if (!idCotizacion && !cargando && cart.length === 0 && !pagando) return <Navigate to="/carrito" replace />;
 
@@ -122,14 +150,27 @@ const ConfirmPurchaseScreen = () => {
   const cargandoCompra = idCotizacion ? cargandoCotizacion : cargando;
   const rutaVolver = idCotizacion ? "/mis-cotizaciones" : "/carrito";
 
-  const resumen = calcularTotales(articulos);
   const requiereDespacho = articulos.some((item) => item.tipo === "producto");
+
+  // El envío se suma al neto y paga IVA junto con el resto (igual que lo cobra la API)
+  const empresaElegida = opciones.find((o) => String(o.id) === empresaId);
+  const costoEnvio = requiereDespacho ? empresaElegida?.costo ?? 0 : 0;
+  const subtotal = calcularTotales(articulos);
+  const ivaTotal = Math.round((subtotal.neto + costoEnvio) * IVA);
+  const resumen = {
+    neto: subtotal.neto,
+    envio: requiereDespacho ? costoEnvio : undefined,
+    iva: ivaTotal,
+    total: subtotal.neto + costoEnvio + ivaTotal,
+  };
   const sinPrecio = articulos.some((item) => item.precio === null);
 
   const pagoValido =
     medioPago === "Tarjeta" ? /^\d{4}$/.test(ultimos4) : /^\d{4,9}$/.test(codigo);
   const direccionValida = !requiereDespacho || direccionId !== "";
-  const puedePagar = !cargandoCompra && !errorCotizacion && !pagando && !sinPrecio && pagoValido && direccionValida;
+  const envioValido = !requiereDespacho || (!cargandoOpciones && !errorOpciones && Boolean(empresaElegida));
+  const puedePagar =
+    !cargandoCompra && !errorCotizacion && !pagando && !sinPrecio && pagoValido && direccionValida && envioValido;
 
   const pagar = async () => {
     setPagando(true);
@@ -139,6 +180,8 @@ const ConfirmPurchaseScreen = () => {
       medioPago,
       requiereDespacho,
       id_direccion: requiereDespacho ? direccionId : null,
+      empresa_despacho: requiereDespacho ? empresaElegida?.nombre : null,
+      costo_envio: costoEnvio,
       cotizacion: idCotizacion,
       articulos: articulos.map((item) => ({ tipo: item.tipo, id: item.id, cantidad: item.cantidad })),
       total: resumen.total,
@@ -152,6 +195,7 @@ const ConfirmPurchaseScreen = () => {
         codigotransferencia: medioPago === "Transferencia" ? Number(codigo) : null,
         requieredespacho: requiereDespacho,
         id_direccion: requiereDespacho ? Number(direccionId) : null,
+        id_empresad: requiereDespacho ? Number(empresaId) : null,
         nota: nota.trim() || null,
         id_cotizacion: idCotizacion ? Number(idCotizacion) : null,
       });
@@ -253,6 +297,11 @@ const ConfirmPurchaseScreen = () => {
               direccionId={direccionId}
               onElegirDireccion={setDireccionId}
               cargando={cargandoDirecciones}
+              opciones={opciones}
+              empresaId={empresaId}
+              onElegirEmpresa={setEmpresaId}
+              cargandoOpciones={cargandoOpciones}
+              errorOpciones={errorOpciones}
             />
 
             <ConfirmPurchaseTable

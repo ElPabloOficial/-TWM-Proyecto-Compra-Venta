@@ -5,10 +5,24 @@ const ROJO = "#EC3333";
 const ROJO_SUAVE = "#FDE7E7";
 const tarjeta = { border: "1px solid #E0E0E0", borderRadius: 2, padding: 2, backgroundColor: "#fff" };
 
-// Dónde se entrega el pedido. Los servicios no necesitan dirección.
+const formatearPrecio = (numero) => `$${Number(numero).toLocaleString("es-CL")}`;
+
+// Dónde se entrega el pedido y con qué empresa de despacho. Los servicios no necesitan dirección.
 //   requiereDespacho -> si el carrito tiene al menos un producto
 //   direcciones      -> [{ id, texto, detalle }] las direcciones del usuario
-const ConfirmPurchaseTools = ({ requiereDespacho, direcciones, direccionId, onElegirDireccion, cargando }) => {
+//   opciones         -> [{ id, nombre, costo, dias }] empresas que pueden llevar el pedido (la API ya las filtra)
+const ConfirmPurchaseTools = ({
+  requiereDespacho,
+  direcciones,
+  direccionId,
+  onElegirDireccion,
+  cargando,
+  opciones = [],
+  empresaId = "",
+  onElegirEmpresa = () => {},
+  cargandoOpciones = false,
+  errorOpciones = "",
+}) => {
   if (!requiereDespacho) {
     return (
       <Box sx={tarjeta}>
@@ -21,6 +35,7 @@ const ConfirmPurchaseTools = ({ requiereDespacho, direcciones, direccionId, onEl
   }
 
   return (
+    <>
     <Box sx={tarjeta}>
       <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
         <Box component="span">Enviar a</Box>
@@ -64,10 +79,65 @@ const ConfirmPurchaseTools = ({ requiereDespacho, direcciones, direccionId, onEl
         </Box>
       )}
 
+    </Box>
+
+    <Box sx={tarjeta}>
+      <Box sx={{ fontSize: 13 }}>Empresa de despacho</Box>
+
+      {cargandoOpciones ? (
+        <Box sx={{ fontSize: 12, color: "#666", marginTop: 1 }}>Buscando empresas que puedan llevar tu pedido...</Box>
+      ) : errorOpciones ? (
+        <Box role="alert" sx={{ fontSize: 12, color: ROJO, marginTop: 1 }}>{errorOpciones}</Box>
+      ) : opciones.length === 0 ? (
+        <Box role="alert" sx={{ fontSize: 12, color: ROJO, marginTop: 1 }}>
+          Ninguna empresa de despacho puede transportar este pedido por su peso o tamaño. Prueba con menos unidades o
+          compra los productos por separado.
+        </Box>
+      ) : (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, marginTop: 1.5 }}>
+          {opciones.map((o) => {
+            const activa = String(o.id) === String(empresaId);
+            return (
+              <Box
+                key={o.id}
+                component="button"
+                type="button"
+                aria-pressed={activa}
+                onClick={() => onElegirEmpresa(String(o.id))}
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 2,
+                  textAlign: "left",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  padding: 1.5,
+                  borderRadius: 1,
+                  border: `1px solid ${activa ? ROJO : "#E0E0E0"}`,
+                  backgroundColor: activa ? ROJO_SUAVE : "#fff",
+                }}
+              >
+                <Box>
+                  <Box sx={{ fontSize: 14 }}>{o.nombre}</Box>
+                  {o.dias != null && (
+                    <Box sx={{ fontSize: 12, color: "#666" }}>
+                      Llega en {o.dias} {o.dias === 1 ? "día" : "días"} aprox.
+                    </Box>
+                  )}
+                </Box>
+                <Box sx={{ fontSize: 14, fontWeight: 700 }}>{formatearPrecio(o.costo)}</Box>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+
       <Box sx={{ fontSize: 11, color: "#888", marginTop: 1.5 }}>
-        El costo de envío se calcula con el tamaño del paquete cuando el vendedor despacha tu pedido y lo verás en el seguimiento. No está incluido en el total.
+        El precio del envío depende del peso y el tamaño de tu pedido y de la empresa que elijas. Se paga junto con la compra.
       </Box>
     </Box>
+    </>
   );
 };
 

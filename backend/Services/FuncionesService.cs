@@ -267,4 +267,8 @@ public class FuncionesService
     /// <summary>Ejecuta <c>f_dml</c>. Devuelve la cantidad de filas afectadas.</summary>
     public Task<int> Dml(string tabla, string operacion, string datosJson = "{}", string? filtroJson = null, CancellationToken ct = default) =>
         _db.Database.SqlQuery<int>($"""SELECT f_dml({tabla}::text, {operacion}::text, {datosJson}::jsonb, {filtroJson}::jsonb) AS "Value" """).SingleAsync(ct);
+
+    /// <summary>Costo de un envío con una empresa de despacho (tarifa en su JSON). (<c>fn_costo_envio</c>, bd_proyecto/envio_por_empresa.sql)</summary>
+    public Task<decimal> CostoEnvio(int? idEmpresa, decimal ancho, decimal alto, decimal fondo, decimal pesoKg, CancellationToken ct = default) =>
+        _db.Database.SqlQuery<decimal>($"""SELECT fn_costo_envio({idEmpresa}::integer, {ancho}::numeric, {alto}::numeric, {fondo}::numeric, {pesoKg}::numeric) AS "Value" """).SingleAsync(ct);
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using backend.Models;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -12,10 +13,53 @@ namespace backend.Controllers;
 public class DespachosController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly EnvioService _envio;
 
-    public DespachosController(AppDbContext context)
+    public DespachosController(AppDbContext context, EnvioService envio)
     {
         _context = context;
+        _envio = envio;
+    }
+
+    // GET: api/despachos/opciones            (con los productos de tu carrito)
+    // GET: api/despachos/opciones?cotizacion=5   (con los productos de una cotización)
+    // Empresas de despacho que pueden llevar el pedido, con su precio y plazo (de la más barata a la más cara).
+    [HttpGet("opciones")]
+    public async Task<IActionResult> GetOpciones([FromQuery] int? cotizacion, CancellationToken ct)
+    {
+        try
+        {
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut)) return Unauthorized();
+
+            var productos = cotizacion.HasValue
+                ? await _envio.ProductosDeCotizacionAsync(cotizacion.Value, rut, ct)
+                : await _envio.ProductosDelCarritoAsync(rut, ct);
+
+            // Solo se envían productos: un pedido de puros servicios no tiene despacho
+            if (productos.Count == 0)
+                return Ok(new { success = true, message = "El pedido no tiene productos que enviar.", data = new { requiere_despacho = false, paquete = (object?)null, opciones = Array.Empty<object>() }, errors = (object?)null });
+
+            var paquete = EnvioService.ArmarPaquete(productos);
+            var opciones = await _envio.OpcionesAsync(paquete, ct);
+
+            return Ok(new
+            {
+                success = true,
+                message = opciones.Count > 0 ? "Opciones de envío obtenidas." : "Ninguna empresa puede transportar este pedido.",
+                data = new
+                {
+                    requiere_despacho = true,
+                    paquete = new { peso_kg = paquete.PesoKg, ancho_cm = paquete.AnchoCm, alto_cm = paquete.AltoCm, fondo_cm = paquete.FondoCm },
+                    opciones = opciones.Select(o => new { id = o.Id, nombre = o.Nombre, costo = o.Costo, dias_entrega = o.DiasEntrega })
+                },
+                errors = (object?)null
+            });
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
     }
 
     // GET: api/despachos/venta/{idVenta}

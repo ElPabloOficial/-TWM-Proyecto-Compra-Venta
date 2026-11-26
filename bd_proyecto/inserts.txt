@@ -9485,26 +9485,26 @@ INSERT INTO Mensaje (Id, Contenido, FechaEnvio, Estado, FechaRespuesta) VALUES
 --Contiene 20 registros debido a que representa empresas de despacho reales.
 --No se generaron 1000 datos ya que la cantidad de empresas distintas es limitada y la duplicación produciría redundancia.
 INSERT INTO EmpresaDespacho (Id, Nombre, EstandaresVolumetricos) VALUES
-(1, 'Chilexpress', '{"alto_max_cm": 100, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 25000, "volumen_max_cm3": 640000}'),
-(2, 'Starken', '{"alto_max_cm": 120, "ancho_max_cm": 100, "fondo_max_cm": 100, "peso_max_g": 30000, "volumen_max_cm3": 1200000}'),
-(3, 'CorreosChile', '{"alto_max_cm": 90, "ancho_max_cm": 60, "fondo_max_cm": 60, "peso_max_g": 20000, "volumen_max_cm3": 324000}'),
-(4, 'Blue Express', '{"alto_max_cm": 100, "ancho_max_cm": 70, "fondo_max_cm": 70, "peso_max_g": 25000, "volumen_max_cm3": 490000}'),
-(5, 'DHL', '{"alto_max_cm": 120, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 70000, "volumen_max_cm3": 768000}'),
-(6, 'FedEx', '{"alto_max_cm": 274, "ancho_max_cm": 100, "fondo_max_cm": 100, "peso_max_g": 68000, "volumen_max_cm3": 2740000}'),
-(7, 'UPS', '{"alto_max_cm": 270, "ancho_max_cm": 100, "fondo_max_cm": 100, "peso_max_g": 70000, "volumen_max_cm3": 2700000}'),
-(8, '99minutos', '{"alto_max_cm": 60, "ancho_max_cm": 50, "fondo_max_cm": 50, "peso_max_g": 15000, "volumen_max_cm3": 150000}'),
-(9, 'Shippify', '{"alto_max_cm": 60, "ancho_max_cm": 50, "fondo_max_cm": 50, "peso_max_g": 15000, "volumen_max_cm3": 150000}'),
-(10, 'Envíame', '{"alto_max_cm": 100, "ancho_max_cm": 70, "fondo_max_cm": 70, "peso_max_g": 25000, "volumen_max_cm3": 490000}'),
-(11, 'Pullman Cargo', '{"alto_max_cm": 150, "ancho_max_cm": 120, "fondo_max_cm": 120, "peso_max_g": 50000, "volumen_max_cm3": 2160000}'),
-(12, 'TNT Express', '{"alto_max_cm": 120, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 30000, "volumen_max_cm3": 768000}'),
-(13, 'Muvsmart', '{"alto_max_cm": 50, "ancho_max_cm": 40, "fondo_max_cm": 40, "peso_max_g": 10000, "volumen_max_cm3": 80000}'),
-(14, 'AlasXpress', '{"alto_max_cm": 80, "ancho_max_cm": 60, "fondo_max_cm": 60, "peso_max_g": 20000, "volumen_max_cm3": 288000}'),
-(15, 'SKY Postal', '{"alto_max_cm": 60, "ancho_max_cm": 40, "fondo_max_cm": 40, "peso_max_g": 15000, "volumen_max_cm3": 96000}'),
-(16, 'Loginsa', '{"alto_max_cm": 100, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 30000, "volumen_max_cm3": 640000}'),
-(17, 'Transporte Nazar', '{"alto_max_cm": 150, "ancho_max_cm": 120, "fondo_max_cm": 120, "peso_max_g": 50000, "volumen_max_cm3": 2160000}'),
-(18, 'CargoPack', '{"alto_max_cm": 100, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 25000, "volumen_max_cm3": 640000}'),
-(19, 'Intercarry', '{"alto_max_cm": 120, "ancho_max_cm": 90, "fondo_max_cm": 90, "peso_max_g": 40000, "volumen_max_cm3": 972000}'),
-(20, 'Fastco', '{"alto_max_cm": 60, "ancho_max_cm": 50, "fondo_max_cm": 50, "peso_max_g": 15000, "volumen_max_cm3": 150000}');
+(1, 'Chilexpress', '{"alto_max_cm": 100, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 25000, "volumen_max_cm3": 640000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1900, "tarifa_minima": 3990, "dias_entrega": 3}'),
+(2, 'Starken', '{"alto_max_cm": 120, "ancho_max_cm": 100, "fondo_max_cm": 100, "peso_max_g": 30000, "volumen_max_cm3": 1200000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1500, "tarifa_minima": 3490, "dias_entrega": 4}'),
+(3, 'CorreosChile', '{"alto_max_cm": 90, "ancho_max_cm": 60, "fondo_max_cm": 60, "peso_max_g": 20000, "volumen_max_cm3": 324000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1100, "tarifa_minima": 2990, "dias_entrega": 6}'),
+(4, 'Blue Express', '{"alto_max_cm": 100, "ancho_max_cm": 70, "fondo_max_cm": 70, "peso_max_g": 25000, "volumen_max_cm3": 490000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1700, "tarifa_minima": 3590, "dias_entrega": 3}'),
+(5, 'DHL', '{"alto_max_cm": 120, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 70000, "volumen_max_cm3": 768000, "divisor_volumetrico": 5000, "tarifa_por_kg": 2600, "tarifa_minima": 6990, "dias_entrega": 2}'),
+(6, 'FedEx', '{"alto_max_cm": 274, "ancho_max_cm": 100, "fondo_max_cm": 100, "peso_max_g": 68000, "volumen_max_cm3": 2740000, "divisor_volumetrico": 5000, "tarifa_por_kg": 2800, "tarifa_minima": 7490, "dias_entrega": 2}'),
+(7, 'UPS', '{"alto_max_cm": 270, "ancho_max_cm": 100, "fondo_max_cm": 100, "peso_max_g": 70000, "volumen_max_cm3": 2700000, "divisor_volumetrico": 5000, "tarifa_por_kg": 2700, "tarifa_minima": 7290, "dias_entrega": 2}'),
+(8, '99minutos', '{"alto_max_cm": 60, "ancho_max_cm": 50, "fondo_max_cm": 50, "peso_max_g": 15000, "volumen_max_cm3": 150000, "divisor_volumetrico": 4000, "tarifa_por_kg": 2300, "tarifa_minima": 3990, "dias_entrega": 1}'),
+(9, 'Shippify', '{"alto_max_cm": 60, "ancho_max_cm": 50, "fondo_max_cm": 50, "peso_max_g": 15000, "volumen_max_cm3": 150000, "divisor_volumetrico": 4000, "tarifa_por_kg": 2100, "tarifa_minima": 3490, "dias_entrega": 1}'),
+(10, 'Envíame', '{"alto_max_cm": 100, "ancho_max_cm": 70, "fondo_max_cm": 70, "peso_max_g": 25000, "volumen_max_cm3": 490000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1600, "tarifa_minima": 3290, "dias_entrega": 4}'),
+(11, 'Pullman Cargo', '{"alto_max_cm": 150, "ancho_max_cm": 120, "fondo_max_cm": 120, "peso_max_g": 50000, "volumen_max_cm3": 2160000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1200, "tarifa_minima": 4990, "dias_entrega": 5}'),
+(12, 'TNT Express', '{"alto_max_cm": 120, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 30000, "volumen_max_cm3": 768000, "divisor_volumetrico": 5000, "tarifa_por_kg": 2500, "tarifa_minima": 6490, "dias_entrega": 2}'),
+(13, 'Muvsmart', '{"alto_max_cm": 50, "ancho_max_cm": 40, "fondo_max_cm": 40, "peso_max_g": 10000, "volumen_max_cm3": 80000, "divisor_volumetrico": 4000, "tarifa_por_kg": 2200, "tarifa_minima": 3790, "dias_entrega": 1}'),
+(14, 'AlasXpress', '{"alto_max_cm": 80, "ancho_max_cm": 60, "fondo_max_cm": 60, "peso_max_g": 20000, "volumen_max_cm3": 288000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1400, "tarifa_minima": 3190, "dias_entrega": 5}'),
+(15, 'SKY Postal', '{"alto_max_cm": 60, "ancho_max_cm": 40, "fondo_max_cm": 40, "peso_max_g": 15000, "volumen_max_cm3": 96000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1000, "tarifa_minima": 2790, "dias_entrega": 7}'),
+(16, 'Loginsa', '{"alto_max_cm": 100, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 30000, "volumen_max_cm3": 640000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1555, "tarifa_minima": 3390, "dias_entrega": 4}'),
+(17, 'Transporte Nazar', '{"alto_max_cm": 150, "ancho_max_cm": 120, "fondo_max_cm": 120, "peso_max_g": 50000, "volumen_max_cm3": 2160000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1150, "tarifa_minima": 5490, "dias_entrega": 6}'),
+(18, 'CargoPack', '{"alto_max_cm": 100, "ancho_max_cm": 80, "fondo_max_cm": 80, "peso_max_g": 25000, "volumen_max_cm3": 640000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1450, "tarifa_minima": 3290, "dias_entrega": 4}'),
+(19, 'Intercarry', '{"alto_max_cm": 120, "ancho_max_cm": 90, "fondo_max_cm": 90, "peso_max_g": 40000, "volumen_max_cm3": 972000, "divisor_volumetrico": 5000, "tarifa_por_kg": 1750, "tarifa_minima": 3690, "dias_entrega": 3}'),
+(20, 'Fastco', '{"alto_max_cm": 60, "ancho_max_cm": 50, "fondo_max_cm": 50, "peso_max_g": 15000, "volumen_max_cm3": 150000, "divisor_volumetrico": 4000, "tarifa_por_kg": 2000, "tarifa_minima": 3390, "dias_entrega": 2}');
 
 --INSERT EMPRESA
 INSERT INTO Empresa (Rut, Nombre, PaginaWeb, Giro) VALUES

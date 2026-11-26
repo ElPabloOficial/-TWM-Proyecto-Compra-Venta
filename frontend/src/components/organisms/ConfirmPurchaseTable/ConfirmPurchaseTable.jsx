@@ -49,6 +49,7 @@ const ConfirmPurchaseTable = ({ items, resumen, mediosPago, medioPago, onMedioPa
           <Box sx={{ fontSize: 13, marginBottom: 1 }}>Resumen del pedido</Box>
 
           <Fila etiqueta="Subtotal (neto)" valor={formatearPrecio(resumen.neto)} />
+          {resumen.envio != null && <Fila etiqueta="Envío" valor={formatearPrecio(resumen.envio)} />}
           <Fila etiqueta="IVA (19%)" valor={formatearPrecio(resumen.iva)} />
 
           <Box sx={{ borderTop: "1px solid #E0E0E0", marginY: 1 }} />

@@ -22,6 +22,9 @@ builder.Services.AddDbContext<AppDbContext>(
 // 1.1 Servicio que expone las funciones PostgreSQL (bd_proyecto/funciones.txt)
 builder.Services.AddScoped<FuncionesService>();
 
+// 1.2 Envío: paquete de un pedido y empresas de despacho que pueden llevarlo (con su precio)
+builder.Services.AddScoped<EnvioService>();
+
 // 2. Configurar JWT
 var jwtKey = builder.Configuration["Jwt:Key"];
 

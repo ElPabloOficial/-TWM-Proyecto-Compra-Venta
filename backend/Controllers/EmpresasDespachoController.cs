@@ -19,6 +19,8 @@ public class EmpresasDespachoController : ControllerBase
     private const int MaxNombre = 50;        // largo de EmpresaDespacho.Nombre en la BD
     private const int MaxMedidaCm = 1000;    // tope razonable para alto, ancho y fondo
     private const int MaxPesoG = 1_000_000;  // 1.000 kg
+    private const int MaxTarifa = 1_000_000;  // pesos
+    private const int MaxDias = 60;
 
     public EmpresasDespachoController(AppDbContext context)
     {
@@ -47,6 +49,17 @@ public class EmpresasDespachoController : ControllerBase
         if (dto.peso_max_g is null or <= 0) errores.Add("peso_max_g: debe ser mayor a 0.");
         else if (dto.peso_max_g > MaxPesoG) errores.Add($"peso_max_g: máximo {MaxPesoG} g.");
 
+        void Tarifa(int? valor, string campo, int minimo, int maximo)
+        {
+            if (valor is null || valor < minimo) errores.Add($"{campo}: debe ser {(minimo > 0 ? "mayor a 0" : "0 o más")}.");
+            else if (valor > maximo) errores.Add($"{campo}: máximo {maximo}.");
+        }
+
+        Tarifa(dto.divisor_volumetrico, "divisor_volumetrico", 1, MaxMedidaCm * 100);
+        Tarifa(dto.tarifa_por_kg, "tarifa_por_kg", 1, MaxTarifa);
+        Tarifa(dto.tarifa_minima, "tarifa_minima", 0, MaxTarifa);
+        Tarifa(dto.dias_entrega, "dias_entrega", 1, MaxDias);
+
         return errores;
     }
 
@@ -58,7 +71,11 @@ public class EmpresasDespachoController : ControllerBase
             ancho_max_cm = dto.ancho_max_cm,
             fondo_max_cm = dto.fondo_max_cm,
             peso_max_g = dto.peso_max_g,
-            volumen_max_cm3 = (long)dto.alto_max_cm!.Value * dto.ancho_max_cm!.Value * dto.fondo_max_cm!.Value
+            volumen_max_cm3 = (long)dto.alto_max_cm!.Value * dto.ancho_max_cm!.Value * dto.fondo_max_cm!.Value,
+            divisor_volumetrico = dto.divisor_volumetrico,
+            tarifa_por_kg = dto.tarifa_por_kg,
+            tarifa_minima = dto.tarifa_minima,
+            dias_entrega = dto.dias_entrega
         });
 
     // Lee un número del JSON guardado (0 si falta o está mal formado)
@@ -95,6 +112,10 @@ public class EmpresasDespachoController : ControllerBase
                     fondo_max_cm = Numero(json, "fondo_max_cm"),
                     peso_max_g = Numero(json, "peso_max_g"),
                     volumen_max_cm3 = Numero(json, "volumen_max_cm3"),
+                    divisor_volumetrico = Numero(json, "divisor_volumetrico"),
+                    tarifa_por_kg = Numero(json, "tarifa_por_kg"),
+                    tarifa_minima = Numero(json, "tarifa_minima"),
+                    dias_entrega = Numero(json, "dias_entrega"),
                     e.despachos
                 };
             }).ToList();

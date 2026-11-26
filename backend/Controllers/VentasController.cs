@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using backend.DTOs;
 using backend.Models;
+using backend.Services;
 using System.Text.Json.Nodes;
 
 
@@ -16,10 +17,32 @@ namespace backend.Controllers;
 public class VentasController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly EnvioService _envio;
 
-    public VentasController(AppDbContext context)
+    public VentasController(AppDbContext context, EnvioService envio)
     {
         _context = context;
+        _envio = envio;
+    }
+
+    // Envío elegido por el comprador: arma el paquete con los productos y comprueba que la empresa elegida
+    // pueda llevarlo. Devuelve el precio de esa empresa (que se suma al Neto de la venta) o un error 400.
+    // Sin despacho, o sin productos que enviar, no hay envío y no se devuelve nada.
+    private async Task<(OpcionEnvio? envio, PaqueteEnvio? paquete, IActionResult? error)> PrepararEnvioAsync(
+        VentaCreateDto dto, List<(string? caracteristicas, int cantidad)> productos)
+    {
+        if (!dto.requieredespacho || !dto.id_direccion.HasValue || productos.Count == 0)
+            return (null, null, null);
+
+        if (!dto.id_empresad.HasValue)
+            return (null, null, BadRequest(new { success = false, message = "Elige la empresa de despacho para tu pedido." }));
+
+        var paquete = EnvioService.ArmarPaquete(productos);
+        var envio = await _envio.CotizarAsync(paquete, dto.id_empresad.Value);
+        if (envio == null)
+            return (null, null, BadRequest(new { success = false, message = "La empresa de despacho elegida no puede transportar tu pedido. Elige otra de la lista." }));
+
+        return (envio, paquete, null);
     }
 
     // Precio de un producto tal como lo muestra el catálogo: el de Caracteristicas ("precio") menos el
@@ -128,6 +151,11 @@ public class VentasController : ControllerBase
                 .Where(v => idsServicios.Contains(v.id_servicio))
                 .ToListAsync();
 
+            // Envío: la empresa la elige el comprador y su precio se cobra junto con el pedido
+            var (envio, paquete, errorEnvio) = await PrepararEnvioAsync(
+                dto, itemsProductos.Select(i => ((string?)i.id_productoNavigation.caracteristicas, i.cantidad)).ToList());
+            if (errorEnvio != null) return errorEnvio;
+
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -140,6 +168,9 @@ public class VentasController : ControllerBase
 
                 foreach (var item in itemsServicios)
                     netoTotal += PrecioServicio(item.id_servicioNavigation, preciosServicio) * item.cantidad;
+
+                // El envío va dentro del Neto (la base valida: Neto = productos + servicios + costo_envio)
+                netoTotal += envio?.Costo ?? 0;
 
                 // El IVA en Chile es 19% (0.19). El precio asumimos que es NETO.
                 decimal ivaDecimal = 0.19m;
@@ -211,10 +242,14 @@ public class VentasController : ControllerBase
                     {
                         estado = "En Preparación",
                         id_direccion = dto.id_direccion.Value,
-                        datoslogisticos = "{}" // Puedes agregar peso/dimensiones aquí
+                        // Peso y medidas del paquete y empresa elegida: el trigger de la base calcula costo_envio
+                        datoslogisticos = envio != null ? EnvioService.DatosLogisticos(paquete!, envio.Id) : "{}"
                     };
                     _context.despachos.Add(nuevoDespacho);
                     await _context.SaveChangesAsync();
+
+                    if (envio != null)
+                        _context.despachar2s.Add(new despachar2 { id_empresad = envio.Id, id_despacho = nuevoDespacho.id });
 
                     var generar2 = new generar2
                     {
@@ -236,7 +271,7 @@ public class VentasController : ControllerBase
                 return Ok(new { 
                     success = true, 
                     message = "Venta realizada con éxito.", 
-                    data = new { id_venta = nuevaVenta.id, total_pagado = netoTotal + (netoTotal * 0.19m) }, 
+                    data = new { id_venta = nuevaVenta.id, costo_envio = envio?.Costo ?? 0, total_pagado = netoTotal + (netoTotal * 0.19m) }, 
                     errors = (object?)null 
                 });
             }
@@ -340,11 +375,17 @@ public class VentasController : ControllerBase
         if (vendedor == rutCliente)
             return BadRequest(new { success = false, message = "No puedes comprar tus propios productos o servicios." });
 
+        // Envío: la empresa la elige el comprador y su precio se cobra junto con el pedido
+        var (envio, paquete, errorEnvio) = await PrepararEnvioAsync(
+            dto, productos.Select(p => ((string?)p.id_productoNavigation.caracteristicas, p.cantidad)).ToList());
+        if (errorEnvio != null) return errorEnvio;
+
         using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-            int netoTotal = productos.Sum(p => p.precio * p.cantidad) + servicios.Sum(s => s.precio * s.cantidad);
+            int netoTotal = productos.Sum(p => p.precio * p.cantidad) + servicios.Sum(s => s.precio * s.cantidad)
+                            + (envio?.Costo ?? 0);
 
             var nuevoPago = new pago
             {
@@ -399,10 +440,13 @@ public class VentasController : ControllerBase
                 {
                     estado = "En Preparación",
                     id_direccion = dto.id_direccion.Value,
-                    datoslogisticos = "{}"
+                    datoslogisticos = envio != null ? EnvioService.DatosLogisticos(paquete!, envio.Id) : "{}"
                 };
                 _context.despachos.Add(nuevoDespacho);
                 await _context.SaveChangesAsync();
+
+                if (envio != null)
+                    _context.despachar2s.Add(new despachar2 { id_empresad = envio.Id, id_despacho = nuevoDespacho.id });
 
                 _context.generar2s.Add(new generar2
                 {
@@ -423,7 +467,7 @@ public class VentasController : ControllerBase
             {
                 success = true,
                 message = "Venta realizada con éxito.",
-                data = new { id_venta = nuevaVenta.id, total_pagado = netoTotal + (netoTotal * 0.19m) },
+                data = new { id_venta = nuevaVenta.id, costo_envio = envio?.Costo ?? 0, total_pagado = netoTotal + (netoTotal * 0.19m) },
                 errors = (object?)null
             });
         }

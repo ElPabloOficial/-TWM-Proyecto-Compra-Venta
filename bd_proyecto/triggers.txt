@@ -43,34 +43,84 @@ EXECUTE FUNCTION aplicar_descuento_mensual();
 --ROLLBACK;
 
 ---------------------------------------------------------------
--- TRIGGER 2: Calcular dinámicamente el costo de envío proyectado
--- basándose en el volumen (ancho, alto, fondo) de DatosLogisticos.
+
+-- Costo de un envío con una empresa de despacho. La tarifa de cada empresa está en su JSON
+-- EstandaresVolumetricos: divisor_volumetrico, tarifa_por_kg y tarifa_minima (dias_entrega es el plazo).
+-- Kg cobrado = el mayor entre el peso real y el peso volumétrico (alto x ancho x fondo / divisor).
+-- Costo = MAX(tarifa_minima, ROUND(kg cobrado x tarifa_por_kg)).
+-- Sin empresa (o si no existe) usa la fórmula antigua: volumen / 5000 x 1555.
+CREATE OR REPLACE FUNCTION fn_costo_envio(
+    p_id_empresa INTEGER,
+    p_ancho      NUMERIC,
+    p_alto       NUMERIC,
+    p_fondo      NUMERIC,
+    p_peso_kg    NUMERIC
+) RETURNS NUMERIC AS $$
+DECLARE
+    v_est      JSONB;
+    v_divisor  NUMERIC;
+    v_tarifa   NUMERIC;
+    v_minima   NUMERIC;
+    v_vol_kg   NUMERIC;
+    v_kg       NUMERIC;
+BEGIN
+    IF p_ancho IS NULL OR p_alto IS NULL OR p_fondo IS NULL THEN
+        RETURN NULL;
+    END IF;
+ 
+    IF p_id_empresa IS NOT NULL THEN
+        SELECT EstandaresVolumetricos::jsonb INTO v_est
+        FROM EmpresaDespacho WHERE Id = p_id_empresa;
+    END IF;
+ 
+    -- Sin empresa: fórmula anterior
+    IF v_est IS NULL THEN
+        RETURN ROUND(p_ancho * p_alto * p_fondo / 5000.0 * 1555.0, 0);
+    END IF;
+ 
+    v_divisor := COALESCE(NULLIF(v_est->>'divisor_volumetrico', '')::NUMERIC, 5000);
+    v_tarifa  := COALESCE(NULLIF(v_est->>'tarifa_por_kg', '')::NUMERIC, 1555);
+    v_minima  := COALESCE(NULLIF(v_est->>'tarifa_minima', '')::NUMERIC, 0);
+ 
+    v_vol_kg := p_ancho * p_alto * p_fondo / v_divisor;
+    v_kg     := GREATEST(v_vol_kg, COALESCE(p_peso_kg, 0));
+ 
+    RETURN GREATEST(v_minima, ROUND(v_kg * v_tarifa, 0));
+END;
+$$ LANGUAGE plpgsql STABLE;
+ 
+-- Trigger 2: calcula el costo de envío con las medidas de DatosLogisticos (ancho_cm, alto_cm, fondo_cm)
+-- y, si existen, el peso (peso_kg) y la empresa elegida (id_empresad).
 
 CREATE OR REPLACE FUNCTION calculo_costo_envio_proyectado()
 RETURNS TRIGGER AS $$
 DECLARE
-    v_ancho NUMERIC;
-    v_alto  NUMERIC;
-    v_fondo NUMERIC;
-    v_costo_proyectado NUMERIC;
+    v_ancho   NUMERIC;
+    v_alto    NUMERIC;
+    v_fondo   NUMERIC;
+    v_peso    NUMERIC;
+    v_empresa INTEGER;
+    v_costo   NUMERIC;
 BEGIN
     IF NEW.DatosLogisticos IS NOT NULL THEN
-        v_ancho := NULLIF((NEW.DatosLogisticos::jsonb)->>'ancho_cm', '')::NUMERIC;
-        v_alto  := NULLIF((NEW.DatosLogisticos::jsonb)->>'alto_cm', '')::NUMERIC;
-        v_fondo := NULLIF((NEW.DatosLogisticos::jsonb)->>'fondo_cm', '')::NUMERIC;
-
+        v_ancho   := NULLIF((NEW.DatosLogisticos::jsonb)->>'ancho_cm', '')::NUMERIC;
+        v_alto    := NULLIF((NEW.DatosLogisticos::jsonb)->>'alto_cm', '')::NUMERIC;
+        v_fondo   := NULLIF((NEW.DatosLogisticos::jsonb)->>'fondo_cm', '')::NUMERIC;
+        v_peso    := NULLIF((NEW.DatosLogisticos::jsonb)->>'peso_kg', '')::NUMERIC;
+        v_empresa := NULLIF((NEW.DatosLogisticos::jsonb)->>'id_empresad', '')::INTEGER;
+ 
         IF v_ancho IS NOT NULL AND v_alto IS NOT NULL AND v_fondo IS NOT NULL THEN
-            v_costo_proyectado := ROUND((v_ancho * v_alto * v_fondo / 5000.0 * 1555.0), 0);
-
+            v_costo := fn_costo_envio(v_empresa, v_ancho, v_alto, v_fondo, v_peso);
+ 
             NEW.DatosLogisticos := jsonb_set(
                 NEW.DatosLogisticos::jsonb,
                 '{costo_envio}',
-                to_jsonb(v_costo_proyectado),
+                to_jsonb(v_costo),
                 TRUE
             )::json;
         END IF;
     END IF;
-
+ 
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

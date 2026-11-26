@@ -117,6 +117,22 @@ export const calcularTotales = (items) => {
     };
 };
 
+// Empresas de despacho que pueden llevar el pedido, con su precio y plazo (de la más barata a la más cara).
+// Sin parámetro se usa el carrito; con el id de una cotización, los productos de esa cotización.
+export async function obtenerOpcionesEnvio(idCotizacion) {
+    const datos = await pedir(idCotizacion ? `/despachos/opciones?cotizacion=${idCotizacion}` : "/despachos/opciones");
+    return {
+        requiereDespacho: Boolean(datos?.requiere_despacho),
+        paquete: datos?.paquete ?? null,
+        opciones: (datos?.opciones ?? []).map((o) => ({
+            id: o.id,
+            nombre: o.nombre,
+            costo: o.costo,
+            dias: o.dias_entrega,
+        })),
+    };
+}
+
 // Crear venta
 export const crearVenta = (datos) =>
     pedir("/ventas", {
