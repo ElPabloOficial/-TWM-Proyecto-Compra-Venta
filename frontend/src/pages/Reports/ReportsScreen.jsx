@@ -158,15 +158,16 @@ const ReportsScreen = () => {
         </div>
       </div>
 
-      {cargando ? (
+      {cargando ? ( //caso 1 cuando carga
         <div className="inv-panel">
           <div className="rep-vacio" role="status">
             Cargando el reporte...
           </div>
         </div>
       ) : error ? (
-        <ErrorState titulo="No pudimos cargar tu reporte de ventas" detalle={error} onReintentar={() => setRecarga((n) => n + 1)} />
+        <ErrorState titulo="No pudimos cargar tu reporte de ventas" detalle={error} onReintentar={() => setRecarga((n) => n + 1)} /> //caso 2 error
       ) : (
+        //caso 3 cuando cargan los datos
         <>
       <div className="inv-stats">
         <StatCard titulo="Ingresos netos del período" valor={formatoPrecio(ingresos)} />
