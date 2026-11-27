@@ -183,8 +183,9 @@
   cursor: pointer;
 }
 
-.inv-select:focus {
-  outline: none;
+.inv-select:focus-visible {
+  outline: 3px solid #ec3333;
+  outline-offset: 2px;
 }
 
 /*  Tabla  */
