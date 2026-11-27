@@ -173,10 +173,10 @@ const ProfileScreen = () => {
         <ErrorState
           titulo="No pudimos cargar tu perfil"
           detalle={error}
-          onReintentar={reintentar}
+          onReintentar={reintentar}//permite reintentar.
         />
       ) : (
-        <ProfileConfigCard
+        <ProfileConfigCard // al cambiar "version react reinicia el componente"
           key={version}
           user={perfil}
           guardando={guardando}
