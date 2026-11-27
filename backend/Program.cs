@@ -28,6 +28,17 @@ builder.Services.AddScoped<EnvioService>();
 // 2. Configurar JWT
 var jwtKey = builder.Configuration["Jwt:Key"];
 
+// La clave JWT y la cadena de conexión no viven en el repositorio: se leen de
+// appsettings.Development.json (ignorado por git), de user-secrets o de variables de entorno.
+if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
+    throw new InvalidOperationException(
+        "Falta Jwt:Key (mínimo 32 caracteres). Créala en backend/appsettings.Development.json " +
+        "(ver README, sección 3).");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException(
+        "Falta ConnectionStrings:DefaultConnection. Revisa backend/appsettings.Development.json.");
+
 builder.Services.AddAuthentication(
     JwtBearerDefaults.AuthenticationScheme
 )
@@ -83,10 +94,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-       // policy.WithOrigins()
-        //      .AllowAnyHeader()
-         //     .AllowAnyMethod();
-         policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+         // Orígenes permitidos: se leen de "Cors:AllowedOrigins" (appsettings); si no hay, solo el entorno local de Vite
+         var origenes = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+         if (origenes is null || origenes.Length == 0)
+             origenes = new[] { "http://localhost:5173", "http://127.0.0.1:5173" };
+
+         policy.WithOrigins(origenes)
          .AllowAnyHeader()
          .AllowAnyMethod();
     });

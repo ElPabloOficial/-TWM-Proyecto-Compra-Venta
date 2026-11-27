@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
@@ -25,6 +26,9 @@ public class UsuariosController : ControllerBase
     }
 
     // GET: api/usuarios
+    // Solo un administrador puede listar a todos los usuarios (la gestión de usuarios del
+    // panel de administración usa api/admin/usuarios).
+    [Authorize(Roles = "Administrador")]
     [HttpGet]
     public async Task<IActionResult> GetUsuarios()
     {
@@ -57,11 +61,17 @@ public class UsuariosController : ControllerBase
     }
 
     // GET: api/usuarios/{rut}
+    // Un usuario solo puede ver sus propios datos; un administrador puede ver los de cualquiera.
+    [Authorize]
     [HttpGet("{rut}")]
     public async Task<IActionResult> GetUsuario(string rut)
     {
         try
         {
+            var rutSesion = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!User.IsInRole("Administrador") && !string.Equals(rutSesion, rut, StringComparison.OrdinalIgnoreCase))
+                return Forbid();
+
             var usuarioDto = await _context.usuarios
                 .Where(u => u.rut == rut)
                 .Select(u => new UsuarioDto
@@ -107,6 +117,20 @@ public class UsuariosController : ControllerBase
     {
         try
         {
+            // El registro público nunca crea administradores: aunque el cliente envíe "admin"
+            // o "administrador", se rechaza. Esos usuarios los crea un administrador por api/admin/usuarios.
+            var tipo = dto.tipousuario.Trim().ToLowerInvariant();
+            if (!UsuarioCreateDto.TiposPermitidos.Contains(tipo))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "El tipo de usuario no es válido.",
+                    data = (object?)null,
+                    errors = new[] { "tipousuario: debe ser cliente, vendedor o ambos." }
+                });
+            }
+
             if (await _context.usuarios
                 .AnyAsync(u => u.rut == dto.rut))
             {
@@ -129,7 +153,7 @@ public class UsuariosController : ControllerBase
                 clave = hashedPassword,
                 fechanacimiento = dto.fechanacimiento,
                 fechacreacion = DateOnly.FromDateTime(DateTime.Now),
-                tipousuario = dto.tipousuario,
+                tipousuario = tipo,
                 descuentos = "{}",
                 secioniniciada = false
             };

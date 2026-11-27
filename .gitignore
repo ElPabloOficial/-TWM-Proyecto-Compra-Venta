@@ -23,8 +23,14 @@ dist-ssr
 *.sln
 *.sw?
 
-.env
-appsettings.Development.json
-backend/appsettings.Development.json
 bin/
 obj/
+
+# Credenciales y configuración local (nunca se suben; se usan los archivos *.example como plantilla)
+.env
+.env.*
+appsettings.Development.json
+backend/appsettings.Development.json
+backend/appsettings.Production.json
+backend/appsettings.Local.json
+backend/secrets.json
