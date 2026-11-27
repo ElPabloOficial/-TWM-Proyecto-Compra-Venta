@@ -25,7 +25,7 @@ const adaptarUsuario = (u) => ({
 export const authService = {
     async login(rut, password) {
         const rutLimpio = limpiarRut(rut);
-        console.log(`[authService] login() "${rutLimpio}"`);
+        // console.log(`[authService] login() "${rutLimpio}"`);
 
         let respuesta;
         try {
@@ -56,7 +56,7 @@ export const authService = {
         const token = cuerpo.data.token;
 
         const user = adaptarUsuario(cuerpo.data.usuario);
-        console.log('[authService] Usuario autenticado exitosamente:', user);
+        // console.log('[authService] Usuario autenticado exitosamente:', user);
 
         localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(user));
@@ -65,7 +65,7 @@ export const authService = {
     },
 
     async logout() {
-        console.log('[authService] logout()');
+        // console.log('[authService] logout()');
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
     },

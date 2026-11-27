@@ -1,8 +1,6 @@
 
-import { pedir } from "./apiClient";
+import { API_URL, pedir } from "./apiClient";
 import { listarCatalogo } from "./catalogService";
-
-const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 export const IVA = 0.19;
 

@@ -144,7 +144,7 @@ export default function CustomButton({
 
   function Example() {
     const handleClick = () => {
-      console.log('Botón presionado');
+      // console.log('Botón presionado');
     };
 
     return (

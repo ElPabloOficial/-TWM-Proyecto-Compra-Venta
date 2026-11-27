@@ -120,7 +120,7 @@ export default function ProductSheet({ type = "product" }) {
           servicioService.obtenerServicios(),
         ]);
 
-console.log(
+/* console.log(
   "CATEGORÍAS DEL SERVICIO ACTUAL:",
   JSON.stringify(itemActual.categorias, null, 2)
 );
@@ -133,7 +133,7 @@ console.log(
 console.log(
   "PRIMEROS 5 PRODUCTOS:",
   JSON.stringify(productos.slice(0, 5), null, 2)
-);
+); */
 
         // 4. Obtener categorías del elemento actual
         const categoriasActuales = obtenerIdsCategorias(

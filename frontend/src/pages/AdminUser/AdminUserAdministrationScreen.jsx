@@ -73,7 +73,7 @@ const AdminUserAdministrationScreen = () => {
     const usuario = usuarioAEliminar;
     if (!usuario) return;
     setUsuarioAEliminar(null);
-    console.log("[Usuarios] Eliminar usuario:", { rut: usuario.rut, nombre: usuario.nombre });
+    // console.log("[Usuarios] Eliminar usuario:", { rut: usuario.rut, nombre: usuario.nombre });
     setErrorAccion("");
     try {
       await eliminarUsuarioApi(usuario.rut);

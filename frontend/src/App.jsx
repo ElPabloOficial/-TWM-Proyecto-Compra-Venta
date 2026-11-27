@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProductosProvider } from "./context/ProductContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ServiciosProvider } from "./context/ServiceContext";
-import { QuotesProvider } from "./context/QuotesContext";
 import { CartProvider } from "./context/CartContext";
 
 import ReturnTrackingScreen from "./pages/ReturnTracking/ReturnTrackingScreen";
@@ -53,8 +52,7 @@ const App = () => {
       <ToastProvider>
       <ProductosProvider>
         <ServiciosProvider>
-          <QuotesProvider>
-            <CartProvider>
+          <CartProvider>
               <Routes>
                 <Route path="/" element={<Navigate to="/inicio" replace />} />
                 <Route path="/inicio" element={<HomeScreen />} />
@@ -102,8 +100,7 @@ const App = () => {
                 <Route path="/notificaciones" element={<NotificationsScreen />} />
                 <Route path="/seguimiento-devoluciones" element={<ReturnTrackingScreen />} />
               </Routes>
-            </CartProvider>
-          </QuotesProvider>
+          </CartProvider>
         </ServiciosProvider>
       </ProductosProvider>
       </ToastProvider>

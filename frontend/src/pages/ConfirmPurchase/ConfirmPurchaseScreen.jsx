@@ -176,7 +176,7 @@ const ConfirmPurchaseScreen = () => {
     setPagando(true);
     setError("");
     // Los datos de pago (últimos dígitos, código de transferencia) no se imprimen
-    console.log("[Compra] Pagar:", {
+    /* console.log("[Compra] Pagar:", {
       medioPago,
       requiereDespacho,
       id_direccion: requiereDespacho ? direccionId : null,
@@ -185,7 +185,7 @@ const ConfirmPurchaseScreen = () => {
       cotizacion: idCotizacion,
       articulos: articulos.map((item) => ({ tipo: item.tipo, id: item.id, cantidad: item.cantidad })),
       total: resumen.total,
-    });
+    }); */
 
     try {
       // Pago simulado: no hay pasarela, solo se registra el medio de pago y sus datos de referencia

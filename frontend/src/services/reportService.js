@@ -18,3 +18,14 @@ export async function listarVentasDelPeriodo(desde, hasta) {
         total: fila.total,
     }));
 }
+
+export async function obtenerResumenVendedor() {
+    const d = await pedir('/reportes/ventas/resumen');
+    return {
+        productoMasVendido: d?.producto_mas_vendido ?? null,
+        servicioMasVendido: d?.servicio_mas_vendido ?? null,
+        tiempoRespuestaHoras: d?.tiempo_respuesta_horas ?? null,
+        productosMejorCalificados: d?.productos_mejor_calificados ?? [],
+        rendimientoAnual: d?.rendimiento_anual ?? [],
+    };
+}

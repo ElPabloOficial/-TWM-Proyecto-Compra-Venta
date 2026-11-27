@@ -13,6 +13,7 @@ import {
     actualizarCategoria,
     eliminarCategoria,
 } from "../../services/categoryService";
+import { listarCategoriasVacias } from "../../services/adminService";
 
 import AddIcon from "@mui/icons-material/Add";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -69,6 +70,7 @@ const countCategories = (categories) =>
 const CategoryManagementScreen = () => {
     const { mostrarToast } = useToast();
     const [flat, setFlat] = useState([]);
+    const [categoriasVacias, setCategoriasVacias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [dialog, setDialog] = useState(null); // { modo: "crear", padre } | { modo: "editar", categoria }
@@ -79,7 +81,12 @@ const CategoryManagementScreen = () => {
     // Vuelve a pedir las categorías a la API (también actualiza los conteos)
     const reload = useCallback(async () => {
         try {
-            setFlat(await obtenerCategorias());
+            const [lista, vacias] = await Promise.all([
+                obtenerCategorias(),
+                listarCategoriasVacias().catch(() => []),
+            ]);
+            setFlat(lista);
+            setCategoriasVacias(vacias);
             setError("");
         } catch (e) {
             setError(e.message);
@@ -101,12 +108,12 @@ const CategoryManagementScreen = () => {
 
     // Crea o renombra; si la API rechaza el cambio, el formulario muestra el mensaje
     const handleSave = async (name) => {
-        console.log(
+        /* console.log(
             dialog.modo === "editar" ? "[Categorías] Editar categoría:" : "[Categorías] Crear categoría:",
             dialog.modo === "editar"
                 ? { id: dialog.categoria.id, nombre: name, padreId: dialog.categoria.parentId }
                 : { nombre: name, padreId: dialog.padre?.id ?? null }
-        );
+        ); */
         if (dialog.modo === "editar") {
             await actualizarCategoria(dialog.categoria.id, { nombre: name, padreId: dialog.categoria.parentId });
             mostrarToast("Categoría actualizada correctamente");
@@ -132,7 +139,7 @@ const CategoryManagementScreen = () => {
     };
 
     const confirmDelete = async () => {
-        console.log("[Categorías] Eliminar categoría:", { id: toDelete.id, nombre: toDelete.name });
+        // console.log("[Categorías] Eliminar categoría:", { id: toDelete.id, nombre: toDelete.name });
         try {
             await eliminarCategoria(toDelete.id);
             mostrarToast("Categoría eliminada correctamente");
@@ -274,6 +281,14 @@ const CategoryManagementScreen = () => {
                         </span>
 
                         <strong>{totalCategories}</strong>
+                    </div>
+
+                    <div className="category-summary-card">
+                        <span className="category-summary-label">
+                            Categorías principales vacías
+                        </span>
+
+                        <strong>{categoriasVacias.length}</strong>
                     </div>
 
                 </section>

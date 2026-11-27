@@ -10,7 +10,7 @@ import { soloCodigo } from "../../../services/validaciones";
 import {
   ETAPAS_DESPACHO,
   ETIQUETA_ESTADO,
-  TRANSPORTISTAS,
+  listarTransportistas,
 } from "../../../services/shipmentService";
 
 /*
@@ -22,6 +22,8 @@ import {
  */
 const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
   const [transportista, setTransportista] = useState("");
+  const [transportistas, setTransportistas] = useState([]);
+  const [cargandoTransportistas, setCargandoTransportistas] = useState(false);
   const [seguimiento, setSeguimiento] = useState("");
   const [medidas, setMedidas] = useState({ ancho: "", alto: "", fondo: "" });
   const [error, setError] = useState("");
@@ -37,6 +39,21 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
     });
     setError("");
     setGuardando(false);
+
+    if (!despacho || despacho.transportista) return undefined;
+    const siguienteEtapa = ETAPAS_DESPACHO[ETAPAS_DESPACHO.indexOf(despacho.estado) + 1];
+    if (siguienteEtapa !== "Despachado") return undefined;
+
+    let activo = true;
+    setCargandoTransportistas(true);
+    listarTransportistas()
+      .then((lista) => activo && setTransportistas(lista))
+      .catch((e) => activo && setError(e.message))
+      .finally(() => activo && setCargandoTransportistas(false));
+
+    return () => {
+      activo = false;
+    };
   }, [despacho]);
 
   if (!despacho) return null;
@@ -88,13 +105,24 @@ const ShipmentAdvanceDialog = ({ despacho, onClose, onConfirmar }) => {
                 label="Empresa de transporte"
                 size="small"
                 value={transportista}
+                disabled={cargandoTransportistas}
                 onChange={(e) => setTransportista(e.target.value)}
               >
-                {TRANSPORTISTAS.map((t) => (
-                  <MenuItem key={t} value={t}>
-                    {t}
+                {cargandoTransportistas ? (
+                  <MenuItem value="" disabled>
+                    Cargando empresas...
                   </MenuItem>
-                ))}
+                ) : transportistas.length === 0 ? (
+                  <MenuItem value="" disabled>
+                    Sin empresas disponibles
+                  </MenuItem>
+                ) : (
+                  transportistas.map((t) => (
+                    <MenuItem key={t} value={t}>
+                      {t}
+                    </MenuItem>
+                  ))
+                )}
               </TextField>
             )}
             <TextField

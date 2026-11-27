@@ -5,6 +5,7 @@ import ProfileConfigCard from "../../components/organisms/ProfileConfigCard/Prof
 import FormSkeleton from "../../components/molecules/FormSkeleton/FormSkeleton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import BecomeSellerDialog from "../../components/organisms/BecomeSellerDialog/BecomeSellerDialog";
+import AddCompanyDialog from "../../components/organisms/AddCompanyDialog/AddCompanyDialog";
 import { useToast } from "../../context/ToastContext";
 import { authService, limpiarRut } from "../../services/authService";
 import { isValidRut } from "../../services/format";
@@ -14,6 +15,8 @@ import {
   guardarPerfil,
   cambiarClave,
   convertirEnVendedor,
+  agregarEmpresa,
+  eliminarEmpresa,
 } from "../../services/profileService";
 
 const CLAVE_MINIMA = 8; // el mismo mínimo que pide el registro
@@ -41,6 +44,7 @@ const ProfileScreen = () => {
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [dialogoVendedor, setDialogoVendedor] = useState(false);
+  const [dialogoEmpresa, setDialogoEmpresa] = useState(false);
   // Al cambiar vuelve a armarse el formulario: descarta lo escrito y limpia los campos de contraseña
   const [version, setVersion] = useState(0);
 
@@ -147,7 +151,7 @@ const ProfileScreen = () => {
   // Selector Cliente / Vendedor: un cliente puede pasar a vendedor (pide los datos de su empresa).
   // Un vendedor no necesita "volver" a cliente: ya puede comprar como cualquier cliente.
   const handleCambiarTipo = (tipo) => {
-    console.log("[Perfil] Cambiar tipo de cuenta:", { actual: perfil.role, solicitado: tipo });
+    // console.log("[Perfil] Cambiar tipo de cuenta:", { actual: perfil.role, solicitado: tipo });
     if (tipo === "vendedor" && perfil.role !== "vendedor") {
       setDialogoVendedor(true);
     } else if (tipo === "cliente" && perfil.role === "vendedor") {
@@ -163,6 +167,28 @@ const ProfileScreen = () => {
     mostrarToast("¡Listo! Tu cuenta ahora es de vendedor.");
   };
 
+  const handleAgregarEmpresa = async (empresa) => {
+    const actualizado = await agregarEmpresa(empresa); // si falla, el diálogo muestra el error
+    setPerfil(actualizado);
+    setVersion((v) => v + 1);
+    setDialogoEmpresa(false);
+    mostrarToast("Empresa agregada correctamente.");
+  };
+
+  const handleEliminarEmpresa = async (rutEmpresa) => {
+    try {
+      setGuardando(true);
+      const actualizado = await eliminarEmpresa(rutEmpresa);
+      setPerfil(actualizado);
+      setVersion((v) => v + 1);
+      mostrarToast("Empresa eliminada.");
+    } catch (e) {
+      mostrarToast(e.message, "error");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   if (!haySesion) return <Navigate to="/login" replace />;
 
   return (
@@ -173,16 +199,18 @@ const ProfileScreen = () => {
         <ErrorState
           titulo="No pudimos cargar tu perfil"
           detalle={error}
-          onReintentar={reintentar}//permite reintentar.
+          onReintentar={reintentar}
         />
       ) : (
-        <ProfileConfigCard // al cambiar "version react reinicia el componente"
+        <ProfileConfigCard
           key={version}
           user={perfil}
           guardando={guardando}
           onGuardar={handleGuardar}
           onCancelar={handleCancelar}
           onCambiarTipo={handleCambiarTipo}
+          onAgregarEmpresa={() => setDialogoEmpresa(true)}
+          onEliminarEmpresa={handleEliminarEmpresa}
         />
       )}
 
@@ -190,6 +218,12 @@ const ProfileScreen = () => {
         open={dialogoVendedor}
         onClose={() => setDialogoVendedor(false)}
         onGuardar={handleConvertirEnVendedor}
+      />
+
+      <AddCompanyDialog
+        open={dialogoEmpresa}
+        onClose={() => setDialogoEmpresa(false)}
+        onGuardar={handleAgregarEmpresa}
       />
     </ProfileTemplate>
   );

@@ -8,6 +8,7 @@ import ConfirmDialog from "../../components/molecules/ConfirmDialog/ConfirmDialo
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import CustomDialog from "../../components/atoms/CustomDialog/CustomDialog";
 import { shippingService } from "../../services/shippingService";
+import { obtenerResumenEnviosFunciones } from "../../services/adminService";
 import { soloDigitos } from "../../services/validaciones";
 import "../../styles/Inventory.css";
 import "../../styles/Shipping.css";
@@ -27,6 +28,8 @@ const numero = (n) => Number(n).toLocaleString("es-CL");
 
 const ShippingCostsScreen = () => {
   const [empresas, setEmpresas] = useState([]);
+  const [promedioDias, setPromedioDias] = useState({});
+  const [sobreLimite, setSobreLimite] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState("");
   const [recarga, setRecarga] = useState(0);
@@ -48,10 +51,19 @@ const ShippingCostsScreen = () => {
 
     setCargando(true);
     setErrorCarga("");
-    shippingService
-      .listarEmpresas()
-      .then((lista) => {
-        if (activo) setEmpresas(lista);
+    Promise.all([
+      shippingService.listarEmpresas(),
+      obtenerResumenEnviosFunciones().catch(() => ({ promedioDiasPorEmpresa: [], productosSobreLimite: [] })),
+    ])
+      .then(([lista, resumen]) => {
+        if (!activo) return;
+        setEmpresas(lista);
+        const mapa = {};
+        resumen.promedioDiasPorEmpresa.forEach((p) => {
+          mapa[String(p.empresa ?? "").toLowerCase()] = p.promedioDias;
+        });
+        setPromedioDias(mapa);
+        setSobreLimite(resumen.productosSobreLimite.length);
       })
       .catch((e) => {
         if (activo) setErrorCarga(e.message);
@@ -137,7 +149,7 @@ const ShippingCostsScreen = () => {
     const datos = { ...(editando ? { id: editandoId } : {}), ...form, nombre };
 
     // Requisito del proyecto: se muestra en la consola lo que se envía a la API
-    console.log(editando ? "[Envíos] Actualizar empresa:" : "[Envíos] Crear empresa:", datos);
+    // console.log(editando ? "[Envíos] Actualizar empresa:" : "[Envíos] Crear empresa:", datos);
 
     setGuardando(true);
     setError("");
@@ -162,7 +174,7 @@ const ShippingCostsScreen = () => {
     setPorEliminar(null);
     if (!empresa) return;
 
-    console.log("[Envíos] Eliminar empresa:", { id: empresa.id });
+    // console.log("[Envíos] Eliminar empresa:", { id: empresa.id });
     setErrorAccion("");
     try {
       await shippingService.eliminarEmpresa(empresa.id);
@@ -202,6 +214,7 @@ const ShippingCostsScreen = () => {
             <StatCard titulo="Total de empresas" valor={empresas.length} />
             <StatCard titulo="Con despachos registrados" valor={conDespachos} />
             <StatCard titulo="Sin despachos" valor={empresas.length - conDespachos} />
+            <StatCard titulo="Productos sobre límite" valor={sobreLimite} />
           </div>
 
           {errorAccion && (
@@ -245,7 +258,14 @@ const ShippingCostsScreen = () => {
                       <td>{numero(e.peso)} g</td>
                       <td>${numero(e.tarifaKg)}</td>
                       <td>${numero(e.tarifaMinima)}</td>
-                      <td>{e.dias} {e.dias === 1 ? "día" : "días"}</td>
+                      <td>
+                        {e.dias} {e.dias === 1 ? "día" : "días"}
+                        {promedioDias[e.nombre.toLowerCase()] != null && (
+                          <div style={{ fontSize: 11, color: "#666" }}>
+                            Prom. real: {String(promedioDias[e.nombre.toLowerCase()]).replace(".", ",")} d
+                          </div>
+                        )}
+                      </td>
                       <td>{numero(e.despachos)}</td>
                       <td>
                         <button

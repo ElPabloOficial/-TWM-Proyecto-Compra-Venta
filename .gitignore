@@ -26,11 +26,15 @@ dist-ssr
 bin/
 obj/
 
-# Credenciales y configuración local (nunca se suben; se usan los archivos *.example como plantilla)
+# Credenciales y configuración local (nunca se suben; se usan los archivos *.Example como plantilla)
 .env
-.env.*
+.env.local
+.env.development
+.env.production
+!.env.example
 appsettings.Development.json
 backend/appsettings.Development.json
 backend/appsettings.Production.json
 backend/appsettings.Local.json
 backend/secrets.json
+!backend/appsettings.Example.json

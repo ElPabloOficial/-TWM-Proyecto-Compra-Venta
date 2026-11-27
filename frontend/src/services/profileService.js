@@ -9,6 +9,14 @@ const formatearTelefono = (numero) => {
 
 // Convierte la respuesta de la API al formato que usa ProfileConfigCard.
 // El rol dual de la base de datos ("ambos") se trata como "vendedor", igual que en authService.
+const adaptarEmpresa = (e) => ({
+    rut: e.rut ?? '',
+    nombre: e.nombre ?? '',
+    giro: e.giro ?? '',
+    paginaWeb: e.paginaweb ?? '',
+    direccionLocal: e.direccionlocal ?? '',
+});
+
 const adaptarPerfil = (p) => ({
     name: p.nombre ?? '',
     rut: p.rut ?? '',
@@ -16,12 +24,15 @@ const adaptarPerfil = (p) => ({
     telefonos: (p.telefonos ?? []).map(formatearTelefono),
     correo: p.correo ?? '',
     fechaNacimiento: p.fechanacimiento ? String(p.fechanacimiento).slice(0, 10) : '',
+    // Compatibilidad: primera empresa (campos planos)
     rutEmpresa: p.empresa?.rut ?? '',
     nombreEmpresa: p.empresa?.nombre ?? '',
     giroComercial: p.empresa?.giro ?? '',
     paginaWeb: p.empresa?.paginaweb ?? '',
     direccionLocal: p.empresa?.direccionlocal ?? '',
     tieneEmpresa: Boolean(p.empresa),
+    // Lista completa de empresas del vendedor
+    empresas: (p.empresas ?? []).map(adaptarEmpresa),
     miembroDesde: p.fechacreacion ?? '',
     cantidadDirecciones: p.cantidadDirecciones ?? 0,
     descuentos: p.descuentos ?? [],
@@ -72,4 +83,26 @@ export async function convertirEnVendedor(empresa) {
 
 export async function cambiarClave({ claveActual, claveNueva }) {
     await pedir('/perfil/clave', { method: 'PUT', body: { claveActual, claveNueva } });
+}
+
+// Agrega otra empresa al vendedor (POST /perfil/empresas)
+export async function agregarEmpresa(empresa) {
+    const datos = await pedir('/perfil/empresas', {
+        method: 'POST',
+        body: {
+            rut: empresa.rut,
+            nombre: empresa.nombre,
+            giro: empresa.giro,
+            paginaweb: empresa.paginaWeb,
+        },
+    });
+    return adaptarPerfil(datos);
+}
+
+// Desvincula una empresa del vendedor (DELETE /perfil/empresas/{rut})
+export async function eliminarEmpresa(rutEmpresa) {
+    const datos = await pedir(`/perfil/empresas/${encodeURIComponent(rutEmpresa)}`, {
+        method: 'DELETE',
+    });
+    return adaptarPerfil(datos);
 }

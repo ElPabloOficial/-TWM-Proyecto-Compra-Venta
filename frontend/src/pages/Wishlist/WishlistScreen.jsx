@@ -143,7 +143,7 @@ const WishlistScreen = () => {
 
     // Quitar producto de la lista (DELETE /wishlist/eliminar/{tipo}/{id}?idLista=)
     const handleRemove = async (product) => {
-        console.log("[Lista de deseos] Quitar:", { tipo: product.tipo, id: product.id });
+        // console.log("[Lista de deseos] Quitar:", { tipo: product.tipo, id: product.id });
 
         try {
             await eliminarDeWishlist(product.tipo, product.id, listaParam ?? undefined);

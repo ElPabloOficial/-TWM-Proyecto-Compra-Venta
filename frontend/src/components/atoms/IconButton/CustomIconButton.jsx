@@ -65,14 +65,14 @@ export default function CustomIconButton({
       <>
         <CustomIconButton
           ariaLabel="Editar"
-          onClick={() => console.log('Editar')}
+          onClick={() => {}}
         >
           <EditIcon />
         </CustomIconButton>
 
         <CustomIconButton
           ariaLabel="Eliminar"
-          onClick={() => console.log('Eliminar')}
+          onClick={() => {}}
         >
           <DeleteIcon />
         </CustomIconButton>

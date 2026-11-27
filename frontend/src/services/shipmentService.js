@@ -23,9 +23,11 @@ export const ETIQUETA_ESTADO = {
     Entregado: 'Entregado',
 };
 
-// Solo se usa si la compra no trae empresa de despacho (normalmente se elige al comprar).
-// Los nombres son los de la tabla EmpresaDespacho.
-export const TRANSPORTISTAS = ['Chilexpress', 'Starken', 'CorreosChile', 'Blue Express'];
+// Transportistas registrados en la tabla EmpresaDespacho (GET /despachos/empresas)
+export async function listarTransportistas() {
+    const datos = await pedir('/despachos/empresas');
+    return (datos ?? []).map((e) => e.nombre);
+}
 
 const adaptarDespacho = (d) => ({
     idVenta: d.id_venta,

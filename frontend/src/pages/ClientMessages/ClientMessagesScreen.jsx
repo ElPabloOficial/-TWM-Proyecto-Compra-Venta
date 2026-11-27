@@ -87,7 +87,7 @@ const ClientMessagesScreen = () => {
   };
 
   const enviarMensaje = async (id, texto) => {
-    console.log("[Mensajes] Enviar mensaje:", { conversacionId: id, autor: "cliente", texto });
+    // console.log("[Mensajes] Enviar mensaje:", { conversacionId: id, autor: "cliente", texto });
     setErrorEnvio("");
 
     try {

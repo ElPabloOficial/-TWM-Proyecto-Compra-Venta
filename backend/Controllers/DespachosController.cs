@@ -24,6 +24,27 @@ public class DespachosController : ControllerBase
         _envio = envio;
     }
 
+    // GET: api/despachos/empresas (Vendedor/Admin: nombres de empresas de despacho disponibles)
+    [HttpGet("empresas")]
+    [Authorize(Roles = "Vendedor,Administrador")]
+    public async Task<IActionResult> GetEmpresasDisponibles(CancellationToken ct)
+    {
+        try
+        {
+            var empresas = await _context.empresadespachos
+                .AsNoTracking()
+                .OrderBy(e => e.nombre)
+                .Select(e => new { e.id, e.nombre })
+                .ToListAsync(ct);
+
+            return Ok(new { success = true, message = "Empresas de despacho obtenidas.", data = empresas, errors = (object?)null });
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
+    }
+
     // GET: api/despachos/opciones            (con los productos de tu carrito)
     // GET: api/despachos/opciones?cotizacion=5   (con los productos de una cotización)
     // Empresas de despacho que pueden llevar el pedido, con su precio y plazo (de la más barata a la más cara).

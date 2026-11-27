@@ -140,7 +140,7 @@ const ProfileMenu = () => {
   };
 
   const handleCerrarSesion = async () => {
-    console.log("[ProfileMenu] handleCerrarSesion():", usuario);
+    // console.log("[ProfileMenu] handleCerrarSesion():", usuario);
     await authService.logout();
     setUsuario(null);
     irA("/inicio");

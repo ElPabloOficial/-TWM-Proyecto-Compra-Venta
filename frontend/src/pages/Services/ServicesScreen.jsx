@@ -67,7 +67,7 @@ const ServicesScreen = () => {
 
   // Al presionar "Eliminar" en el diálogo se borra el servicio
   const eliminar = async () => {
-    console.log("[ServicesScreen] confirmarEliminar() - ELIMINAR servicio:", servicioEliminar);
+    // console.log("[ServicesScreen] confirmarEliminar() - ELIMINAR servicio:", servicioEliminar);
     try {
       await eliminarServicio(servicioEliminar.id);
       mostrarToast("Servicio eliminado correctamente");

@@ -9,26 +9,26 @@ import { authService } from "../../services/authService";
 import "../../styles/Login.css";
 
 const LoginScreen = () => {
-  const navigate = useNavigate();//Hook para redirigir al usuario despues de un inicio de sesion exitoso
+  const navigate = useNavigate();
   const [errorLogin, setErrorLogin] = useState("");
 
   const handleLogin = async (data) => {
     setErrorLogin("");
     try {
       // La contraseña nunca se imprime: solo se confirma que se capturó
-      console.log("[LoginScreen] handleLogin():", { rut: data.rut, password: "[oculta]", remember: data.remember });
+      // console.log("[LoginScreen] handleLogin():", { rut: data.rut, password: "[oculta]", remember: data.remember });
 
       const response = await authService.login(data.rut, data.password);
 
       // Se imprime solo el usuario: la respuesta también trae el token de sesión y no debe mostrarse
-      console.log("[LoginScreen] Inicio exitoso. Usuario:", response.user);
+      // console.log("[LoginScreen] Inicio exitoso. Usuario:", response.user);
 
       if (data.remember) {
-        console.log("[LoginScreen] 'Recuérdame' fue marcado.");
+        // console.log("[LoginScreen] 'Recuérdame' fue marcado.");
       }
 
       navigate("/inicio");
-      //si da error.message no existe usa un mensaje generico osea ocurrio un error al iniciar sesion
+
     } catch (error) {
       console.error("[LoginScreen] Inicio fallido:", error.message);
       setErrorLogin(error.message || "Ocurrió un error al iniciar sesión");

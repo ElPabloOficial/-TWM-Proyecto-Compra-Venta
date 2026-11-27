@@ -12,36 +12,8 @@ import "../../../styles/CategoryMenu.css";
  *   - Lista izquierda: categorías principales con ícono
  *   - Panel derecho: subcategorías en columnas, con sus hijos como enlaces
  *
- * Las categorías vienen de la API (GET /categorias). Si la API no responde
- * se muestran las de RESPALDO, que son las mismas de la base de datos.
+ * Las categorías vienen de la API (GET /categorias).
  */
-
-// TEMPORAL: respaldo hasta que la API esté siempre disponible. [id, nombre, padreId]
-const RESPALDO = [
-  [1, "Servicios", null], [2, "Productos", null],
-  [3, "Computación y Tecnología", 1], [4, "Servicios domésticos", 1],
-  [5, "Aseo", 4], [6, "Trabajo de jardín", 4],
-  [7, "Limpieza de combustión y reparaciones menores", 4],
-  [8, "Cuidado de adultos", 4], [9, "Cuidado de niños", 4],
-  [10, "Otros servicios domésticos", 4], [11, "Servicios profesionales", 1],
-  [12, "Computación: web, diseño y publicidad", 11], [13, "Abogados", 11],
-  [14, "Contadores y Auditores", 11], [15, "Arquitecto", 11],
-  [16, "Psicólogos", 11], [17, "Servicio de salud", 11],
-  [18, "Médico", 17], [19, "Dentista", 17], [20, "Enfermería", 17],
-  [21, "Kinesiología", 17], [22, "Otros servicios de salud", 17],
-  [23, "Servicios educativos", 11], [24, "Clases particulares", 23],
-  [25, "Fonoaudiología", 23], [26, "Terapeuta Ocupacional", 23],
-  [27, "Otros servicios educativos", 23], [28, "Veterinarios", 11],
-  [29, "Otros servicios profesionales", 11], [30, "Servicios para vehículos", 1],
-  [31, "Confección de ropa y vestuario", 1],
-  [32, "Banquetería, repostería y alimentación", 1], [33, "Otros servicios", 1],
-  [34, "Tecnología", 2], [35, "Computación", 34], [36, "Audio y Música", 34],
-  [37, "Juegos y consolas", 34], [38, "Electrónica y Televisión", 34],
-  [39, "Otros tecnología", 34], [40, "Celulares", 2], [41, "Hogar y Cocina", 2],
-  [42, "Alimentación", 2], [43, "Accesorios para vehículos", 2],
-  [44, "Libros e instrumentos musicales", 2], [45, "Ropa, moda y calzado", 2],
-  [46, "Juguetes y Niños", 2], [47, "Útiles y librería", 2], [48, "Otros productos", 2],
-].map(([id, nombre, padreId]) => ({ id, nombre, padreId }));
 
 // Íconos propios en SVG (no dependen de la versión de @mui/icons-material)
 const FORMAS = {
@@ -106,10 +78,10 @@ const iconoDe = (nombre) => {
 
 const CategoryMenu = ({ abierto, onCerrar }) => {
   const navigate = useNavigate();
-  const [categorias, setCategorias] = useState(RESPALDO);
+  const [categorias, setCategorias] = useState([]);
   const [principalId, setPrincipalId] = useState(null);
 
-  // Pide las categorías a la API una sola vez; si falla, queda el respaldo.
+  // Pide las categorías a la API al montar el componente
   useEffect(() => {
     let activo = true;
     api

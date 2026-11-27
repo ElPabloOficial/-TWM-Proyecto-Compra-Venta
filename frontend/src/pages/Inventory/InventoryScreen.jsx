@@ -52,7 +52,7 @@ const InventoryScreen = () => {
 
   // Al presionar "Eliminar" en el diálogo se borra el producto
   const eliminar = async () => {
-    console.log("[InventoryScreen] confirmarEliminar() - ELIMINAR producto:", productoEliminar);
+    // console.log("[InventoryScreen] confirmarEliminar() - ELIMINAR producto:", productoEliminar);
     try {
       await eliminarProducto(productoEliminar.id);
       mostrarToast("Producto eliminado correctamente");

@@ -2,13 +2,14 @@
 //
 // Tabla de transacciones (ventas) del panel de administración, con búsqueda,
 // orden, paginación y un diálogo con el detalle de cada venta.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Pagination from "@mui/material/Pagination";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import CustomButton from "../../atoms/Button/CustomButton";
+import { obtenerFacturaVenta } from "../../../services/adminService";
 
 const POR_PAGINA = 8;
 
@@ -36,6 +37,21 @@ export function TransactionTableSection({ title = "Transacciones", transactions 
   const [orden, setOrden] = useState("fecha-desc");
   const [pagina, setPagina] = useState(1);
   const [seleccionada, setSeleccionada] = useState(null);
+  const [factura, setFactura] = useState(null);
+
+  useEffect(() => {
+    if (!seleccionada) {
+      setFactura(null);
+      return undefined;
+    }
+    let activo = true;
+    obtenerFacturaVenta(seleccionada.id)
+      .then((f) => activo && setFactura(f))
+      .catch(() => activo && setFactura(null));
+    return () => {
+      activo = false;
+    };
+  }, [seleccionada]);
 
   const termino = normalizar(busqueda.trim());
   const filtradas = transactions.filter((tx) =>
@@ -204,12 +220,24 @@ export function TransactionTableSection({ title = "Transacciones", transactions 
               <div className="tx-totales">
                 <div>
                   <span>Neto</span>
-                  <span>{formatoPrecio(seleccionada.neto)}</span>
+                  <span>{formatoPrecio(factura?.valorNeto ?? seleccionada.neto)}</span>
                 </div>
                 <div>
                   <span>IVA</span>
-                  <span>{formatoPrecio(iva)}</span>
+                  <span>{formatoPrecio(factura?.montoIva ?? iva)}</span>
                 </div>
+                {Number(factura?.montoDescuento) > 0 && (
+                  <div>
+                    <span>Descuento aplicado</span>
+                    <span>-{formatoPrecio(factura.montoDescuento)}</span>
+                  </div>
+                )}
+                {Number(factura?.recargoEnvio) > 0 && (
+                  <div>
+                    <span>Recargo envío</span>
+                    <span>{formatoPrecio(factura.recargoEnvio)}</span>
+                  </div>
+                )}
                 <div className="total">
                   <span>Total</span>
                   <span>{formatoPrecio(seleccionada.total)}</span>

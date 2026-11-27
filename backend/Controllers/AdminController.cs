@@ -14,6 +14,7 @@ namespace backend.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly FuncionesService _f;
 
     // Tipos de usuario que se guardan en la BD (el login los traduce a roles)
     private static readonly string[] TiposValidos = { "cliente", "vendedor", "ambos", "administrador", "admin" };
@@ -21,9 +22,10 @@ public class AdminController : ControllerBase
     private static object Error(string mensaje, params string[] errores) =>
         new { success = false, message = mensaje, data = (object?)null, errors = errores };
 
-    public AdminController(AppDbContext context)
+    public AdminController(AppDbContext context, FuncionesService funciones)
     {
         _context = context;
+        _f = funciones;
     }
 
     // GET: api/admin/usuarios
@@ -163,6 +165,18 @@ public class AdminController : ControllerBase
             var productosPublicados = await _context.ofrecer1s.CountAsync(o => o.id_usuario == rut);
             var serviciosPublicados = await _context.ofrecer2s.CountAsync(o => o.id_usuario == rut);
 
+            // ---------- Métricas desde funciones PostgreSQL (bd_proyecto/funciones.txt) ----------
+            var hoy = DateOnly.FromDateTime(DateTime.Today);
+            var inicioMes = new DateOnly(hoy.Year, hoy.Month, 1);
+            var resumenMes = (await _f.ResumenCliente(rut, inicioMes, hoy)).FirstOrDefault();
+
+            var productoEstrella = (await _f.ProductoMasVendido(rut)).FirstOrDefault();
+            var servicioEstrella = (await _f.ServicioMasVendido(rut)).FirstOrDefault();
+            var tiempoRespuesta = await _f.TiempoPromedioRespuesta(rut);
+            var productosDestacados = await _f.ProductosMejorCalificados(rut);
+            var rendimientoAnual = await _f.RendimientoVendedor(hoy.Year, rut);
+            var clientesUnicos = (await _f.ClientesDeVendedor(rut)).Count;
+
             var data = new
             {
                 usuario.rut,
@@ -178,7 +192,40 @@ public class AdminController : ControllerBase
                 compras = ResumenVentas(compras),
                 ventas = ResumenVentas(ventas),
                 actividad = new { cotizaciones, devoluciones, resenias, preguntas, favoritos },
-                publicaciones = new { productos = productosPublicados, servicios = serviciosPublicados }
+                publicaciones = new { productos = productosPublicados, servicios = serviciosPublicados },
+                metricas_funciones = new
+                {
+                    compras_mes = resumenMes?.TotalCompras ?? 0,
+                    monto_mes = resumenMes?.TotalPagado ?? 0,
+                    califica_descuento = resumenMes?.CalificaDescuento ?? false,
+                    producto_mas_vendido = productoEstrella == null ? null : new
+                    {
+                        id = productoEstrella.IdProducto,
+                        nombre = productoEstrella.NombreProducto,
+                        cantidad = productoEstrella.CantidadVentas ?? 0
+                    },
+                    servicio_mas_vendido = servicioEstrella == null ? null : new
+                    {
+                        id = servicioEstrella.IdServicio,
+                        nombre = servicioEstrella.NombreServicio,
+                        cantidad = servicioEstrella.CantidadVentas ?? 0
+                    },
+                    tiempo_respuesta_horas = tiempoRespuesta.HasValue ? Math.Round(tiempoRespuesta.Value.TotalHours, 1) : (double?)null,
+                    productos_mejor_calificados = productosDestacados.Select(p => new
+                    {
+                        id = p.IdProducto,
+                        nombre = p.NombreProducto,
+                        promedio = Math.Round(p.PromedioCalificacion ?? 0, 1)
+                    }).ToList(),
+                    rendimiento_anual = rendimientoAnual.Select(r => new
+                    {
+                        anio = r.Anio,
+                        trimestre = r.Trimestre,
+                        facturacion = r.FacturacionAcumulada ?? 0,
+                        categoria = r.CategoriaRendimiento ?? ""
+                    }).ToList(),
+                    clientes_unicos = clientesUnicos
+                }
             };
 
             return Ok(new { success = true, message = "Usuario obtenido.", data, errors = (object?)null });

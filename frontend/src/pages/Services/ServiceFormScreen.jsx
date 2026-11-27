@@ -109,10 +109,10 @@ const ServiceForm = ({ servicio }) => {
       ofertaInicio: oferta > 0 ? form.ofertaInicio : "",
       ofertaFin: oferta > 0 ? form.ofertaFin : "",
     };
-    console.log(
+    /* console.log(
       `[ServiceFormScreen] handleGuardar() - ${editando ? "ACTUALIZAR" : "CREAR"} servicio:`,
       datos
-    );
+    ); */
 
     if (guardando) return;
     setGuardando(true);

@@ -118,10 +118,10 @@ const ProductForm = ({ producto = null, categorias = [], onGuardar, onCancelar }
         ancho_cm: Number(form.ancho),
       },
     };
-    console.log(
+    /* console.log(
       `[ProductForm] handleGuardar() - ${editando ? "ACTUALIZAR" : "CREAR"} producto:`,
       datos
-    );
+    ); */
     if (guardando) return;
     setGuardando(true);
     try {

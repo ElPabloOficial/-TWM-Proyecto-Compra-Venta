@@ -54,7 +54,7 @@ const BecomeSellerDialog = ({ open, onClose, onGuardar }) => {
 
     setError("");
     setGuardando(true);
-    console.log("[Perfil] Convertir cuenta en vendedor:", empresa);
+    // console.log("[Perfil] Convertir cuenta en vendedor:", empresa);
 
     try {
       await onGuardar(empresa);

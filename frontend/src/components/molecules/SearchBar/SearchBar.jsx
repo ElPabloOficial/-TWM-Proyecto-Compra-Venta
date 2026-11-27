@@ -57,7 +57,7 @@ function App() {
   const [search, setSearch] = React.useState('');
 
   const handleSearch = () => {
-    console.log('Buscando:', search);
+    // console.log('Buscando:', search);
   };
 
   return (

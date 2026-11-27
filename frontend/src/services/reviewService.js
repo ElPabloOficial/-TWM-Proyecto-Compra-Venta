@@ -1,6 +1,4 @@
-import { pedir } from "./apiClient";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API_URL, pedir } from "./apiClient";
 
 export const reviewService = {
   // Reseñas que escribió el usuario con sesión iniciada (productos y servicios)

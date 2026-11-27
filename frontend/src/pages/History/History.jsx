@@ -62,9 +62,9 @@ const PurchaseHistory = () => {
 
         const respuesta = await ventaService.getMisCompras();
         respuesta.forEach((venta) => {
-        console.log("Venta:", venta.id_venta);
-        console.log("Total recibido:", venta.total_venta);
-        console.log("Productos:", venta.productos);
+        // console.log("Venta:", venta.id_venta);
+        // console.log("Total recibido:", venta.total_venta);
+        // console.log("Productos:", venta.productos);
         
         });
 
@@ -161,9 +161,9 @@ const PurchaseHistory = () => {
   };
 
   const handleReview = (id, tipo) => {
-    console.log("Escribir reseña");
-    console.log("ID:", id);
-    console.log("Tipo:", tipo);
+    // console.log("Escribir reseña");
+    // console.log("ID:", id);
+    // console.log("Tipo:", tipo);
 
     setReviewItem({
       id,
@@ -200,7 +200,7 @@ const PurchaseHistory = () => {
         reviewComment.trim()
       );
 
-      console.log("Reseña creada:", respuesta);
+      // console.log("Reseña creada:", respuesta);
 
       setReviewSuccess("¡Tu reseña se publicó correctamente!");
 

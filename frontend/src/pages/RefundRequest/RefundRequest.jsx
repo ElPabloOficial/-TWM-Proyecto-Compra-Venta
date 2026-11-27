@@ -147,14 +147,14 @@ const RefundRequest = () => {
       return;
     }
 
-    console.log("[Devoluciones] Solicitar devolución:", {
+    /* console.log("[Devoluciones] Solicitar devolución:", {
       id_venta,
       id_producto,
       cantidad,
       motivo: reason,
       preferencia: preference === "refund" ? "Reembolso" : "Cambio",
       conEvidencia: Boolean(evidence),
-    });
+    }); */
 
     try {
       const resultado = await returnService.crearDevolucion(

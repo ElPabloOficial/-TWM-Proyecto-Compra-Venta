@@ -10,16 +10,16 @@ import StatCard from "../../components/molecules/StatCard/StatCard";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
 import ListPageSkeleton from "../../components/organisms/ListPageSkeleton/ListPageSkeleton";
 import { TransactionTableSection } from "../../components/organisms/Transaction/TransactionTableSection";
-import { listarVentas } from "../../services/adminService";
+import { listarVentas, obtenerResumenTransacciones } from "../../services/adminService";
 
 import "../../styles/Inventory.css";
 import "../../styles/Transaction.css";
 
-//funcion auxiliar que formatea un numero como precio en pesos chilenos
 const formatoPrecio = (n) => `$${Number(n).toLocaleString("es-CL")}`;
 
 const TransHistoryScreen = () => {
   const [ventas, setVentas] = useState([]);
+  const [resumen, setResumen] = useState({ utilidadProyectada: 0, capitalReintegrado: 0 });
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   // Sube al pedir "Reintentar" para volver a ejecutar la carga
@@ -30,8 +30,14 @@ const TransHistoryScreen = () => {
 
     const cargar = async () => {
       try {
-        const datos = await listarVentas();
-        if (activo) setVentas(datos);
+        const [datos, resumenFn] = await Promise.all([
+          listarVentas(),
+          obtenerResumenTransacciones().catch(() => ({ utilidadProyectada: 0, capitalReintegrado: 0 })),
+        ]);
+        if (activo) {
+          setVentas(datos);
+          setResumen(resumenFn);
+        }
       } catch (e) {
         if (activo) setError(e.message);
       } finally {
@@ -80,6 +86,8 @@ const TransHistoryScreen = () => {
             <StatCard titulo="Monto vendido" valor={formatoPrecio(montoVendido)} />
             <StatCard titulo="Completadas" valor={completadas} />
             <StatCard titulo="Anuladas" valor={anuladas} />
+            <StatCard titulo="Utilidad proyectada (5%)" valor={formatoPrecio(resumen.utilidadProyectada)} />
+            <StatCard titulo="Reintegrado devoluciones" valor={formatoPrecio(resumen.capitalReintegrado)} />
           </div>
 
           <div className="inv-panel">

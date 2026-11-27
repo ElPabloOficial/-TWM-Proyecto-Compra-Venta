@@ -60,13 +60,13 @@ const ReturnManagement = () => {
     }
 
     // Requisito del proyecto: se muestra en la consola lo que se envía a la API
-    console.log("[Devoluciones] Cambiar estado:", {
+    /* console.log("[Devoluciones] Cambiar estado:", {
       idSolicitud: request.id,
       pedido: request.order,
       producto: request.product,
       estadoAnterior: request.status,
       estadoNuevo: newStatus,
-    });
+    }); */
 
     setActualizandoId(id);
     try {

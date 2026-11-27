@@ -74,10 +74,10 @@ const ProductFormDialog = ({ open, producto, categorias = [], onClose, onGuardar
 
     // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados.
     // Con el backend esto se reemplaza por la llamada a la API (PUT al editar, POST al crear).
-    console.log(
+    /* console.log(
       producto ? "[Productos] Actualizar producto:" : "[Productos] Crear producto:",
       datos
-    );
+    ); */
 
     onGuardar(datos);
   };

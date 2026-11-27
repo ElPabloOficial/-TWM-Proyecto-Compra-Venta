@@ -79,7 +79,7 @@ const MessagesScreen = () => {
   };
 
   const enviarMensaje = async (id, texto) => {
-    console.log("[Mensajes] Enviar mensaje:", { conversacionId: id, autor: "vendedor", texto });
+    // console.log("[Mensajes] Enviar mensaje:", { conversacionId: id, autor: "vendedor", texto });
     setErrorAccion("");
 
     try {
@@ -103,7 +103,7 @@ const MessagesScreen = () => {
   };
 
   const responderPregunta = async (id, texto) => {
-    console.log("[Preguntas] Responder:", { preguntaId: id, texto });
+    // console.log("[Preguntas] Responder:", { preguntaId: id, texto });
     setErrorAccion("");
 
     try {

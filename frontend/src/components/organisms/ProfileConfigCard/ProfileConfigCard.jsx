@@ -24,7 +24,7 @@ const fechaLarga = (iso) =>
     : '';
 
 // Las direcciones del usuario ya no se editan aquí: se administran en "Mis direcciones" (/direcciones).
-export default function ProfileConfigCard({ user = {}, guardando = false, onGuardar, onCancelar, onCambiarTipo }) {
+export default function ProfileConfigCard({ user = {}, guardando = false, onGuardar, onCancelar, onCambiarTipo, onAgregarEmpresa, onEliminarEmpresa }) {
   const [form, setForm] = useState({
     nombre: user.name || '',
     rut: user.rut || '',
@@ -48,6 +48,8 @@ export default function ProfileConfigCard({ user = {}, guardando = false, onGuar
   const esVendedor = user.role === 'vendedor';
   const descuentos = user.descuentos ?? [];
   const cantidadDirecciones = user.cantidadDirecciones ?? 0;
+  // Empresas adicionales (todas menos la primera, que se edita inline)
+  const empresasAdicionales = (user.empresas ?? []).slice(1);
 
   const cambiar = (campo) => (e) =>
     setForm((anterior) => ({ ...anterior, [campo]: e.target.value }));
@@ -76,7 +78,7 @@ export default function ProfileConfigCard({ user = {}, guardando = false, onGuar
     setForm((anterior) => ({ ...anterior, [campo]: filtro(e.target.value) }));
 
   const handleGuardar = () => {
-    console.log('[Perfil] Guardar cambios del perfil:', form);
+    // console.log('[Perfil] Guardar cambios del perfil:', form);
     onGuardar?.(form);
   };
 
@@ -149,6 +151,7 @@ export default function ProfileConfigCard({ user = {}, guardando = false, onGuar
 
       {esVendedor && form.conEmpresa && (
         <Box sx={{ mb: 3 }}>
+          {/* Empresa principal (editable inline, como antes) */}
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
             <ProfileField label="RUT de Empresa" value={form.rutEmpresa} onChange={cambiarFiltrado('rutEmpresa', formatRut)} placeholder="76.123.456-7" readOnly={user.tieneEmpresa} />
             <ProfileField label="Nombre" value={form.nombreEmpresa} onChange={cambiar('nombreEmpresa')} placeholder="Nombre de la empresa" />
@@ -156,8 +159,36 @@ export default function ProfileConfigCard({ user = {}, guardando = false, onGuar
             <ProfileField label="Página Web" value={form.paginaWeb} onChange={cambiar('paginaWeb')} placeholder="https://..." />
             <ProfileField label="Dirección Local" value={form.direccionLocal} placeholder="Sin local registrado" readOnly />
           </Box>
+
+          {/* Empresas adicionales (solo lectura, con opción de eliminar) */}
+          {empresasAdicionales.map((emp) => (
+            <Box key={emp.rut} sx={{ mt: 3, pt: 2, borderTop: '1px solid #E0E0E0' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#EC3333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Empresa Adicional
+                </Typography>
+                <CustomButton
+                  variant="secondary"
+                  size="small"
+                  onClick={() => onEliminarEmpresa?.(emp.rut)}
+                  disabled={guardando}
+                  sx={{ color: '#EF4444', borderColor: '#EF4444', fontSize: '0.75rem', minWidth: 0, px: 1.5 }}
+                >
+                  <DeleteOutlinedIcon fontSize="small" sx={{ mr: 0.5 }} /> Quitar
+                </CustomButton>
+              </Box>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+                <ProfileField label="RUT de Empresa" value={emp.rut} readOnly />
+                <ProfileField label="Nombre" value={emp.nombre} readOnly />
+                <ProfileField label="Giro Comercial" value={emp.giro || '—'} readOnly />
+                <ProfileField label="Página Web" value={emp.paginaWeb || '—'} readOnly />
+                <ProfileField label="Dirección Local" value={emp.direccionLocal || 'Sin local registrado'} readOnly />
+              </Box>
+            </Box>
+          ))}
+
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <CustomButton variant="primary" size="small" onClick={() => console.log('Próximamente')}>
+            <CustomButton variant="primary" size="small" onClick={() => onAgregarEmpresa?.()}>
               + Agregar otra empresa
             </CustomButton>
           </Box>

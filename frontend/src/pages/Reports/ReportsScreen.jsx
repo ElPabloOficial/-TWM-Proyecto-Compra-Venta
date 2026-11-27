@@ -3,7 +3,7 @@ import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemp
 import StatCard from "../../components/molecules/StatCard/StatCard";
 import CustomButton from "../../components/atoms/Button/CustomButton";
 import ErrorState from "../../components/molecules/ErrorState/ErrorState";
-import { listarVentasDelPeriodo } from "../../services/reportService";
+import { listarVentasDelPeriodo, obtenerResumenVendedor } from "../../services/reportService";
 import "../../styles/Inventory.css";
 import "../../styles/Reports.css";
 
@@ -39,6 +39,7 @@ const agrupar = (ventas, clave) => {
 
 const ReportsScreen = () => {
   const [ventas, setVentas] = useState([]);
+  const [resumen, setResumen] = useState(null);
   const [dias, setDias] = useState(30);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
@@ -54,9 +55,15 @@ const ReportsScreen = () => {
 
     setCargando(true);
     setError("");
-    listarVentasDelPeriodo(fechaHace(dias - 1), fechaHace(0))
-      .then((datos) => {
-        if (activo) setVentas(datos);
+    Promise.all([
+      listarVentasDelPeriodo(fechaHace(dias - 1), fechaHace(0)),
+      obtenerResumenVendedor().catch(() => null),
+    ])
+      .then(([datos, res]) => {
+        if (activo) {
+          setVentas(datos);
+          if (res) setResumen(res);
+        }
       })
       .catch((e) => {
         if (activo) setError(e.message);
@@ -158,22 +165,27 @@ const ReportsScreen = () => {
         </div>
       </div>
 
-      {cargando ? ( //caso 1 cuando carga
+      {cargando ? (
         <div className="inv-panel">
           <div className="rep-vacio" role="status">
             Cargando el reporte...
           </div>
         </div>
       ) : error ? (
-        <ErrorState titulo="No pudimos cargar tu reporte de ventas" detalle={error} onReintentar={() => setRecarga((n) => n + 1)} /> //caso 2 error
+        <ErrorState titulo="No pudimos cargar tu reporte de ventas" detalle={error} onReintentar={() => setRecarga((n) => n + 1)} />
       ) : (
-        //caso 3 cuando cargan los datos
         <>
       <div className="inv-stats">
         <StatCard titulo="Ingresos netos del período" valor={formatoPrecio(ingresos)} />
         <StatCard titulo="Unidades vendidas" valor={unidades} />
         <StatCard titulo="Ticket promedio" valor={formatoPrecio(ticketPromedio)} />
         <StatCard titulo="Producto más vendido" valor={masVendido} />
+        {resumen?.servicioMasVendido && (
+          <StatCard titulo="Servicio estrella (histórico)" valor={resumen.servicioMasVendido.nombre} />
+        )}
+        {resumen?.tiempoRespuestaHoras != null && (
+          <StatCard titulo="Tiempo prom. resp. preguntas" valor={`${resumen.tiempoRespuestaHoras} h`} />
+        )}
       </div>
 
       {/* ---------- Ventas por día ---------- */}

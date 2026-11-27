@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Security.Claims;
 using backend.Models;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -21,10 +22,12 @@ public class ReportesVentasController : ControllerBase
     private static readonly string[] EstadosQueCuentan = { "Pagado", "Entregado" };
 
     private readonly AppDbContext _context;
+    private readonly FuncionesService _f;
 
-    public ReportesVentasController(AppDbContext context)
+    public ReportesVentasController(AppDbContext context, FuncionesService funciones)
     {
         _context = context;
+        _f = funciones;
     }
 
     private sealed record Fila(string Tipo, int IdVenta, DateTime Fecha, string Nombre, string? Categoria, int Cantidad, int Total);
@@ -107,6 +110,65 @@ public class ReportesVentasController : ControllerBase
 
             return Ok(new { success = true, message = "Ventas del período.", data, errors = (object?)null });
     
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
+    }
+
+    // GET: api/reportes/ventas/resumen
+    // Métricas históricas del vendedor autenticado calculadas con las funciones PostgreSQL.
+    [HttpGet("ventas/resumen")]
+    public async Task<IActionResult> GetResumenVendedor(CancellationToken ct = default)
+    {
+        try
+        {
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut))
+                return Unauthorized(new { success = false, message = "Usuario no autenticado." });
+
+            var productoEstrella = (await _f.ProductoMasVendido(rut, ct)).FirstOrDefault();
+            var servicioEstrella = (await _f.ServicioMasVendido(rut, ct)).FirstOrDefault();
+            var tiempoRespuesta = await _f.TiempoPromedioRespuesta(rut, ct);
+            var productosDestacados = await _f.ProductosMejorCalificados(rut, ct);
+            var rendimiento = await _f.RendimientoVendedor(DateTime.Today.Year, rut, ct);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Resumen del vendedor obtenido.",
+                data = new
+                {
+                    producto_mas_vendido = productoEstrella == null ? null : new
+                    {
+                        id = productoEstrella.IdProducto,
+                        nombre = productoEstrella.NombreProducto,
+                        cantidad = productoEstrella.CantidadVentas ?? 0
+                    },
+                    servicio_mas_vendido = servicioEstrella == null ? null : new
+                    {
+                        id = servicioEstrella.IdServicio,
+                        nombre = servicioEstrella.NombreServicio,
+                        cantidad = servicioEstrella.CantidadVentas ?? 0
+                    },
+                    tiempo_respuesta_horas = tiempoRespuesta.HasValue ? Math.Round(tiempoRespuesta.Value.TotalHours, 1) : (double?)null,
+                    productos_mejor_calificados = productosDestacados.Select(p => new
+                    {
+                        id = p.IdProducto,
+                        nombre = p.NombreProducto,
+                        promedio = Math.Round(p.PromedioCalificacion ?? 0, 1)
+                    }).ToList(),
+                    rendimiento_anual = rendimiento.Select(r => new
+                    {
+                        anio = r.Anio,
+                        trimestre = r.Trimestre,
+                        facturacion = r.FacturacionAcumulada ?? 0,
+                        categoria = r.CategoriaRendimiento ?? ""
+                    }).ToList()
+                },
+                errors = (object?)null
+            });
         }
         catch (Exception ex)
         {

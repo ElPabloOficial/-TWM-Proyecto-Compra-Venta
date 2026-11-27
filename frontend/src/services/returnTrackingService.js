@@ -1,7 +1,5 @@
-import { pedir } from './apiClient';
+import { API_URL, pedir } from './apiClient';
 import { urlImagen } from './cartService';
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 // Estados de una devolución en la base: "En Proceso" (recién solicitada), "Aprobada" y "Rechazada".
 // Los antiguos ("Pendiente", "En revisión") se tratan como "En revisión".

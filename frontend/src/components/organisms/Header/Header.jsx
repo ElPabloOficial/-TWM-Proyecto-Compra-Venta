@@ -32,7 +32,7 @@ const Header = () => {
   // Buscar lleva al catálogo con ?q=texto (sin texto, al catálogo completo)
   const buscar = () => {
     const texto = busqueda.trim();
-    console.log('[Búsqueda] Buscar:', { texto });
+    // console.log('[Búsqueda] Buscar:', { texto });
     setCategoriasAbiertas(false);
     navigate(texto ? `/catalogo?q=${encodeURIComponent(texto)}` : '/catalogo');
   };

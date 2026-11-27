@@ -124,7 +124,8 @@ const AdminUserDetailScreen = () => {
     );
   }
 
-  const { compras, ventas, actividad, publicaciones } = usuario;
+  const { compras, ventas, actividad, publicaciones, metricasFunciones } = usuario;
+  const mf = metricasFunciones ?? {};
   const tipo = String(usuario.tipo ?? "").toLowerCase();
   const esVendedor = tipo === "vendedor" || tipo === "ambos";
   // Se muestra la parte de vendedor si tiene el rol o ya publicó o vendió algo
@@ -244,6 +245,8 @@ const AdminUserDetailScreen = () => {
           <Tile titulo="Reseñas escritas" valor={actividad.resenias} />
           <Tile titulo="Preguntas hechas" valor={actividad.preguntas} />
           <Tile titulo="En favoritos" valor={actividad.favoritos} />
+          <Tile titulo="Compras del mes" valor={mf.comprasMes ?? 0} />
+          <Tile titulo="Descuento (>5 mes)" valor={mf.calificaDescuento ? "Califica" : "No"} destacada={mf.calificaDescuento} />
         </div>
         <div className="ud-subtitulo">Compras más recientes</div>
         <TablaVentas filas={compras.recientes} columnaContraparte="Vendedor" />
@@ -261,7 +264,57 @@ const AdminUserDetailScreen = () => {
             <Tile titulo="Ventas en proceso" valor={ventas.enProceso} destacada={ventas.enProceso > 0} />
             <Tile titulo="Por despachar" valor={ventas.porDespachar} destacada={ventas.porDespachar > 0} />
             <Tile titulo="Última venta" valor={fecha(ventas.ultima)} />
+            <Tile titulo="Clientes atendidos" valor={mf.clientesUnicos ?? 0} />
+            <Tile
+              titulo="Resp. prom. preguntas"
+              valor={mf.tiempoRespuestaHoras != null ? `${mf.tiempoRespuestaHoras} h` : "-"}
+            />
+            <Tile
+              titulo="Prod. mejor calif. (≥4)"
+              valor={mf.productosMejorCalificados?.length ?? 0}
+            />
           </div>
+          {(mf.productoMasVendido || mf.servicioMasVendido) && (
+            <div className="ud-tiles">
+              {mf.productoMasVendido && (
+                <Tile
+                  titulo={`Producto estrella (${mf.productoMasVendido.cantidad} ventas)`}
+                  valor={mf.productoMasVendido.nombre}
+                />
+              )}
+              {mf.servicioMasVendido && (
+                <Tile
+                  titulo={`Servicio estrella (${mf.servicioMasVendido.cantidad} ventas)`}
+                  valor={mf.servicioMasVendido.nombre}
+                />
+              )}
+            </div>
+          )}
+          {mf.rendimientoAnual?.length > 0 && (
+            <>
+              <div className="ud-subtitulo">Rendimiento trimestral ({mf.rendimientoAnual[0].anio})</div>
+              <div className="ud-scroll" style={{ marginBottom: 14 }}>
+                <table className="ud-tabla">
+                  <thead>
+                    <tr>
+                      <th>Trimestre</th>
+                      <th className="num">Facturación neta</th>
+                      <th>Rango</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mf.rendimientoAnual.map((r) => (
+                      <tr key={`${r.anio}-${r.trimestre}`}>
+                        <td>T{r.trimestre}</td>
+                        <td className="num">{pesos(r.facturacion)}</td>
+                        <td>{r.categoria}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
           <div className="ud-subtitulo">Ventas más recientes</div>
           <TablaVentas filas={ventas.recientes} columnaContraparte="Cliente" />
         </div>

@@ -15,17 +15,20 @@ namespace backend.Controllers;
 // Perfil del usuario con sesión iniciada. El RUT sale siempre del token (JWT), nunca del cuerpo
 // de la petición, así que nadie puede ver ni modificar el perfil de otra persona.
 //
-//   GET  api/perfil        -> datos personales + dirección + empresa
-//   PUT  api/perfil        -> guarda los cambios
-//   PUT  api/perfil/clave  -> cambia la contraseña
-//   PUT  api/perfil/vendedor -> convierte una cuenta de cliente en vendedor (la empresa es opcional)
+//   GET  api/perfil              -> datos personales + dirección + empresas
+//   PUT  api/perfil              -> guarda los cambios
+//   PUT  api/perfil/clave        -> cambia la contraseña
+//   PUT  api/perfil/vendedor     -> convierte una cuenta de cliente en vendedor (la empresa es opcional)
+//   POST api/perfil/empresas     -> agrega otra empresa al vendedor
+//   DELETE api/perfil/empresas/{rut} -> desvincula una empresa del vendedor
 //
 // Cómo se guardan los datos en la base:
 //   - teléfonos: el perfil maneja la lista completa (hasta 5).
 //   - correo y dirección: el usuario puede tener varios; el perfil edita el "principal"
 //     (el primero). Si no tiene ninguno, se crea.
-//   - empresa: se edita la primera empresa del vendedor (tabla tener3). El RUT de la empresa no
-//     se puede cambiar después de creada porque es su clave primaria.
+//   - empresas: un vendedor puede tener varias empresas (tabla tener3, relación M:N).
+//     PUT /perfil edita la primera; POST /perfil/empresas agrega otra; DELETE la desvincula.
+//     El RUT de una empresa no se puede cambiar después de creada porque es su clave primaria.
 //   - el RUT del usuario tampoco se puede cambiar (es su clave primaria y va dentro del token).
 [ApiController]
 [Route("api/[controller]")]
@@ -502,6 +505,138 @@ public class PerfilController : ControllerBase
         }
     }
 
+    // POST: api/perfil/empresas  — agrega otra empresa al vendedor
+    [HttpPost("empresas")]
+    public async Task<IActionResult> AgregarEmpresa([FromBody] PerfilEmpresaDto dto)
+    {
+        try
+        {
+            dto ??= new PerfilEmpresaDto();
+            var rut = RutActual();
+            if (string.IsNullOrEmpty(rut))
+                return Falla(401, "Usuario no autenticado.");
+
+            var u = await _context.usuarios
+                .Include(x => x.id_empresas)
+                .FirstOrDefaultAsync(x => x.rut == rut);
+
+            if (u == null)
+                return Falla(404, "Usuario no encontrado.");
+
+            var tipo = u.tipousuario.Trim().ToLowerInvariant();
+            if (tipo != "vendedor" && tipo != "ambos")
+                return Falla(403, "Solo los vendedores pueden agregar empresas.");
+
+            var rutEmpresa  = LimpiarRut(dto.rut);
+            var nombreEmpresa = Vacio(dto.nombre);
+            var giro        = Vacio(dto.giro);
+            var paginaweb   = Vacio(dto.paginaweb);
+
+            var errores = new List<string>();
+            if (rutEmpresa.Length == 0 || nombreEmpresa == null)
+                errores.Add("empresa: indica el RUT y el nombre.");
+            else if (rutEmpresa.Length > 11 || !System.Text.RegularExpressions.Regex.IsMatch(rutEmpresa, @"^\d{7,8}-[0-9K]$"))
+                errores.Add("empresa.rut: el RUT no es válido.");
+            if ((nombreEmpresa?.Length ?? 0) > 100 || (giro?.Length ?? 0) > 100 || (paginaweb?.Length ?? 0) > 100)
+                errores.Add("empresa: nombre, giro y página web admiten máximo 100 caracteres.");
+            if (errores.Count > 0)
+                return Falla(400, "No se pudo agregar la empresa.", errores.ToArray());
+
+            // Si ya está vinculada a este usuario
+            if (u.id_empresas.Any(e => e.rut == rutEmpresa))
+                return Falla(409, "No se pudo agregar la empresa.", "empresa.rut: ya está vinculada a tu cuenta.");
+
+            // No se vincula una empresa que ya existe: podría ser de otra persona
+            if (await _context.empresas.AnyAsync(x => x.rut == rutEmpresa))
+                return Falla(409, "No se pudo agregar la empresa.", "empresa.rut: ya está registrada por otro usuario.");
+
+            u.id_empresas.Add(new empresa
+            {
+                rut = rutEmpresa,
+                nombre = nombreEmpresa!,
+                giro = giro,
+                paginaweb = paginaweb
+            });
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return Falla(400, "No se pudo agregar la empresa.", ex.InnerException?.Message ?? ex.Message);
+            }
+
+            var perfil = await ConstruirPerfil(rut);
+            return Ok(new { success = true, message = "Empresa agregada.", data = perfil, errors = (object?)null });
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
+    }
+
+    // DELETE: api/perfil/empresas/{rutEmpresa}  — desvincula una empresa del vendedor
+    [HttpDelete("empresas/{rutEmpresa}")]
+    public async Task<IActionResult> EliminarEmpresa(string rutEmpresa)
+    {
+        try
+        {
+            var rut = RutActual();
+            if (string.IsNullOrEmpty(rut))
+                return Falla(401, "Usuario no autenticado.");
+
+            var u = await _context.usuarios
+                .Include(x => x.id_empresas)
+                .FirstOrDefaultAsync(x => x.rut == rut);
+
+            if (u == null)
+                return Falla(404, "Usuario no encontrado.");
+
+            var tipo = u.tipousuario.Trim().ToLowerInvariant();
+            if (tipo != "vendedor" && tipo != "ambos")
+                return Falla(403, "Solo los vendedores pueden gestionar empresas.");
+
+            var rutLimpio = LimpiarRut(rutEmpresa);
+            var emp = u.id_empresas.FirstOrDefault(e => e.rut == rutLimpio);
+            if (emp == null)
+                return Falla(404, "La empresa no está vinculada a tu cuenta.");
+
+            // Desvincular del usuario (EF elimina la fila en tener3)
+            u.id_empresas.Remove(emp);
+
+            // Si nadie más tiene esta empresa, eliminarla por completo
+            var otrosVinculos = await _context.usuarios.AsNoTracking()
+                .Where(x => x.rut != rut)
+                .SelectMany(x => x.id_empresas)
+                .AnyAsync(e => e.rut == rutLimpio);
+
+            if (!otrosVinculos)
+            {
+                // Cargar la empresa completa para eliminarla (EF requiere tracking)
+                var empresaDb = await _context.empresas.FindAsync(rutLimpio);
+                if (empresaDb != null)
+                    _context.empresas.Remove(empresaDb);
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                return Falla(400, "No se pudo eliminar la empresa.", ex.InnerException?.Message ?? ex.Message);
+            }
+
+            var perfil = await ConstruirPerfil(rut);
+            return Ok(new { success = true, message = "Empresa eliminada.", data = perfil, errors = (object?)null });
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
+    }
+
     // Arma el perfil que recibe el frontend (lecturas sin seguimiento: no modifican nada)
     private async Task<object?> ConstruirPerfil(string rut)
     {
@@ -579,27 +714,34 @@ public class PerfilController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        var empresa = await _context.usuarios.AsNoTracking()
+        var empresasDb = await _context.usuarios.AsNoTracking()
             .Where(x => x.rut == rut)
             .SelectMany(x => x.id_empresas)
             .OrderBy(e => e.rut)
             .Select(e => new { e.rut, e.nombre, e.giro, e.paginaweb })
-            .FirstOrDefaultAsync();
+            .ToListAsync();
 
-        // Dirección del local: viene de la tabla registrar5. Solo se muestra; el perfil no la edita.
-        string? direccionLocal = null;
-        if (empresa != null)
+        // Dirección del local de cada empresa: viene de la tabla registrar5. Solo se muestra; el perfil no la edita.
+        var empresasConLocal = new List<object>();
+        foreach (var emp in empresasDb)
         {
+            string? dirLocal = null;
             var local = await _context.empresas.AsNoTracking()
-                .Where(e => e.rut == empresa.rut)
+                .Where(e => e.rut == emp.rut)
                 .SelectMany(e => e.id_direccions)
                 .OrderBy(d => d.id)
                 .Select(d => new { d.calle, d.numero, comuna = d.id_comunaNavigation.nombre })
                 .FirstOrDefaultAsync();
 
             if (local != null)
-                direccionLocal = $"{local.calle} {local.numero}, {local.comuna}";
+                dirLocal = $"{local.calle} {local.numero}, {local.comuna}";
+
+            empresasConLocal.Add(new { emp.rut, emp.nombre, emp.giro, emp.paginaweb, direccionlocal = dirLocal });
         }
+
+        // empresa: primera empresa (compatibilidad con frontend existente)
+        // empresas: lista completa de todas las empresas del vendedor
+        var empresaPrincipal = empresasConLocal.Count > 0 ? empresasConLocal[0] : null;
 
         return new
         {
@@ -613,9 +755,8 @@ public class PerfilController : ControllerBase
             correo,
             telefonos = numerosTelefono.Select(n => n.ToString()).ToList(),
             direccion,
-            empresa = empresa == null
-                ? null
-                : new { empresa.rut, empresa.nombre, empresa.giro, empresa.paginaweb, direccionlocal = direccionLocal }
+            empresa = empresaPrincipal,
+            empresas = empresasConLocal
         };
     }
 }

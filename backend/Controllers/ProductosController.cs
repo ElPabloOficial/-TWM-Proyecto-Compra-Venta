@@ -86,13 +86,19 @@ public class ProductosController : ControllerBase
             if (producto == null)
                 return NotFound(new { success = false, message = "Producto no encontrado.", data = (object?)null, errors = (object?)null });
 
-            var vendedor = producto.ofrecer1s.FirstOrDefault();
+            // Si el producto tiene varios vendedores en ofrecer1, priorizar al que tenga stock en su inventario
+            var vendedor = producto.ofrecer1s
+                .OrderByDescending(o => producto.almacenars
+                    .Where(a => a.id_inventarioNavigation.id_usuario == o.id_usuario)
+                    .Sum(a => a.stockactual))
+                .ThenBy(o => o.id_usuario)
+                .FirstOrDefault();
 
             // Un producto oculto solo lo puede abrir su vendedor o un administrador; para el resto no existe
             if (VisibilidadProducto.EstaOculto(producto.caracteristicas))
             {
                 var rutActual = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                var esDueno = rutActual != null && vendedor?.id_usuario == rutActual;
+                var esDueno = rutActual != null && producto.ofrecer1s.Any(o => o.id_usuario == rutActual);
 
                 if (!esDueno && !User.IsInRole("Administrador"))
                     return NotFound(new { success = false, message = "Producto no encontrado.", data = (object?)null, errors = (object?)null });

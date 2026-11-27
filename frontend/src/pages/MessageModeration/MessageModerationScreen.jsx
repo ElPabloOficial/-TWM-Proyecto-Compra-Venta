@@ -57,7 +57,7 @@ const MessageModerationScreen = ()=> {
     const mensaje = mensajeAEliminar;
     if (!mensaje) return;
     setMensajeAEliminar(null);
-    console.log("[Moderación] Eliminar:", { tipo: mensaje.tipo, id: mensaje.id });
+    // console.log("[Moderación] Eliminar:", { tipo: mensaje.tipo, id: mensaje.id });
     setOcupado(mensaje.clave);
     try {
       await eliminarContenido(mensaje);

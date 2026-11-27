@@ -118,7 +118,7 @@ const UserFormDialog = ({ open, ruts = [], onClose, onGuardar }) => {
     setError("");
     setGuardando(true);
     // La contraseña nunca se imprime: solo se confirma que se capturó
-    console.log("[Usuarios] Crear usuario:", { ...datos, clave: "[oculta]" });
+    // console.log("[Usuarios] Crear usuario:", { ...datos, clave: "[oculta]" });
 
     try {
       await onGuardar(datos); // la pantalla llama a la API; si falla, el mensaje se muestra aquí

@@ -58,7 +58,7 @@ const WishlistListsScreen = () => {
   // Las listas nuevas se crean desde el corazón de un producto (una lista existe mientras tenga algo guardado).
   // Aquí solo se edita; si falla, el formulario muestra el error
   const guardarLista = async (datos) => {
-    console.log("[Listas de deseos] Actualizar lista:", { id: listaEditando.id, ...datos });
+    // console.log("[Listas de deseos] Actualizar lista:", { id: listaEditando.id, ...datos });
     const actualizada = await actualizarListaDeseos(listaEditando.id, datos);
     setListas((actuales) => actuales.map((l) => (l.id === actualizada.id ? { ...actualizada } : l)));
     mostrarToast("Lista actualizada correctamente");
@@ -66,7 +66,7 @@ const WishlistListsScreen = () => {
   };
 
   const confirmarEliminar = async () => {
-    console.log("[Listas de deseos] Eliminar lista:", { id: listaAEliminar.id, nombre: listaAEliminar.nombre });
+    // console.log("[Listas de deseos] Eliminar lista:", { id: listaAEliminar.id, nombre: listaAEliminar.nombre });
     try {
       await eliminarListaDeseos(listaAEliminar.id);
       setListas((actuales) => actuales.filter((l) => l.id !== listaAEliminar.id));
