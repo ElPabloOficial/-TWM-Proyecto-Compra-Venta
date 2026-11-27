@@ -142,6 +142,7 @@
 /* Subir imagen  */
 .addp-upload {
   width: 240px;
+  max-width: 100%;
   height: 160px;
   background: #bdbdbd;
   color: #fff;
@@ -234,8 +235,53 @@
   gap: 8px;
   margin-top: 24px;
 }
+
 /* ---------- Características (varían según el producto) ---------- */
 .addp-carac { display: flex; flex-direction: column; gap: 10px; }
 .addp-carac-fila { display: grid; grid-template-columns: 1fr 1fr 36px; gap: 10px; align-items: center; }
 .addp-carac-vacio { font-size: 13px; color: #777; }
-@media (max-width: 700px) { .addp-carac-fila { grid-template-columns: 1fr 1fr 36px; } }
+
+@media (max-width: 700px) {
+  .addp-content {
+    padding: 16px;
+  }
+
+  .addp-card {
+    padding: 20px 24px 24px;
+  }
+
+  .addp-row {
+    flex-direction: column;
+  }
+
+  .addp-field.mitad {
+    flex: 1 1 auto;
+  }
+
+  .addp-carac-fila {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .addp-content {
+    padding: 12px;
+  }
+
+  .addp-card {
+    padding: 20px 16px;
+    border-radius: 12px;
+  }
+
+  .addp-title {
+    font-size: 24px;
+  }
+
+  .addp-actions {
+    flex-direction: column-reverse;
+  }
+
+  .addp-actions > button {
+    width: 100%;
+  }
+}
