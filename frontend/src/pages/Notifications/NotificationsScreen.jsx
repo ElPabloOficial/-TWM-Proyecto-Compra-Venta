@@ -8,6 +8,7 @@ import ErrorState from '../../components/molecules/ErrorState/ErrorState';
 import useCart from '../../context/useCart';
 import { listarNotificaciones, obtenerLeidas, guardarLeidas } from '../../services/notificationService';
 
+//configuracion de las pestañas osea TABS
 const TABS = [
   { nombre: 'Todas', filtro: () => true },
   { nombre: 'Mensajes & Preguntas', filtro: (n) => n.tipo === 'mensaje' },
