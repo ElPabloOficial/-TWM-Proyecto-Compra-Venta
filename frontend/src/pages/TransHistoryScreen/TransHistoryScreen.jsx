@@ -15,6 +15,7 @@ import { listarVentas } from "../../services/adminService";
 import "../../styles/Inventory.css";
 import "../../styles/Transaction.css";
 
+//funcion auxiliar que formatea un numero como precio en pesos chilenos
 const formatoPrecio = (n) => `$${Number(n).toLocaleString("es-CL")}`;
 
 const TransHistoryScreen = () => {
