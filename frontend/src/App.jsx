@@ -44,7 +44,6 @@ import MyQuotesScreen from "./pages/MyQuotes/MyQuotesScreen";
 import RefundRequest from "./pages/RefundRequest/RefundRequest";
 import ReturnManagement from "./pages/ReturnManagement/ReturnManagement";
 import ProductSheet from "./pages/ProductSheet/ProductSheet";
-import TestScreen from "./pages/Test/TestScreen";
 import AdminRoute from "./components/organisms/AdminRoute/AdminRoute";
 import NotificationsScreen from './pages/Notifications/NotificationsScreen';
 
@@ -100,7 +99,6 @@ const App = () => {
                 <Route path="/devoluciones" element={<ReturnManagement />} />
                 <Route path="/producto/:id" element={<ProductSheet type="product" />} />
                 <Route path="/servicio/:id" element={<ProductSheet type="service" />} />
-                <Route path="/test" element={<TestScreen />} />
                 <Route path="/notificaciones" element={<NotificationsScreen />} />
                 <Route path="/seguimiento-devoluciones" element={<ReturnTrackingScreen />} />
               </Routes>
