@@ -1,83 +1,17 @@
 import { useState, useEffect } from "react";
 import Rating from "@mui/material/Rating";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import TextField from "@mui/material/TextField";
 import SellerTemplate from "../../components/templates/SellerTemplate/SellerTemplate";
 import StatCard from "../../components/molecules/StatCard/StatCard";
-import CustomButton from "../../components/atoms/Button/CustomButton";
+import ErrorState from "../../components/molecules/ErrorState/ErrorState";
+import { reviewService } from "../../services/reviewService";
 import "../../styles/Inventory.css";
 import "../../styles/Reviews.css";
-import { useToast } from "../../context/ToastContext";
 
-const MAX_CARACTERES = 300;
+// Reseñas que recibieron los productos y servicios del vendedor.
+//   GET /resenias/vendedor -> lista (solo lectura)
+// El vendedor todavía no puede responder: la tabla Calificacion no tiene dónde guardar la respuesta.
 
-// TEMPORAL: estas reseñas son de ejemplo. Los clientes las escriben desde la tienda;
-// cuando se conecte el backend se cargan desde la API (solo las de los productos del vendedor).
-const resenasIniciales = [
-  {
-    id: 1,
-    producto: "Notebook Lenovo",
-    cliente: "Camila Rojas",
-    calificacion: 5,
-    fecha: "2026-10-09",
-    comentario: "Llegó rápido y funciona perfecto. Muy buena relación precio-calidad.",
-    respuesta: "¡Gracias por tu compra, Camila! Nos alegra que te guste.",
-    fechaRespuesta: "2026-10-10",
-  },
-  {
-    id: 2,
-    producto: "Audífonos Bluetooth",
-    cliente: "Matías Pérez",
-    calificacion: 3,
-    fecha: "2026-10-08",
-    comentario: "El sonido es bueno, pero la batería dura menos de lo que esperaba.",
-    respuesta: "",
-    fechaRespuesta: "",
-  },
-  {
-    id: 3,
-    producto: "Hervidor eléctrico",
-    cliente: "Francisca Soto",
-    calificacion: 1,
-    fecha: "2026-10-07",
-    comentario: "Llegó con la tapa dañada y no calienta parejo.",
-    respuesta: "",
-    fechaRespuesta: "",
-  },
-  {
-    id: 4,
-    producto: "Notebook Lenovo",
-    cliente: "Diego Álvarez",
-    calificacion: 4,
-    fecha: "2026-10-05",
-    comentario: "Buen equipo, aunque el embalaje podría ser mejor.",
-    respuesta: "",
-    fechaRespuesta: "",
-  },
-  {
-    id: 5,
-    producto: "Audífonos Bluetooth",
-    cliente: "Valentina Muñoz",
-    calificacion: 5,
-    fecha: "2026-10-03",
-    comentario: "Excelentes, se conectan al tiro y son muy cómodos.",
-    respuesta: "Gracias Valentina, ¡que los disfrutes!",
-    fechaRespuesta: "2026-10-04",
-  },
-  {
-    id: 6,
-    producto: "Hervidor eléctrico",
-    cliente: "Joaquín Vera",
-    calificacion: 2,
-    fecha: "2026-10-02",
-    comentario: "Tarda mucho en hervir y hace bastante ruido.",
-    respuesta: "",
-    fechaRespuesta: "",
-  },
-];
+const POR_PAGINA = 8;
 
 const comparadores = {
   recientes: (a, b) => b.fecha.localeCompare(a.fecha),
@@ -85,181 +19,103 @@ const comparadores = {
   peor: (a, b) => a.calificacion - b.calificacion,
 };
 
-// Fecha de hoy en formato YYYY-MM-DD usando la hora local (no UTC)
-const hoyLocal = () => new Date().toLocaleDateString("sv-SE");
-
-// 2026-10-31 -> 31/10/2026
+// 2026-10-31T14:30:00 -> 31/10/2026
 const formatoFecha = (iso) => {
   if (!iso) return "";
   const [anio, mes, dia] = iso.slice(0, 10).split("-");
   return `${dia}/${mes}/${anio}`;
 };
 
+// Lo que devuelve la API -> lo que usa la pantalla
+const aResena = (r) => ({
+  id: r.id,
+  tipo: r.tipo, // "producto" | "servicio"
+  producto: r.item,
+  cliente: r.cliente,
+  calificacion: Number(r.calificacion) || 0,
+  fecha: String(r.fecha ?? ""),
+  comentario: r.comentario ?? "",
+});
+
 // ---------- Tarjeta de una reseña ----------
-const ReviewCard = ({ resena, onResponder }) => {
-  const respondida = Boolean(resena.respuesta);
-
-  return (
-    <article className="rev-card">
-      <div className="rev-card-head">
-        <div>
-          <div className="rev-producto">{resena.producto}</div>
-          <div className="rev-cliente">
-            {resena.cliente} · {formatoFecha(resena.fecha)}
-          </div>
-        </div>
-
-        <div className="rev-valoracion">
-          <Rating value={resena.calificacion} readOnly size="small" className="rev-rating" />
-          {!respondida && <span className="rev-pendiente">Sin responder</span>}
+const ReviewCard = ({ resena }) => (
+  <article className="rev-card">
+    <div className="rev-card-head">
+      <div>
+        <div className="rev-producto">{resena.producto}</div>
+        <div className="rev-cliente">
+          {resena.tipo === "servicio" ? "Servicio" : "Producto"} · {resena.cliente} · {formatoFecha(resena.fecha)}
         </div>
       </div>
 
-      <p className="rev-comentario">{resena.comentario}</p>
+      <div className="rev-valoracion">
+        <Rating value={resena.calificacion} readOnly size="small" className="rev-rating" />
+      </div>
+    </div>
 
-      {respondida ? (
-        <div className="rev-respuesta">
-          <div className="rev-respuesta-titulo">
-            Tu respuesta · {formatoFecha(resena.fechaRespuesta)}
-          </div>
-          <p>{resena.respuesta}</p>
-        </div>
-      ) : (
-        <div className="rev-acciones">
-          <CustomButton
-            variant="primary"
-            size="small"
-            onClick={() => onResponder(resena)}
-            sx={{ border: "2px solid #EC3333" }}
-          >
-            Responder
-          </CustomButton>
-        </div>
-      )}
-    </article>
-  );
-};
-
-// ---------- Diálogo para responder una reseña ----------
-// Las respuestas públicas solo se pueden crear y leer: no se editan ni se eliminan.
-const ReviewReplyDialog = ({ open, resena, onClose, onGuardar }) => {
-  const [texto, setTexto] = useState("");
-  const [error, setError] = useState("");
-
-  // Cada vez que se abre deja el campo vacío
-  useEffect(() => {
-    setTexto("");
-    setError("");
-  }, [resena, open]);
-
-  const handleGuardar = () => {
-    const respuesta = texto.trim();
-
-    if (!respuesta) {
-      setError("Escribe una respuesta antes de guardar.");
-      return;
-    }
-    if (respuesta.length > MAX_CARACTERES) {
-      setError(`La respuesta no puede superar los ${MAX_CARACTERES} caracteres.`);
-      return;
-    }
-
-    const datos = { id: resena.id, respuesta };
-
-    // SIMULACIÓN (solo frontend): muestra en la consola los datos capturados.
-    // Con el backend esto se reemplaza por la llamada a la API (POST de la respuesta).
-    console.log("[Reseñas] Responder reseña:", datos);
-
-    onGuardar(datos);
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Responder reseña</DialogTitle>
-      <DialogContent className="rev-dialog-content">
-        {resena && (
-          <div className="rev-cita">
-            <div className="rev-cita-titulo">
-              {resena.producto} · {resena.cliente}
-            </div>
-            <div>{resena.comentario}</div>
-          </div>
-        )}
-
-        <TextField
-          label="Tu respuesta"
-          size="small"
-          multiline
-          minRows={3}
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          helperText={`${texto.length}/${MAX_CARACTERES}`}
-        />
-
-        {error && <span className="rev-error">{error}</span>}
-      </DialogContent>
-      <DialogActions className="rev-dialog-actions">
-        <CustomButton variant="secondary" size="small" onClick={onClose}>
-          Cancelar
-        </CustomButton>
-        <CustomButton
-          variant="primary"
-          size="small"
-          onClick={handleGuardar}
-          sx={{ border: "2px solid #EC3333" }}
-        >
-          Guardar
-        </CustomButton>
-      </DialogActions>
-    </Dialog>
-  );
-};
+    <p className="rev-comentario">
+      {resena.comentario || <em>El cliente no dejó un comentario.</em>}
+    </p>
+  </article>
+);
 
 // ---------- Pantalla ----------
 const ReviewsScreen = () => {
-  const { mostrarToast } = useToast();
-  // TEMPORAL: las reseñas viven solo en memoria (se pierden al recargar la página).
-  const [resenas, setResenas] = useState(resenasIniciales);
-  const [resenaRespondiendo, setResenaRespondiendo] = useState(null);
+  const [resenas, setResenas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState("");
+  const [recarga, setRecarga] = useState(0);
+
   const [orden, setOrden] = useState("recientes");
   const [filtroEstrellas, setFiltroEstrellas] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("");
+  const [pagina, setPagina] = useState(1);
 
-  // ---------- Acciones ----------
-  // TEMPORAL: responder solo modifica el estado local.
-  // Con el backend pasa a ser una llamada a la API (POST de la respuesta).
-  const guardarRespuesta = ({ id, respuesta }) => {
-    setResenas(
-      resenas.map((r) =>
-        // TEMPORAL: la fecha de la respuesta la pondrá la base de datos
-        r.id === id && !r.respuesta ? { ...r, respuesta, fechaRespuesta: hoyLocal() } : r
-      )
-    );
-    setResenaRespondiendo(null);
-    mostrarToast("Respuesta publicada correctamente");
-  };
+  // Carga las reseñas desde la API
+  useEffect(() => {
+    let activo = true;
+
+    setCargando(true);
+    setErrorCarga("");
+    reviewService
+      .obtenerReseniasDeMisPublicaciones()
+      .then((lista) => {
+        if (activo) setResenas(lista.map(aResena));
+      })
+      .catch((e) => {
+        if (activo) setErrorCarga(e.message);
+      })
+      .finally(() => {
+        if (activo) setCargando(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [recarga]);
+
+  // Al cambiar el filtro o el orden se vuelve a la primera página
+  useEffect(() => {
+    setPagina(1);
+  }, [orden, filtroEstrellas]);
 
   const verTodas = () => {
     setOrden("recientes");
     setFiltroEstrellas("");
-    setFiltroEstado("");
   };
 
-  // ---------- Filtro y orden ----------
-  // TEMPORAL: se hacen aquí sobre todas las reseñas en memoria.
-  // Con el backend pasan a ser parámetros de la consulta (WHERE, ORDER BY).
-  const filtradas = resenas.filter((r) => {
-    if (filtroEstrellas && r.calificacion !== Number(filtroEstrellas)) return false;
-    if (filtroEstado === "sin") return !r.respuesta;
-    if (filtroEstado === "respondidas") return Boolean(r.respuesta);
-    return true;
-  });
-
+  // ---------- Filtro, orden y paginación ----------
+  const filtradas = resenas.filter((r) => !filtroEstrellas || r.calificacion === Number(filtroEstrellas));
   const ordenadas = [...filtradas].sort(comparadores[orden]);
 
+  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / POR_PAGINA));
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const inicio = (paginaActual - 1) * POR_PAGINA;
+  const visibles = ordenadas.slice(inicio, inicio + POR_PAGINA);
+  const paginas = Array.from({ length: totalPaginas }, (_, i) => i + 1);
+  const desde = ordenadas.length === 0 ? 0 : inicio + 1;
+  const hasta = inicio + visibles.length;
+
   // ---------- Tarjetas de totales (sobre todas las reseñas) ----------
-  // TEMPORAL: se calculan en el frontend. Con la base de datos pasan a ser
-  // consultas agregadas: COUNT(*), AVG(calificacion) y COUNT donde respuesta es NULL.
   const total = resenas.length;
   const promedio =
     total === 0
@@ -267,7 +123,6 @@ const ReviewsScreen = () => {
       : (resenas.reduce((acc, r) => acc + r.calificacion, 0) / total)
           .toFixed(1)
           .replace(".", ",");
-  const sinResponder = resenas.filter((r) => !r.respuesta).length;
 
   return (
     <SellerTemplate activo="resenas">
@@ -275,88 +130,110 @@ const ReviewsScreen = () => {
         <div>
           <h1 className="inv-title">Gestión de Reseñas</h1>
           <div className="inv-subtitle">
-            Revisa lo que opinan tus clientes y responde sus comentarios.
+            Revisa lo que opinan tus clientes sobre tus productos y servicios.
           </div>
         </div>
       </div>
 
-      <div className="inv-stats">
-        <StatCard titulo="Total de Reseñas" valor={total} />
-        <StatCard titulo="Calificación Promedio" valor={promedio} />
-        <StatCard titulo="Sin responder" valor={sinResponder} />
-      </div>
-
-      <div className="inv-panel">
-        <div className="inv-toolbar">
-          <div>
-            <strong>Reseñas</strong>
-            <span className="inv-toolbar-count">{ordenadas.length} reseñas</span>
+      {cargando ? (
+        <p role="status">Cargando reseñas...</p>
+      ) : errorCarga ? (
+        <ErrorState
+          titulo="No pudimos cargar las reseñas"
+          detalle={errorCarga}
+          onReintentar={() => setRecarga((n) => n + 1)}
+        />
+      ) : (
+        <>
+          <div className="inv-stats">
+            <StatCard titulo="Total de Reseñas" valor={total} />
+            <StatCard titulo="Calificación Promedio" valor={promedio} />
           </div>
 
-          <div className="inv-toolbar-actions">
-            <button type="button" className="inv-link-red" onClick={verTodas}>
-              Ver Todas
-            </button>
+          <div className="inv-panel">
+            <div className="inv-toolbar">
+              <div>
+                <strong>Reseñas</strong>
+                <span className="inv-toolbar-count">{ordenadas.length} reseñas</span>
+              </div>
 
-            <select
-              className="inv-select"
-              value={orden}
-              onChange={(e) => setOrden(e.target.value)}
-              aria-label="Ordenar reseñas"
-            >
-              <option value="recientes">Más recientes</option>
-              <option value="mejor">Mejor calificadas</option>
-              <option value="peor">Peor calificadas</option>
-            </select>
+              <div className="inv-toolbar-actions">
+                <button type="button" className="inv-link-red" onClick={verTodas}>
+                  Ver Todas
+                </button>
 
-            <select
-              className="inv-select"
-              value={filtroEstrellas}
-              onChange={(e) => setFiltroEstrellas(e.target.value)}
-              aria-label="Filtrar por calificación"
-            >
-              <option value="">Todas las estrellas</option>
-              <option value="5">5 estrellas</option>
-              <option value="4">4 estrellas</option>
-              <option value="3">3 estrellas</option>
-              <option value="2">2 estrellas</option>
-              <option value="1">1 estrella</option>
-            </select>
+                <select
+                  className="inv-select"
+                  value={orden}
+                  onChange={(e) => setOrden(e.target.value)}
+                  aria-label="Ordenar reseñas"
+                >
+                  <option value="recientes">Más recientes</option>
+                  <option value="mejor">Mejor calificadas</option>
+                  <option value="peor">Peor calificadas</option>
+                </select>
 
-            <select
-              className="inv-select"
-              value={filtroEstado}
-              onChange={(e) => setFiltroEstado(e.target.value)}
-              aria-label="Filtrar por estado"
-            >
-              <option value="">Todas</option>
-              <option value="sin">Sin responder</option>
-              <option value="respondidas">Respondidas</option>
-            </select>
+                <select
+                  className="inv-select"
+                  value={filtroEstrellas}
+                  onChange={(e) => setFiltroEstrellas(e.target.value)}
+                  aria-label="Filtrar por calificación"
+                >
+                  <option value="">Todas las estrellas</option>
+                  <option value="5">5 estrellas</option>
+                  <option value="4">4 estrellas</option>
+                  <option value="3">3 estrellas</option>
+                  <option value="2">2 estrellas</option>
+                  <option value="1">1 estrella</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="rev-list">
+              {visibles.length === 0 ? (
+                <div className="rev-vacio">
+                  {total === 0
+                    ? "Tus productos y servicios todavía no tienen reseñas."
+                    : "No hay reseñas para mostrar."}
+                </div>
+              ) : (
+                visibles.map((r) => <ReviewCard key={r.id} resena={r} />)
+              )}
+            </div>
+
+            {ordenadas.length > POR_PAGINA && (
+              <div className="inv-footer">
+                <div>
+                  Mostrando {desde}-{hasta} de {ordenadas.length} reseñas
+                </div>
+
+                <div className="inv-pagination">
+                  <button type="button" disabled={paginaActual === 1} onClick={() => setPagina(paginaActual - 1)}>
+                    ‹
+                  </button>
+                  {paginas.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className={n === paginaActual ? "activa" : ""}
+                      onClick={() => setPagina(n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={paginaActual === totalPaginas}
+                    onClick={() => setPagina(paginaActual + 1)}
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="rev-list">
-          {ordenadas.length === 0 ? (
-            <div className="rev-vacio">No hay reseñas para mostrar.</div>
-          ) : (
-            ordenadas.map((r) => (
-              <ReviewCard
-                key={r.id}
-                resena={r}
-                onResponder={setResenaRespondiendo}
-              />
-            ))
-          )}
-        </div>
-      </div>
-
-      <ReviewReplyDialog
-        open={Boolean(resenaRespondiendo)}
-        resena={resenaRespondiendo}
-        onClose={() => setResenaRespondiendo(null)}
-        onGuardar={guardarRespuesta}
-      />
+        </>
+      )}
     </SellerTemplate>
   );
 };

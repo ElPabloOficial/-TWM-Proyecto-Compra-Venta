@@ -108,6 +108,100 @@ public class DevolucionesController : ControllerBase
         }
     }
 
+    // Monto a reembolsar por las unidades devueltas: lo que pagó el cliente por esa línea más el IVA de la venta.
+    // Se calcula en memoria porque Venta.Iva es numeric(3,2) y EF lo reventaría si se multiplica dentro de la consulta.
+    private static int MontoDeReembolso(int totalLinea, int cantidadComprada, int cantidadDevuelta, decimal iva)
+    {
+        if (cantidadComprada <= 0) return 0;
+        var neto = (decimal)totalLinea * cantidadDevuelta / cantidadComprada;
+        return (int)Math.Round(neto * (1 + iva), MidpointRounding.AwayFromZero);
+    }
+
+    private static bool EsCambio(string tipo) => tipo.StartsWith("Cambio", StringComparison.OrdinalIgnoreCase);
+
+    // GET: api/devoluciones/vendedor (Solicitudes de devolución de las ventas del vendedor, con el nombre del cliente)
+    [HttpGet("vendedor")]
+    public async Task<IActionResult> GetDevolucionesDeMisVentas()
+    {
+        try
+        {
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(rut))
+                return Unauthorized(new { success = false, message = "Usuario no autenticado." });
+
+            var filas = await _context.generar1s
+                .AsNoTracking()
+                .Where(g => g.id_ventaNavigation.id_vendedor == rut)
+                .OrderByDescending(g => g.id_devolucionNavigation.fechasolicitud)
+                .ThenByDescending(g => g.id_devolucion)
+                .Select(g => new
+                {
+                    id = g.id_devolucion,
+                    venta = g.id_venta,
+                    idProducto = g.id_producto,
+                    cliente = g.id_usuarioNavigation.nombre,
+                    producto = g.id_productoNavigation.nombre,
+                    cantidad = g.cantidad,
+                    motivo = g.id_devolucionNavigation.motivo,
+                    estado = g.id_devolucionNavigation.estado,
+                    tipo = g.id_devolucionNavigation.tipodevolucion,
+                    montoReintegrado = g.id_devolucionNavigation.montoreintegrado,
+                    fechaSolicitud = g.id_devolucionNavigation.fechasolicitud,
+                    fechaResolucion = g.id_devolucionNavigation.fecharesolucion,
+                    imagenEvidencia = g.id_devolucionNavigation.rutaimagen,
+                    iva = g.id_ventaNavigation.iva
+                })
+                .ToListAsync();
+
+            // Lo que costó cada línea (venta + producto), para calcular cuánto se reembolsaría
+            var idsVenta = filas.Select(f => f.venta).Distinct().ToList();
+            var lineas = (await _context.generar3s
+                    .AsNoTracking()
+                    .Where(x => idsVenta.Contains(x.id_venta))
+                    .Select(x => new { x.id_venta, x.id_producto, x.cantidad, x.totalfinal })
+                    .ToListAsync())
+                .GroupBy(x => (x.id_venta, x.id_producto))
+                .ToDictionary(g => g.Key, g => (cantidad: g.Sum(x => x.cantidad), total: g.Sum(x => x.totalfinal)));
+
+            var items = filas.Select(f =>
+            {
+                var hayLinea = lineas.TryGetValue((f.venta, f.idProducto), out var linea);
+                return new
+                {
+                    f.id,
+                    f.venta,
+                    f.cliente,
+                    f.producto,
+                    f.cantidad,
+                    f.motivo,
+                    f.estado,
+                    f.tipo,
+                    f.montoReintegrado,
+                    f.fechaSolicitud,
+                    f.fechaResolucion,
+                    f.imagenEvidencia,
+                    montoSugerido = hayLinea && !EsCambio(f.tipo) ? MontoDeReembolso(linea.total, linea.cantidad, f.cantidad, f.iva) : 0
+                };
+            }).ToList();
+
+            // Tasa de devolución: devoluciones pedidas sobre las ventas del vendedor (sin contar las anuladas)
+            var totalVentas = await _context.venta.CountAsync(v => v.id_vendedor == rut && v.estado != "Anulado");
+            var tasa = totalVentas == 0 ? 0 : Math.Round(100.0 * items.Count / totalVentas, 1);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Devoluciones obtenidas.",
+                data = new { tasa_devolucion = tasa, items },
+                errors = (object?)null
+            });
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
+    }
+
     // POST: api/devoluciones (Solicitar devolución)
     [HttpPost]
     public async Task<IActionResult> CrearDevolucion(
@@ -246,7 +340,7 @@ public class DevolucionesController : ControllerBase
         }
     }
 
-    // PUT: api/devoluciones/{id}/estado (Actualizar estado - solo admin)
+    // PUT: api/devoluciones/{id}/estado (El vendedor de la venta aprueba o rechaza la solicitud)
     [HttpPut("{id}/estado")]
     public async Task<IActionResult> ActualizarEstado(int id, [FromBody] DevolucionEstadoDto dto)
     {
@@ -268,11 +362,38 @@ public class DevolucionesController : ControllerBase
             if (generar1 == null || generar1.id_ventaNavigation.id_vendedor != rut)
                 return Forbid();
 
-            devolucionDb.estado = dto.estado;
-            devolucionDb.montoreintegrado = dto.montoreintegrado ?? 0;
+            // El vendedor solo responde una solicitud pendiente: la aprueba o la rechaza
+            var resoluciones = new[] { "Aprobada", "Rechazada" };
+            if (!resoluciones.Contains(dto.estado))
+                return BadRequest(new { success = false, message = "El estado debe ser \"Aprobada\" o \"Rechazada\"." });
 
-            if (dto.estado == "Aprobada" || dto.estado == "Rechazada")
-                devolucionDb.fecharesolucion = DateOnly.FromDateTime(DateTime.Now);
+            if (resoluciones.Contains(devolucionDb.estado))
+                return BadRequest(new { success = false, message = "Esta solicitud ya fue resuelta." });
+
+            // Monto reembolsado: solo si se aprueba una devolución de dinero (en un cambio de producto no se devuelve plata)
+            var monto = 0;
+            if (dto.estado == "Aprobada" && !EsCambio(devolucionDb.tipodevolucion))
+            {
+                if (dto.montoreintegrado.HasValue)
+                {
+                    monto = dto.montoreintegrado.Value;
+                }
+                else
+                {
+                    var lineas = await _context.generar3s
+                        .AsNoTracking()
+                        .Where(x => x.id_venta == generar1.id_venta && x.id_producto == generar1.id_producto)
+                        .Select(x => new { x.cantidad, x.totalfinal })
+                        .ToListAsync();
+
+                    monto = MontoDeReembolso(lineas.Sum(x => x.totalfinal), lineas.Sum(x => x.cantidad),
+                        generar1.cantidad, generar1.id_ventaNavigation.iva);
+                }
+            }
+
+            devolucionDb.estado = dto.estado;
+            devolucionDb.montoreintegrado = monto;
+            devolucionDb.fecharesolucion = DateOnly.FromDateTime(DateTime.Now);
 
             await _context.SaveChangesAsync();
 

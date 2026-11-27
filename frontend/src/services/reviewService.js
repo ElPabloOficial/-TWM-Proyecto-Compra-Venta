@@ -6,6 +6,9 @@ export const reviewService = {
   // Reseñas que escribió el usuario con sesión iniciada (productos y servicios)
   obtenerMisResenias: async () => (await pedir("/resenias/mias")) ?? [],
 
+  // Reseñas que recibieron los productos y servicios del vendedor con sesión iniciada
+  obtenerReseniasDeMisPublicaciones: async () => (await pedir("/resenias/vendedor")) ?? [],
+
   // Crear reseña
   crearResenia: async (tipo, id_item, calificacion, comentario) => {
     const token = localStorage.getItem("authToken");

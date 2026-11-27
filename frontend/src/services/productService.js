@@ -1,5 +1,3 @@
-// src/services/productService.js
-//
 // Conecta la gestión de inventario con la API (.NET).
 //
 // La pantalla de inventario trabaja con un producto "plano":
@@ -12,8 +10,6 @@
 // Este archivo hace la traducción en los dos sentidos.
 
 import { pedir, hoyLocal, leerJson } from './apiClient';
-
-// ---------- De la API a la pantalla ----------
 
 const adaptarProducto = (p) => {
     const c = leerJson(p.caracteristicas);

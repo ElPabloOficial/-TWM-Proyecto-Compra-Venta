@@ -278,6 +278,65 @@ public class ReseniasController : ControllerBase
         }
     }
 
+    // GET: api/resenias/vendedor
+    // Las reseñas que recibieron los productos y servicios del vendedor con sesión iniciada
+    // (Ofrecer1 / Ofrecer2 dicen qué publicó cada vendedor). Solo se leen: no se guarda nada.
+    [HttpGet("vendedor")]
+    [Authorize(Roles = "Vendedor")]
+    public async Task<IActionResult> GetReseniasDeMisPublicaciones()
+    {
+        try
+        {
+            var rut = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(rut))
+                return Unauthorized(new { success = false, message = "Usuario no autenticado." });
+
+            var misProductos = _context.ofrecer1s.Where(o => o.id_usuario == rut).Select(o => o.id_producto);
+            var misServicios = _context.ofrecer2s.Where(o => o.id_usuario == rut).Select(o => o.id_servicio);
+
+            var deProductos = await _context.escribir1s
+                .AsNoTracking()
+                .Where(e => misProductos.Contains(e.id_producto))
+                .Select(e => new
+                {
+                    id = e.id_calificacion,
+                    tipo = "producto",
+                    item = e.id_productoNavigation.nombre,
+                    cliente = e.id_usuarioNavigation.nombre,
+                    calificacion = e.id_calificacionNavigation.calificacion1,
+                    comentario = e.id_calificacionNavigation.comentario,
+                    fecha = e.id_calificacionNavigation.fecha
+                })
+                .ToListAsync();
+
+            var deServicios = await _context.escribir2s
+                .AsNoTracking()
+                .Where(e => misServicios.Contains(e.id_servicio))
+                .Select(e => new
+                {
+                    id = e.id_calificacion,
+                    tipo = "servicio",
+                    item = e.id_servicioNavigation.nombre,
+                    cliente = e.id_usuarioNavigation.nombre,
+                    calificacion = e.id_calificacionNavigation.calificacion1,
+                    comentario = e.id_calificacionNavigation.comentario,
+                    fecha = e.id_calificacionNavigation.fecha
+                })
+                .ToListAsync();
+
+            var resenias = deProductos.Concat(deServicios)
+                .OrderByDescending(r => r.fecha)
+                .ToList();
+
+            return Ok(new { success = true, message = "Reseñas obtenidas.", data = resenias, errors = (object?)null });
+        }
+        catch (Exception ex)
+        {
+            return this.ErrorInterno(ex);
+        }
+    }
+
     // GET: api/resenias/producto/1 (Público)
     [HttpGet("producto/{idProducto}")]
     public async Task<IActionResult> GetReseniasProducto(int idProducto)
