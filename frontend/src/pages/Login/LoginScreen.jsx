@@ -9,7 +9,7 @@ import { authService } from "../../services/authService";
 import "../../styles/Login.css";
 
 const LoginScreen = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate();//Hook para redirigir al usuario despues de un inicio de sesion exitoso
   const [errorLogin, setErrorLogin] = useState("");
 
   const handleLogin = async (data) => {
@@ -28,7 +28,7 @@ const LoginScreen = () => {
       }
 
       navigate("/inicio");
-
+      //si da error.message no existe usa un mensaje generico osea ocurrio un error al iniciar sesion
     } catch (error) {
       console.error("[LoginScreen] Inicio fallido:", error.message);
       setErrorLogin(error.message || "Ocurrió un error al iniciar sesión");
